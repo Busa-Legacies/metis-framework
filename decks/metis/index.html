@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Métis — Morph Deck</title>
+<meta name="description" content="Introducing Métis — an autonomous multi-agent framework. A morph presentation demo." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Métis skin — the house dark-terminal / indigo system (default vars,
+     stated explicitly so the deck is self-describing) */
+  :root{
+    --accent:#818cf8; --accent2:#6366f1; --accent3:#a78bfa; --warm:#f0a35e;
+    --ridge1:#1b2030; --ridge2:#141826; --ridge3:#0c0f18;
+    --orb-from:#aab2ff; --orb-mid:#6366f1; --orb-to:#3b2f8f; --orb-glow:#6366f155;
+    --grid:#818cf8; --hero-from:#ffffff; --hero-to:#b9bdff;
+  }
+</style>
+</head>
+<body>
+<div id="stage" class="cover">
+  <div class="backdrop">
+    <div class="orb" id="orb"></div>
+    <div class="ridge r1"></div><div class="ridge r2"></div><div class="ridge r3"></div>
+    <div class="grid-floor"></div>
+  </div>
+  <div class="scrim"></div>
+  <div class="anchor menu"><i></i><i></i><i></i></div>
+  <div class="anchor brand"></div>
+  <div class="anchor pill-btn"></div>
+  <div class="anchor credit"></div>
+  <div class="anchor pageno" id="pageno">00</div>
+  <div class="dots" id="dots"></div>
+  <div class="content">
+    <div class="hero" id="hero"></div>
+    <div class="subtitle" id="subtitle"></div>
+    <div class="headline" id="headline"></div>
+    <div class="body" id="body"></div>
+  </div>
+  <div class="nav" id="nav"><div class="nav-bar" id="navbar"></div></div>
+  <div class="zone l" id="zl"></div>
+  <div class="zone r" id="zr"></div>
+</div>
+<div class="hint">← → / swipe / click&nbsp;&nbsp;·&nbsp;&nbsp;tap a section</div>
+
+<script>
+window.DECK = {
+  brand:'MÉTIS', pill:'framework', credit:'metis&nbsp;os',
+  nav:[
+    {p:'orchestrator', s:'jay'},
+    {p:'lanes',        s:'agents'},
+    {p:'memory',       s:'state'},
+    {p:'surfaces',     s:'control'},
+  ],
+  slides:[
+    { hero:'MÉTIS', sub:'an autonomous agent framework', cover:true, orb:{t:'16%',l:'58%',d:'300px'} },
+    { hero:'orchestrator', head:'about the orchestrator', orb:{t:'-12%',l:'72%',d:'260px'},
+      body:'<b>Jay</b> routes every task to the right place; Claude Code orchestrates and applies. Free, always-on local models do the heavy generation — so spend goes only where high judgment earns it.' },
+    { hero:'lanes', head:'about the lanes', orb:{t:'42%',l:'-8%',d:'320px'},
+      body:'Specialised lanes — <b>forge, scout, shield, echo</b> — each own a job. A <b>role × engine</b> ladder picks the cheapest model that will succeed and escalates only when correctness demands it.' },
+    { hero:'memory', head:'about memory', orb:{t:'8%',l:'80%',d:'240px'},
+      body:'A repo-backed memory layer makes the system <b>durable across sessions and machines</b>. Forward state is injected on every prompt; commits and daily logs are the single record of what got done.' },
+    { hero:'surfaces', head:'about the surfaces', orb:{t:'52%',l:'60%',d:'300px'},
+      body:'One gateway, many doors — a <b>FastAPI + xterm.js dashboard</b>, Discord, CLI, and mobile. Code runs <b>sandboxed</b> before it touches the host, so autonomy stays safe.' },
+  ],
+};
+</script>
+<script src="../assets/deck.js"></script>
+</body>
+</html>

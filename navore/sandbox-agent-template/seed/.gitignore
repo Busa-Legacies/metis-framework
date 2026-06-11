@@ -1,0 +1,18 @@
+# Navore-Ops — Vora workspace
+# Never commit secrets. Tokens live in the Claude environment secret store.
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# Local scratch
+scratch/
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+node_modules/

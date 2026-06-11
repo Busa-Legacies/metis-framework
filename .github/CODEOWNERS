@@ -1,0 +1,4 @@
+# metis-core code ownership.
+# Every change to main requires review from the owner below (enforced via
+# branch protection: require PR + require review from Code Owners).
+* @anthonyabusa

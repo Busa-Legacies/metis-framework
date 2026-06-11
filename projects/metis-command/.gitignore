@@ -1,0 +1,27 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+out/
+build/
+dist/
+dist-app/
+coverage/
+*.db
+*.sqlite
+*.log
+.DS_Store
+data/
+memory/
+.claude/worktrees/
+.claude/settings.local.json
+
+*.tsbuildinfo
+
+# Playwright ephemeral output — regenerated every run; tracking it churned the
+# auto-sync daemon (19 deleted artifacts tripped the bulk-deletion guard, #235).
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

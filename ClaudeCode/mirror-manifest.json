@@ -1,0 +1,143 @@
+{
+    "version": 1,
+    "description": "Declares what 'how we work' config is mirrored between Jay (<<MACHINE_1_ID>>, $HOME) and Jarry (<<MACHINE_2_ID>>, $HOME) so nothing drifts or gets lost between the two machines. Consumed by scripts/mirror-check.sh (read-only drift report, wired into the session-init hook) and scripts/mirror-apply.sh (idempotent heal). The repo is the single source of truth; live locations are symlinks into it or deep-merges of a canonical shared file. ~ expands per-machine; repo-relative paths resolve against REPO_ROOT. This covers BOTH cross-machine sync (the two Macs) and cross-provider adapters (Claude Code under ClaudeCode/.claude, Codex under .codex/) \u2014 the analogous cross-PROVIDER parity check is scripts/platform-parity-check.py, driven by docs/process/platform-registry.json.",
+    "symlinks": [
+        {
+            "link": "~/.claude/commands",
+            "target": "ClaudeCode/commands"
+        },
+        {
+            "link": "~/.claude/CLAUDE.md",
+            "target": "ClaudeCode/CLAUDE.md"
+        },
+        {
+            "link": "~/.claude/hook-alerts.sh",
+            "target": "ClaudeCode/hooks/hook-alerts.sh"
+        },
+        {
+            "link": "~/.claude/hook-prompt-guard.sh",
+            "target": "ClaudeCode/hooks/hook-prompt-guard.sh"
+        },
+        {
+            "link": "~/.claude/hook-session-init.sh",
+            "target": "ClaudeCode/hooks/hook-session-init.sh"
+        },
+        {
+            "link": "~/.claude/hook-signoff-gate.sh",
+            "target": "ClaudeCode/hooks/hook-signoff-gate.sh"
+        },
+        {
+            "link": "~/.claude/hook-redaction-guard.sh",
+            "target": "ClaudeCode/hooks/hook-redaction-guard.sh",
+            "note": "PreToolUse(Edit|Write) redaction guard — denies money amounts in personal-log / #personal memory writes (tiered-context enforcement-hardening, closes the §4 redaction gap)."
+        },
+        {
+            "link": "~/.claude/statusline.sh",
+            "target": "ClaudeCode/hooks/statusline.sh"
+        },
+        {
+            "link": "~/.local/bin/claude-machine-identity.sh",
+            "target": "ClaudeCode/bin/claude-machine-identity.sh"
+        },
+        {
+            "link": "~/.local/bin/file-guard.sh",
+            "target": "ClaudeCode/bin/file-guard.sh"
+        },
+        {
+            "link": "~/.local/bin/checkout-guard.sh",
+            "target": "ClaudeCode/bin/checkout-guard.sh"
+        },
+        {
+            "link": "~/AGENTS.md",
+            "target": "AGENTS.md",
+            "note": "Provider-neutral root workspace contract. Keep Ant's home-level AGENTS.md symlinked so Codex/Desktop contexts and other AGENTS-aware tools read the Metis OS contract, not a stale copy."
+        },
+        {
+            "link": "~/.codex/AGENTS.md",
+            "target": "AGENTS.md",
+            "note": "Codex native AGENTS entrypoint. Mirrors the Metis OS neutral contract so Codex stays aligned with the same provider-neutral lifecycle as Claude Code and future drivers."
+        },
+        {
+            "link": "~/.codex/instructions.md",
+            "target": "ClaudeCode/codex/instructions.md",
+            "note": "Codex CLI global context \u2014 machine-agnostic, shared across Jay and Jarry"
+        },
+        {
+            "link": "~/.codex/prompts",
+            "target": ".codex/prompts",
+            "note": "Codex CLI command surface \u2014 lifecycle adapters (/start /next /free-work /checkpoint /end) mirroring the canonical Claude commands. Parity enforced by scripts/platform-parity-check.py."
+        },
+        {
+            "link": "~/.codex/hooks.json",
+            "target": ".codex/hooks.json",
+            "note": "Codex native hook registrations. Command trust is still machine-local in ~/.codex/config.toml, but the hook list itself is repo-owned and self-healed by mirror.py/bootstrap."
+        },
+        {
+            "link": "~/.agents/skills",
+            "target": ".agents/skills",
+            "note": "Codex user/repo skill discovery surface. Points to the repo-generated .agents/skills directory, which contains per-skill symlinks into ClaudeCode/skills so Codex and Claude share workflow bodies without making the Claude skill root a Codex cache."
+        },
+        {
+            "link": "~/.codex/memories",
+            "target": "ClaudeCode/memory",
+            "note": "Unify Codex memory into the SHARED agent RAG store so learning compounds across providers instead of forking into a Codex-private silo (multi-provider-agent-framework.md \u00a76)."
+        }
+    ],
+    "tomlMerge": [
+        {
+            "file": "~/.codex/config.toml",
+            "shared": ".codex/config.toml",
+            "keys": ["approval_policy", "sandbox_mode"],
+            "note": "Enforce repo-wide Codex permission defaults while preserving machine-local plugin/MCP/hook-trust config."
+        }
+    ],
+    "codexSurface": {
+        "script": "scripts/sync-codex-surface.py",
+        "skills": ".agents/skills",
+        "legacySkillsMirror": ".codex/skills",
+        "prompts": ".codex/prompts",
+        "note": "Generated/symlinked Codex surfaces derived from ClaudeCode/skills and ClaudeCode/commands. mirror.py check/apply runs the sync script so future Claude workflows appear in Codex automatically. .agents/skills is a real directory with per-skill symlinks, not a root symlink, so Codex cache folders do not pollute ClaudeCode/skills."
+    },
+    "perMachineSymlinks": [
+        {
+            "link": "~/.claude/agents",
+            "machine1Target": "ClaudeCode/agents/jay",
+            "machine2Target": "ClaudeCode/agents/jarry",
+            "note": "Claude Code native subagent personas (forge/scout/shield/echo/main). Target differs per machine \u2014 each dir has machine-specific Host Machine header but same role definitions. Wired by bootstrap-claude-memory.sh."
+        }
+    ],
+    "merge": [
+        {
+            "file": "~/.claude/settings.json",
+            "shared": "ClaudeCode/settings.shared.json",
+            "localKeys": [
+                "permissions",
+                "env",
+                "enabledPlugins",
+                "extraKnownMarketplaces",
+                "remoteControlAtStartup",
+                "agentPushNotifEnabled"
+            ],
+            "note": "Deep-merge: keys in settings.shared.json are forced to match on both machines; everything in localKeys is preserved from each machine's own file and never overwritten. statusLine is now canonical (~/.claude/statusline.sh on both machines)."
+        }
+    ],
+    "checkOnly": [
+        {
+            "kind": "project-memory-symlink",
+            "note": "~/.claude/projects/<project>/memory must be a symlink to ClaudeCode/memory (wired by scripts/bootstrap-claude-memory.sh, not by mirror-apply because the <project> dir name is per-machine). mirror-check only verifies it resolves into the repo; if not, run bootstrap-claude-memory.sh."
+        }
+    ],
+    "neverMirror": [
+        "~/.claude/settings.local.json \u2014 per-machine permission allow-lists",
+        "~/.openclaw/openclaw.json workspace/agentDir paths \u2014 per-machine absolute paths",
+        "LaunchAgent .plist absolute paths \u2014 generated per-machine from scripts/*.plist"
+    ],
+    "modelHost": {
+        "host": "<<MACHINE_1_ID>>",
+        "user": "Ant",
+        "tailscale": "<<MACHINE_1_TAILSCALE_IP>>",
+        "ollamaPort": 11434,
+        "gatewayPort": 18789,
+        "rule": "Jay is the SOLE local-model host (Ollama qwen3-coder:30b). Jarry (32GB) must NOT run a local 30B model; its openclaw lanes route to Jay's Ollama via models.providers.ollama.baseUrl in ~/.openclaw/openclaw.json (the gateway ignores OLLAMA_HOST env var entirely). mirror-check warns if Jarry's lanes point at a paid model or localhost instead of Jay."
+    }
+}

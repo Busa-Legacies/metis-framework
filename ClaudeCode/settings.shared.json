@@ -1,0 +1,124 @@
+{
+  "_comment": "CANONICAL SHARED Claude Code settings \u2014 mirrored to BOTH machines by scripts/mirror.py apply --settings (deep-merge into ~/.claude/settings.json, preserving the machine-local keys listed in ClaudeCode/mirror-manifest.json). Only put keys here that MUST be identical on Jay and Jarry. Machine-local keys (permissions, env, plugins, remoteControl/pushNotif) live only in each machine's own settings.json and are never overwritten. All paths use ~ so this file is machine-agnostic; the referenced scripts are installed by mirror-apply (bin/* -> ~/.local/bin, hooks via symlink). statusLine now uses ~/.claude/statusline.sh which is the canonical repo symlink on both machines.",
+  "model": "<<PRIMARY_MODEL>>",
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "refreshInterval": 30
+  },
+  "theme": "dark-ansi",
+  "autoCompactEnabled": true,
+  "autoCompactWindow": 400000,
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/claude-machine-identity.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-session-init.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-prompt-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-plan-nudge.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/file-guard.sh pre-check '$TOOL_INPUT' \"${CLAUDE_SESSION_ID:-unknown}\"",
+            "statusMessage": "Checking for concurrent edits..."
+          },
+          {
+            "type": "command",
+            "command": "~/.local/bin/checkout-guard.sh '$TOOL_INPUT' \"${CLAUDE_SESSION_ID:-unknown}\"",
+            "statusMessage": "Checking checkout protocol..."
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-redaction-guard.sh",
+            "statusMessage": "Redaction guard (personal-memory money check)..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/file-guard.sh post-write '$TOOL_INPUT' \"${CLAUDE_SESSION_ID:-unknown}\""
+          },
+          {
+            "type": "command",
+            "command": "~/.local/bin/claude-format.sh",
+            "statusMessage": "Formatting..."
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/file-guard.sh post-read '$TOOL_INPUT' \"${CLAUDE_SESSION_ID:-unknown}\""
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.local/bin/claude-post-compact.sh",
+            "statusMessage": "Re-injecting session context..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hook-alerts.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/restart-stop-hook.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-signoff-gate.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"PreCompact\", \"additionalContext\": \"MEMORY CHECKPOINT: This conversation is about to be compacted. Save any significant progress, decisions, task completions, or system-state changes to your Claude Code project memory dir (~/.claude/projects/<project>/memory/) and update MEMORY.md before compaction. If nothing significant happened, no action needed.\"}}'",
+            "statusMessage": "Saving session memory..."
+          }
+        ]
+      }
+    ]
+  }
+}

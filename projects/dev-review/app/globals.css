@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Window drag region (titlebar). Used by the workbench top header in Electron. */
+.tb-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.tb-drag button,
+.tb-drag input,
+.tb-drag select,
+.tb-drag textarea,
+.tb-drag a,
+.tb-drag [data-no-drag],
+.tb-drag .tb-nodrag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+:root {
+  --bg: #05060a;
+  --panel: #0b0e15;
+  --panel2: #111625;
+  --line: rgba(148, 163, 184, 0.16);
+  --muted: #7d8597;
+  --text: #f4f7fb;
+  --cyan: #34d3ff;
+  --midnight: #0b1e3f;
+  --highlight: #f59e0b;
+  --violet: #a78bfa;
+  --amber: #fbbf24;
+  --emerald: #34d399;
+  --red: #fb7185;
+}
+/* Workspace palette: --cyan stays the bright interactive accent (active states, borders, CTAs, cursors).
+   --midnight is the deep brand/base tone for panel & base surfaces — near-black, NOT a foreground accent.
+   --highlight (amber) is the secondary highlight for select CTAs / emphasis. */
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 16% 10%, rgba(52, 211, 255, 0.16), transparent 26%),
+    radial-gradient(circle at 82% 0%, rgba(167, 139, 250, 0.14), transparent 28%),
+    linear-gradient(135deg, #05060a 0%, #080b13 45%, #030409 100%);
+  font-family: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+}
+
+::selection { background: rgba(52, 211, 255, 0.28); }
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(17, 22, 37, 0.88), rgba(8, 11, 18, 0.92));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.08);
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { opacity: .45; transform: scale(.9); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+.scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(52, 211, 255, 0.045), transparent);
+  animation: scan 4s linear infinite;
+}
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
+}

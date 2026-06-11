@@ -1,0 +1,51 @@
+{
+  "_comment": "metis-core infrastructure config. A consuming org fills this in once; the parameterized core scripts (free-work.py, queue-runner.py, task-domain.py, network helpers, mirror-manifest) read machines/agents/domains/network from HERE instead of hardcoding them. This is the single seam where an org declares its own topology.",
+
+  "org": {
+    "name": "<<ORG_NAME>>",
+    "repoName": "<<REPO_NAME>>",
+    "home": "${METIS_HOME}"
+  },
+
+  "machines": [
+    {
+      "id": "<<MACHINE_1_ID>>",
+      "role": "primary",
+      "user": "<<MACHINE_1_USER>>",
+      "tailscaleIp": "<<MACHINE_1_TAILSCALE_IP>>",
+      "modelHost": true,
+      "agents": ["<<AGENT>>", "claude"]
+    },
+    {
+      "id": "<<MACHINE_2_ID>>",
+      "role": "secondary",
+      "user": "<<MACHINE_2_USER>>",
+      "tailscaleIp": "<<MACHINE_2_TAILSCALE_IP>>",
+      "modelHost": false,
+      "agents": ["claude"]
+    }
+  ],
+
+  "agents": {
+    "_comment": "Execution lanes/roles available to the dispatcher. The CONCEPT (role x engine) is core; the NAMES are org-chosen.",
+    "all": ["claude"],
+    "dispatchable": [],
+    "dispatchableMachines": ["<<MACHINE_1_ID>>", "either"]
+  },
+
+  "model": {
+    "primary": "<<PRIMARY_MODEL>>",
+    "execution": "<<EXECUTION_MODEL>>"
+  },
+
+  "domains": {
+    "_comment": "Project/work domains used to tag tasks. Replace with your org's domains.",
+    "list": ["infrastructure", "uncategorized"]
+  },
+
+  "notifications": {
+    "_comment": "Optional. Channel IDs for status/alert routing; empty disables.",
+    "statusChannel": "",
+    "alertChannel": ""
+  }
+}

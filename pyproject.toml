@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 100
+exclude = [".venv", "__pycache__", "node_modules"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["projects/trading-bot/tests", "projects/trading-bot/research/tests"]
+pythonpath = ["projects/trading-bot"]
