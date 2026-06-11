@@ -91,7 +91,7 @@ function LineTaskDetail({ task, lease, onClose }: {
             <X size={20} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[16px] md:text-[14px] font-semibold text-slate-50">{task.title}</div>
+            <div className="truncate text-[15px] md:text-[13px] font-semibold text-slate-50">{task.title}</div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] md:text-[11px]">
               <span className="font-mono text-[var(--muted)]">{task.taskId}</span>
               <span className={`font-bold ${stateTextCls(task.state)}`}>{task.state.replace(/_/g, ' ')}</span>
@@ -219,7 +219,7 @@ function ProjectCard({ p, onOpen }: { p: MetisLineSummary; onOpen: () => void })
     <button onClick={onOpen} className="flex w-full items-center gap-3 rounded-xl border border-[var(--line)] bg-[#13161f]/80 p-3 text-left hover:border-cyan-300/30 hover:bg-cyan-300/5">
       <Route size={16} className="shrink-0 text-cyan-300" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] md:text-[13px] font-semibold text-slate-100">{p.name}</div>
+        <div className="truncate text-[13px] md:text-[13px] font-semibold text-slate-100">{p.name}</div>
         <div className="flex items-center gap-2 text-[11px] md:text-[10px] text-[var(--muted)]">
           <span>{p.priority}</span>
           <span>{p.openCount} open</span>
@@ -335,7 +335,7 @@ export default function LinesOfWorkMode() {
               {/* Project header */}
               <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] md:text-[13px] font-bold text-slate-50">{d.project.name}</span>
+                  <span className="text-[13px] md:text-[13px] font-bold text-slate-50">{d.project.name}</span>
                   <span className="text-[11px] md:text-[10px] text-[var(--muted)]">{d.project.priority} · {d.project.status}</span>
                   <div className="flex-1" />
                   {d.project.progress != null && <Bar progress={d.project.progress} tone="emerald" />}

@@ -14,7 +14,7 @@ _mw_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [ -f "$_mw_lib_dir/paths.env" ] && . "$_mw_lib_dir/paths.env"
 
 MAINTENANCE_MARKER="${MAINTENANCE_MARKER:-$HOME/.openclaw/state/jay-maintenance.json}"
-MW_DISCORD_CHANNEL="${MW_DISCORD_CHANNEL:-1489674856579600455}"  # #status-log
+MW_DISCORD_CHANNEL="${MW_DISCORD_CHANNEL}"  # #status-log
 
 # maintenance_active -> exit 0 if a window is currently active and not expired.
 maintenance_active() {

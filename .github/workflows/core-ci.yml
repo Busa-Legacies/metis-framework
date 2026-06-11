@@ -1,0 +1,39 @@
+name: core-ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: core-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tooling
+        run: pip install ruff
+      - name: Lint (ruff)
+        run: ruff check scripts || true   # advisory until core is lint-clean
+      - name: Compile all core Python
+        run: |
+          python -m compileall -q scripts config build || exit 1
+      - name: Core self-tests
+        run: python scripts/test-self-heal.py
+      - name: Parameterization guard (no personal values in core)
+        run: |
+          set -e
+          # Fail if a real Tailscale IP or home path leaks into the framework core.
+          # Excluded: navore/ (owner's own content), build/ + .github/ (the tooling
+          # that *defines* these detection patterns), and SPLIT.md (documents them).
+          if grep -rIn -e '100\.82\.81\.93' -e '100\.80\.166\.77' \
+                 -e '/Users/Ant' -e '/Users/abusa' \
+                 --exclude-dir=navore --exclude-dir=.git --exclude-dir=build \
+                 --exclude-dir=.github --exclude=SPLIT.md . ; then
+            echo "::error::personal value leaked into core — parameterize it"; exit 1
+          fi
+          echo "clean: no hardcoded IPs or home paths in framework core"

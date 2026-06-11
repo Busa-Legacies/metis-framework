@@ -949,7 +949,7 @@ function AgentTab({ agent, isActive, onClick, onKill, onRename, onDragStart, onD
     >
       <span className={`badge shrink-0 px-1.5 py-0 text-[9px] ${KIND_COLOR[agent.kind]}`}>{agent.kind}</span>
       {agent.role && (
-        <span className="badge shrink-0 border-cyan-300/30 bg-cyan-300/10 px-1 py-0 text-[8px] uppercase tracking-wider text-cyan-200" title={`role: ${agent.role}`}>{agent.role.slice(0,3)}</span>
+        <span className="badge shrink-0 border-cyan-300/30 bg-cyan-300/10 px-1 py-0 text-[9px] uppercase tracking-wider text-cyan-200" title={`role: ${agent.role}`}>{agent.role.slice(0,3)}</span>
       )}
       {renaming ? (
         <input

@@ -22,7 +22,7 @@ REPORT="$AUDIT_DIR/self-heal-$DATE.md"
 LOG_DIR="${LOG_DIR:-$HOME/.openclaw/logs}"
 LOG="$LOG_DIR/self-heal.log"
 OPENCLAW_JSON="${OPENCLAW_JSON:-$HOME/.openclaw/openclaw.json}"
-DISCORD_CHANNEL="${DISCORD_CHANNEL:-1489674856579600455}"
+DISCORD_CHANNEL="${DISCORD_CHANNEL}"
 CURL_BIN="${CURL_BIN:-curl}"
 # --dry-run by default for manual runs; the LaunchAgent passes --apply.
 MODE="${1:---apply}"

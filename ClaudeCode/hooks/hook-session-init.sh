@@ -78,21 +78,12 @@ if [ -f "$mirror_script" ]; then
   [ $? -ne 0 ] && mirror_msg="$mirror_out"
 fi
 
-# --- Ollama routing check (surfaces only on non-model-host machines) ---
+# --- Ollama routing check (surfaces only when baseUrl missing or unreachable on Jarry) ---
 # Prevents silent lane failures after openclaw.json reset/upgrade.
-# Skipped on the model-host machine — it IS the Ollama host; localhost works without baseUrl.
-# "Am I the model host?" is read from config/infrastructure.json (machines[].modelHost).
+# Skipped on Jay (antfox/Ant) — it IS the Ollama host; localhost:11434 works without baseUrl.
 ollama_msg=""
-_is_model_host=$(METIS_HOME="${METIS_HOME:-${METIS_CORE:-$(cd "$(dirname "$0")/../.." && pwd)}}" python3 -c "
-import json, os
-try:
-    ms = json.load(open(os.path.join(os.environ.get('METIS_HOME','.'), 'config/infrastructure.json'))).get('machines', [])
-    me = os.environ.get('USER')
-    print('yes' if any(m.get('user') == me and m.get('modelHost') for m in ms) else 'no')
-except Exception:
-    print('no')
-" 2>/dev/null)
-if [ "$_is_model_host" != "yes" ]; then
+_machine_hostname=$(hostname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
+if [ "$_machine_hostname" != "antfox" ] && [ "$USER" != "Ant" ]; then
   oc_json="$HOME/.openclaw/openclaw.json"
   if [ -f "$oc_json" ]; then
     ollama_base=$(python3 -c "

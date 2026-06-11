@@ -100,7 +100,7 @@ function Section({ icon, title, accent, count, children }: {
         <span className="text-[13px] md:text-[12px] font-bold uppercase tracking-[0.12em] text-slate-200">{title}</span>
         <span className="rounded-full bg-white/5 px-1.5 text-[11px] md:text-[10px] text-[var(--muted)]">{count}</span>
       </div>
-      <div className="flex flex-col gap-1.5">{children}</div>
+      <div className="mc-stagger flex flex-col gap-1.5">{children}</div>
     </div>
   )
 }
@@ -139,13 +139,13 @@ function ItemCard({ task, now, actions, gate, onOpen }: {
   return (
     <div
       onClick={onOpen}
-      className={`rounded-xl border border-[var(--line)] bg-[#13161f]/80 p-3 ${onOpen ? 'cursor-pointer hover:border-cyan-300/30 active:bg-cyan-300/5' : ''}`}
+      className={`rounded-xl border border-[var(--line)] bg-gradient-to-b from-white/[0.025] to-black/25 p-3 backdrop-blur-sm ${onOpen ? 'cursor-pointer transition-colors hover:border-cyan-300/30 hover:from-cyan-300/[0.04] active:bg-cyan-300/5' : ''}`}
     >
       <div className="flex items-start gap-2">
         {/* No action-type chip here — the section header already groups by type,
             so a per-card badge is redundant (mobile annotation, #240). */}
         <div className="min-w-0 flex-1">
-          <div className={`truncate text-[14px] md:text-[13px] ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>
+          <div className={`truncate text-[13px] md:text-[13px] ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>
             {task.title}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] md:text-[10px] text-[var(--muted)]">
@@ -227,7 +227,7 @@ function DecisionCard({ decision, busy, onResolve, onUpdate }: {
   return (
     <div className="rounded-xl border border-amber-300/20 bg-[#1a1710]/70 p-3">
       <div className="min-w-0">
-        <div className="text-[14px] md:text-[13px] font-semibold text-slate-50">{decision.title}</div>
+        <div className="text-[13px] md:text-[13px] font-semibold text-slate-50">{decision.title}</div>
         {(decision.context || decision.task_context) && (
           <div className="mt-0.5 text-[12px] md:text-[11px] text-[var(--muted)]">{decision.context ?? decision.task_context}</div>
         )}
@@ -454,7 +454,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
             <X2 size={20} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[16px] md:text-[14px] font-semibold text-slate-50">{task.title}</div>
+            <div className="truncate text-[15px] md:text-[13px] font-semibold text-slate-50">{task.title}</div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] md:text-[11px]">
               <span className="font-mono text-[var(--muted)]">{task.taskId}</span>
               <span className={`font-bold ${stateTextCls(task.state)}`}>{task.state.replace(/_/g, ' ')}</span>
@@ -509,7 +509,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
               <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-200">
                 <GitMerge size={13} /> Decision needed
               </div>
-              <div className="text-[14px] md:text-[13px] font-semibold leading-snug text-amber-50">{ctx?.question ?? task.nextDecisionPoint}</div>
+              <div className="text-[13px] md:text-[13px] font-semibold leading-snug text-amber-50">{ctx?.question ?? task.nextDecisionPoint}</div>
               {/* Curated context: the why + resolved task refs + spec paths the
                   decision touches — only what's needed to make the call. */}
               {ctx && <DecisionFrame ctx={ctx} />}
@@ -525,7 +525,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {opts.map((o) => (
                     <button key={o} onClick={() => onRecord(task, o)} disabled={busy}
-                      className="flex h-10 items-center gap-1.5 rounded-lg border border-amber-300/40 bg-amber-300/15 px-3.5 text-[14px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/30 disabled:opacity-50">
+                      className="flex h-10 items-center gap-1.5 rounded-lg border border-amber-300/40 bg-amber-300/15 px-3.5 text-[13px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/30 disabled:opacity-50">
                       <CheckCircle2 size={15} /> {o}
                     </button>
                   ))}
@@ -537,12 +537,12 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
                 rows={3}
                 autoFocus={!opts}
                 placeholder={opts ? 'Other / add a note…' : 'Type your decision / the direction to take…'}
-                className="w-full resize-none rounded-lg border border-amber-300/20 bg-black/40 px-2.5 py-2 font-mono text-[14px] md:text-[12px] text-slate-100 placeholder-[var(--muted)] focus:border-amber-300/50 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-amber-300/20 bg-black/40 px-2.5 py-2 font-mono text-[13px] md:text-[12px] text-slate-100 placeholder-[var(--muted)] focus:border-amber-300/50 focus:outline-none"
               />
               <button
                 onClick={() => onRecord(task, text.trim())}
                 disabled={busy}
-                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 text-[14px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/20 disabled:opacity-50"
+                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 text-[13px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/20 disabled:opacity-50"
               >
                 <CheckCircle2 size={18} /> {text.trim() ? 'Record decision' : 'Clear decision gate'}
               </button>
@@ -852,7 +852,7 @@ export default function InboxMode() {
           )}
 
           {data.counts.total === 0 ? (
-            <div className="py-12 text-center text-[14px] md:text-[13px] text-[var(--muted)]">
+            <div className="py-12 text-center text-[13px] md:text-[13px] text-[var(--muted)]">
               <CheckCircle2 size={28} className="mx-auto mb-2 text-emerald-300/60" />
               Nothing needs you right now. 🎉
             </div>

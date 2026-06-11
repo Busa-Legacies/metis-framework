@@ -88,7 +88,7 @@ function DetailField({ label, value }: { label: string; value: string | null | u
   return (
     <div className="mb-4">
       <div className="mb-1 text-[11px] md:text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{label}</div>
-      <div className="text-[14px] md:text-[12px] leading-relaxed text-slate-300">{value}</div>
+      <div className="text-[13px] md:text-[12px] leading-relaxed text-slate-300">{value}</div>
     </div>
   )
 }
@@ -244,7 +244,7 @@ function TaskDetail({ task, onClose, onStart, onTransition, onComplete, onUnbloc
           {task.blocker && (
             <div className="mb-4">
               <div className="mb-1 text-[11px] md:text-[10px] font-bold uppercase tracking-[0.14em] text-rose-400">Blocker</div>
-              <div className="flex items-start gap-1.5 text-[14px] md:text-[12px] text-rose-300">
+              <div className="flex items-start gap-1.5 text-[13px] md:text-[12px] text-rose-300">
                 <AlertTriangle size={12} className="mt-0.5 shrink-0" />
                 {task.blocker}
               </div>
@@ -418,7 +418,7 @@ function ProjectGroup({ project, collapsed, onToggle, onMove, canMoveUp, canMove
   onTaskClick: (t: MetisGoverndTask) => void
 }) {
   return (
-    <div className="mb-3 rounded-xl border border-[var(--line)] bg-[#13161f]/80 p-3">
+    <div className="mb-3 rounded-xl border border-[var(--line)] bg-gradient-to-b from-white/[0.025] to-black/25 p-3 backdrop-blur-sm">
       <div className={`flex items-center gap-1.5 ${collapsed ? '' : 'mb-1.5 border-b border-[var(--line)] pb-2'}`}>
         <button
           onClick={onToggle}
@@ -448,7 +448,7 @@ function ProjectGroup({ project, collapsed, onToggle, onMove, canMoveUp, canMove
         </button>
       </div>
       {!collapsed && (
-        <ul className="flex flex-col gap-0.5">
+        <ul className="mc-stagger flex flex-col gap-0.5">
           {project.tasks.map((t) => (
             <TaskRow key={t.taskId} task={t} onClick={() => onTaskClick(t)} />
           ))}

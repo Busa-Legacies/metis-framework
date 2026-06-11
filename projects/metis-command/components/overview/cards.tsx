@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { ChevronRight, Copy, Check, RefreshCw } from 'lucide-react'
 import type { Severity } from '@/lib/metis-api'
-import { MetisMark } from '@/components/ui/MetisMark'
 
 /**
  * Shared Control Center card design system (PLAN §7.4 — locked before broad
@@ -151,9 +150,17 @@ export function CopyButton({ text, title = 'Copy', label }: { text: string; titl
 }
 
 export function CardLoading({ label = 'loading…' }: { label?: string }) {
+  // Skeleton shimmer instead of a bare "loading…" line — reads as the surface
+  // assembling, not as a hang (design-guidelines §7; fixes the mobile inbox
+  // looking broken mid-load).
   return (
-    <div className="flex flex-1 items-center justify-center gap-2 text-[15px] md:text-xs text-[var(--muted)]">
-      <MetisMark size={20} animated /> <span className="animate-pulse">{label}</span>
+    <div className="flex flex-1 flex-col gap-2.5 p-1" role="status" aria-busy="true" aria-label={label}>
+      <div className="mc-skeleton h-3 w-1/3" />
+      <div className="mc-skeleton h-2.5 w-4/5" />
+      <div className="mc-skeleton h-2.5 w-2/3" />
+      <div className="mc-skeleton h-20 w-full" />
+      <div className="mc-skeleton h-2.5 w-1/2" />
+      <div className="mc-skeleton h-2.5 w-3/4" />
     </div>
   )
 }

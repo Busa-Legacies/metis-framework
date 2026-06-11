@@ -42,7 +42,7 @@ function Mermaid({ chart }: { chart: string }) {
 // fenced ```mermaid blocks render as diagrams.
 const MD_COMPONENTS = {
   h1: (p: React.HTMLAttributes<HTMLHeadingElement>) => <h1 className="mb-2 mt-3 text-[15px] font-bold text-slate-50" {...p} />,
-  h2: (p: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="mb-1.5 mt-3 border-b border-[var(--line)] pb-1 text-[14px] font-bold text-cyan-100" {...p} />,
+  h2: (p: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="mb-1.5 mt-3 border-b border-[var(--line)] pb-1 text-[13px] font-bold text-cyan-100" {...p} />,
   h3: (p: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="mb-1 mt-2.5 text-[13px] font-semibold text-slate-100" {...p} />,
   p: (p: React.HTMLAttributes<HTMLParagraphElement>) => <p className="mb-2 text-[13px] leading-relaxed text-slate-300" {...p} />,
   ul: (p: React.HTMLAttributes<HTMLUListElement>) => <ul className="mb-2 ml-4 list-disc space-y-0.5 text-[13px] text-slate-300" {...p} />,

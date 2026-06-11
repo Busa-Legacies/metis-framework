@@ -50,7 +50,7 @@ export default function OverviewSummary() {
       ) : !data ? (
         <CardLoading label="loading overview…" />
       ) : (
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mc-stagger grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
           {/* Live agent activity (#240 Phase 4) — cross-workspace heartbeat */}
           <AgentActivityCard />
 

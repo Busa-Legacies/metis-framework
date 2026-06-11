@@ -170,6 +170,38 @@ body {
   50% { opacity: 1; transform: scale(1.18); }
 }
 
+/* Card/panel entry — the one "hero" animation per load (design-guidelines §7):
+   a staggered fade-in-up. Put `mc-stagger` on a grid/list container and its
+   direct children animate in sequence; `mc-in` is the single-element variant. */
+@keyframes mcEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.mc-in { animation: mcEnter .42s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.mc-stagger > * { animation: mcEnter .42s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.mc-stagger > *:nth-child(1)  { animation-delay: .02s; }
+.mc-stagger > *:nth-child(2)  { animation-delay: .06s; }
+.mc-stagger > *:nth-child(3)  { animation-delay: .10s; }
+.mc-stagger > *:nth-child(4)  { animation-delay: .14s; }
+.mc-stagger > *:nth-child(5)  { animation-delay: .18s; }
+.mc-stagger > *:nth-child(6)  { animation-delay: .22s; }
+.mc-stagger > *:nth-child(7)  { animation-delay: .26s; }
+.mc-stagger > *:nth-child(8)  { animation-delay: .30s; }
+.mc-stagger > *:nth-child(9)  { animation-delay: .34s; }
+.mc-stagger > *:nth-child(n+10) { animation-delay: .38s; }
+
+/* Skeleton shimmer — real loading affordance instead of a bare "loading…" line. */
+@keyframes mcShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.mc-skeleton {
+  background: linear-gradient(90deg, rgba(148,163,184,0.05) 25%, rgba(148,163,184,0.13) 37%, rgba(148,163,184,0.05) 63%);
+  background-size: 200% 100%;
+  animation: mcShimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Honor reduced-motion: kill chrome animation, show final state. */
+@media (prefers-reduced-motion: reduce) {
+  .mc-in, .mc-stagger > *, .mc-skeleton, .pulse-dot, .scanline::after { animation: none !important; }
+  .mc-stagger > * { opacity: 1; transform: none; }
+}
+
 .scanline::after {
   content: '';
   position: absolute;

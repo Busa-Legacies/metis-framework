@@ -50,8 +50,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 ## ID Counter
 
-**Last assigned: #315**
-**Next available: #316**
+**Last assigned: #317**
+**Next available: #318**
 
 These two lines are a **human-readable mirror** — the canonical, race-safe counter lives in
 `docs/process/state/task-counter.json` and is allocated atomically by

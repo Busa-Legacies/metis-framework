@@ -142,7 +142,7 @@ export default function PersonalMode() {
       ) : !data ? (
         <CardLoading label="loading personal…" />
       ) : (
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mc-stagger grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
           {/* Net Worth */}
           <StatusCard title="Net Worth" icon={<Wallet size={12} />} severity={fin?.error ? 'warn' : 'ok'}>
             {fin?.error ? (

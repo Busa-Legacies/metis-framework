@@ -82,13 +82,13 @@ function ControlCenterInner() {
         <nav className="tb-drag hidden w-[68px] shrink-0 flex-col items-stretch gap-1 border-r border-[var(--line)] bg-black/25 px-1.5 pb-2 pt-7 md:flex">
           <div className="mb-2 flex flex-col items-center gap-0.5 px-1">
             <MetisMark size={20} />
-            <span className="text-center text-[8px] font-black uppercase leading-tight tracking-[0.12em] text-cyan-100">
+            <span className="text-center text-[9px] font-black uppercase leading-tight tracking-[0.12em] text-cyan-100">
               Control<br />Center
             </span>
             {/* Workspace indicator (not a toggle — the switch lives in Settings) */}
             <span
               data-testid="workspace-indicator"
-              className={`mt-1 rounded-full px-1.5 py-0 text-[8px] font-black uppercase tracking-[0.1em] ${
+              className={`mt-1 rounded-full px-1.5 py-0 text-[9px] font-black uppercase tracking-[0.1em] ${
                 pro ? 'bg-amber-300/15 text-amber-200' : 'bg-cyan-300/15 text-cyan-200'
               }`}
             >

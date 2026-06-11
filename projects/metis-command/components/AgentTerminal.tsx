@@ -104,7 +104,7 @@ export default function AgentTerminal({ agentId }: Props) {
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden bg-black/60"
+      className="scanline relative h-full w-full overflow-hidden bg-black/60"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault()

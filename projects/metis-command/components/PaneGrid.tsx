@@ -8,6 +8,7 @@ import type { Agent, AgentKind, LayoutNode } from '@/lib/types'
 import type { ControlCenterWorkspace } from '@/lib/control-center-summary'
 import { controlCenterPaneStates, type ControlCenterPaneStateKind } from '@/lib/control-center-ui-state'
 import { leaves } from '@/lib/layout'
+import { MetisMark } from '@/components/ui/MetisMark'
 import BrowserPane from './BrowserPane'
 
 /** True on phone-width viewports (<768px). Drives the single-pane + tab-switcher mobile model. */
@@ -372,7 +373,9 @@ function classifyActivity(agent: Agent): { label: string; dot: string; ring: str
 
 function EmptyDrop({ leafId, onAssignUrl }: { leafId: string; onAssignUrl: (id: string, url: string | null) => void }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden p-4 text-xs text-slate-500">
+    <div className="mc-in flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden p-4 text-xs text-slate-500">
+      <MetisMark size={28} className="opacity-50" />
+      <p className="w-full text-center text-[13px] font-semibold tracking-wide text-slate-400">No agent in this pane</p>
       <p className="w-full text-center">
         <span className="md:hidden">tap <span className="text-cyan-200">spawn</span> to start an agent</span>
         <span className="hidden md:inline">drop a tab here, or click <span className="text-cyan-200">spawn</span> in the top bar</span>

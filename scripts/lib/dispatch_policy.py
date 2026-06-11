@@ -133,13 +133,17 @@ def resolve_default_engine(
         )
 
     if rk == "critical":
+        # Approval gates EXECUTION. A read-only route (shield/curator reviewing
+        # trading code) can't act on what it reads — keyword-inferred risk from
+        # reviewed content must not block the quality gates themselves (the
+        # 2026-06-11 incident: every shield/curator pass REFUSED, gates skipped).
         return DispatchPolicyDecision(
             engine=DEEP_CODEX_ENGINE,
             work_type=wt,
             risk=rk,
             mutation=mut,
             reason="critical risk requires highest-judgment route",
-            requires_approval=True,
+            requires_approval=(mut != "read-only"),
             proposal_only=True,
         )
 
@@ -150,7 +154,9 @@ def resolve_default_engine(
             risk=rk,
             mutation=mut,
             reason="high-risk/security/external scope is not local-model default",
-            requires_approval=True,
+            # Engine still escalates on inferred risk; the human gate applies
+            # only to routes that can execute (mutate/external/live-runtime).
+            requires_approval=(mut in {"mutates", "external", "live-runtime"}),
             proposal_only=True,
         )
 

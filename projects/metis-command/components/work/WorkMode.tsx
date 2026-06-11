@@ -172,10 +172,10 @@ export default function WorkMode({ professional = false, initialView }: { profes
           <CardLoading label="loading work summary..." />
         ) : (
           <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4">
-            <div className="grid gap-2.5 sm:gap-3 lg:grid-cols-[1.25fr_0.75fr]">
+            <div className="mc-stagger grid gap-2.5 sm:gap-3 lg:grid-cols-[1.25fr_0.75fr]">
               <StatusCard title="Command Brief" icon={<Target size={12} />}>
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2">
                     <Metric label="Active" value={priorities.active_total} tone="text-emerald-200" />
                     <Metric label="Blocked" value={priorities.blocked_count} tone={priorities.blocked_count ? 'text-rose-200' : 'text-emerald-200'} />
                     <Metric label="Projects" value={activeProjects.length} tone="text-cyan-100" />
@@ -184,7 +184,7 @@ export default function WorkMode({ professional = false, initialView }: { profes
 
                   <div className="rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2 sm:px-3 sm:py-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-50 sm:text-[16px]">
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-50 sm:text-[15px]">
                         {topGoal ? `${topGoal.id} · ${topGoal.title}` : 'No active goal selected'}
                       </span>
                       {topGoal && <StatusChip label={`${goalProgressPct(topGoal)}%`} severity="ok" />}
@@ -255,9 +255,9 @@ export default function WorkMode({ professional = false, initialView }: { profes
 
 function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-lg border border-[var(--line)] bg-black/20 px-2 py-1.5 sm:px-3 sm:py-2">
-      <div className={`text-[18px] font-black leading-none tabular-nums sm:text-2xl ${tone}`}>{value}</div>
-      <div className="mt-1 truncate text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--muted)] sm:text-[10px] sm:tracking-[0.12em]">{label}</div>
+    <div className="min-w-0 rounded-lg border border-[var(--line)] bg-black/20 px-2 py-1.5 sm:px-3 sm:py-2">
+      <div className={`text-[17px] font-black leading-none tabular-nums sm:text-2xl ${tone}`}>{value}</div>
+      <div className="mt-1 truncate text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--muted)] sm:text-[10px] sm:tracking-[0.12em]">{label}</div>
     </div>
   )
 }

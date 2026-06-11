@@ -461,7 +461,7 @@ export default function AnnotateWidget() {
               )}
               {messages.map((m) => (
                 <div key={m.id} className={`mb-2 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[14px] md:text-[12px] leading-relaxed ${
+                  <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[13px] md:text-[12px] leading-relaxed ${
                     m.role === 'user'
                       ? 'border border-cyan-300/25 bg-cyan-300/10 text-cyan-50'
                       : 'border border-[var(--line)] bg-black/30 text-slate-200'

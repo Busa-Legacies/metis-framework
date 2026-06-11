@@ -19,6 +19,8 @@ violation dicts — so tests never touch the filesystem. evaluate() does the IO,
 then calls them. This mirrors how free-work's aggregate() is callable under a
 held LOCK_EX (no IO in the evaluator).
 """
+from __future__ import annotations
+
 import sys
 import os
 import re

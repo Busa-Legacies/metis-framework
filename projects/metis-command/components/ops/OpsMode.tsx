@@ -46,7 +46,7 @@ export default function OpsMode() {
       ) : !data ? (
         <CardLoading label="loading ops…" />
       ) : (
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mc-stagger grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
           {/* Services */}
           <StatusCard title="Services" icon={<Radio size={12} />} severity={data.jay.gateway_running && data.ollama.running ? 'ok' : 'critical'}>
             <StatusDot on={data.jay.gateway_running} labelOn="gateway up" labelOff="gateway down" />
