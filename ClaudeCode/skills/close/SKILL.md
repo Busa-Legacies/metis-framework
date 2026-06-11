@@ -2,7 +2,7 @@
 name: Close Session (legacy)
 slug: close
 version: 1.0.0
-description: Alias for the session close protocol. Prefer /end — it is the current, complete protocol. Session name: $ARGUMENTS
+description: "Alias for the session close protocol. Prefer /end — it is the current, complete protocol. Session name: $ARGUMENTS"
 ---
 
 Run the full `/end` protocol. This command is a legacy alias — `/end` is the authoritative, up-to-date version.

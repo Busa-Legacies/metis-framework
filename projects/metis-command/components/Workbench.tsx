@@ -441,7 +441,7 @@ export default function Workbench() {
         </button>
         <div className="flex items-center gap-2">
           <Zap size={16} className="text-cyan-300" />
-          <div className="hidden text-xs font-black uppercase tracking-[0.22em] text-cyan-100 md:block">Agent Command</div>
+          <div className="hidden text-[12px] font-black uppercase tracking-[0.22em] text-cyan-100 md:block">Agent Command</div>
         </div>
         <div className="mx-2 hidden h-5 w-px bg-slate-400/15 md:block md:mx-3" />
         <WorkspaceSwitcher
@@ -476,7 +476,7 @@ export default function Workbench() {
           <button
             onClick={stopAllInActive}
             title="kill every running agent in this workspace"
-            className="flex items-center gap-1 rounded-lg border border-rose-300/30 bg-rose-300/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-300/20"
+            className="flex items-center gap-1 rounded-lg border border-rose-300/30 bg-rose-300/10 px-2 py-1 text-[12px] text-rose-200 hover:bg-rose-300/20"
           >
             <Square size={12} /> stop all
           </button>
@@ -488,17 +488,17 @@ export default function Workbench() {
             <button
               onClick={clearGraveyard}
               title="remove every exited agent's tab and scrollback in this workspace (running agents untouched)"
-              className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2 py-1 text-xs text-slate-300 hover:border-rose-300/30 hover:text-rose-200"
+              className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2 py-1 text-[12px] text-slate-300 hover:border-rose-300/30 hover:text-rose-200"
             >
               <Trash2 size={12} /> clear exited
               <span className="rounded-full bg-rose-300/15 px-1.5 py-0 text-[9px] font-bold text-rose-200">{exitedCount}</span>
             </button>
           )
         })()}
-        <button onClick={refresh} className="hidden items-center gap-1 rounded-lg border border-slate-400/15 bg-black/30 px-2 py-1 text-xs text-slate-300 hover:text-white md:flex">
+        <button onClick={refresh} className="hidden items-center gap-1 rounded-lg border border-slate-400/15 bg-black/30 px-2 py-1 text-[12px] text-slate-300 hover:text-white md:flex">
           <RefreshCw size={14} /> refresh
         </button>
-        <button onClick={() => setShowSettings(true)} className="hidden items-center gap-1 rounded-lg border border-slate-400/15 bg-black/30 px-2 py-1 text-xs text-slate-300 hover:text-white sm:flex" title="Settings">
+        <button onClick={() => setShowSettings(true)} className="hidden items-center gap-1 rounded-lg border border-slate-400/15 bg-black/30 px-2 py-1 text-[12px] text-slate-300 hover:text-white sm:flex" title="Settings">
           <Settings size={12} /> settings
         </button>
         {/* Mobile overflow menu — surfaces controls hidden on phone (commands / settings / refresh / layout) */}
@@ -514,13 +514,13 @@ export default function Workbench() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
               <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-slate-400/15 bg-black/95 p-1 shadow-xl backdrop-blur">
-                <button onClick={() => { setShowMobileMenu(false); setShowPalette(true) }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-xs text-slate-200 hover:bg-slate-300/10">
+                <button onClick={() => { setShowMobileMenu(false); setShowPalette(true) }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-[12px] text-slate-200 hover:bg-slate-300/10">
                   <Command size={14} className="text-cyan-300" /> Command palette
                 </button>
-                <button onClick={() => { setShowMobileMenu(false); refresh() }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-xs text-slate-200 hover:bg-slate-300/10">
+                <button onClick={() => { setShowMobileMenu(false); refresh() }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-[12px] text-slate-200 hover:bg-slate-300/10">
                   <RefreshCw size={14} className="text-slate-400" /> Refresh
                 </button>
-                <button onClick={() => { setShowMobileMenu(false); setShowSettings(true) }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-xs text-slate-200 hover:bg-slate-300/10">
+                <button onClick={() => { setShowMobileMenu(false); setShowSettings(true) }} className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-[12px] text-slate-200 hover:bg-slate-300/10">
                   <Settings size={14} className="text-slate-400" /> Settings
                 </button>
                 <div className="my-1 border-t border-slate-400/10" />
@@ -552,7 +552,7 @@ export default function Workbench() {
 
       <div className="relative grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[220px_minmax(0,1fr)_320px] xl:grid-cols-[260px_minmax(0,1fr)_360px]">
         {/* Left rail */}
-        <aside className={`flex-col overflow-hidden border-r border-slate-400/10 bg-[#05060a] md:bg-black/20 ${showMobileLeft ? 'fixed inset-y-0 left-0 z-50 flex w-72 border-r' : 'hidden md:flex'}`}>
+        <aside className={`flex-col overflow-hidden border-r border-slate-400/10 bg-[var(--bg)] md:bg-black/20 ${showMobileLeft ? 'fixed inset-y-0 left-0 z-50 flex w-72 border-r' : 'hidden md:flex'}`}>
           <div className="flex items-center gap-1 border-b border-slate-400/10 px-2 py-1.5">
             <button
               onClick={() => setLeftTab('workspaces')}
@@ -600,7 +600,7 @@ export default function Workbench() {
                     <div
                       key={w.id}
                       onClick={() => setActiveWsId(w.id)}
-                      className={`group flex w-full cursor-pointer flex-col gap-1 rounded-lg border px-2 py-2 text-left text-sm transition ${active ? 'border-cyan-300/40 bg-cyan-300/10 text-white' : 'border-slate-400/10 bg-black/20 text-slate-300 hover:border-slate-400/30 hover:text-white'}`}
+                      className={`group flex w-full cursor-pointer flex-col gap-1 rounded-lg border px-2 py-2 text-left text-[13px] transition ${active ? 'border-cyan-300/40 bg-cyan-300/10 text-white' : 'border-slate-400/10 bg-black/20 text-slate-300 hover:border-slate-400/30 hover:text-white'}`}
                     >
                       <div className="flex items-center gap-2">
                         <FolderOpen size={14} className={active ? 'text-cyan-300' : 'text-slate-500'} />
@@ -700,7 +700,7 @@ export default function Workbench() {
                 />
               ))}
               {wsAgents.length === 0 && (
-                <div className="ml-1 min-w-0 overflow-hidden text-xs text-slate-500 truncate">
+                <div className="ml-1 min-w-0 overflow-hidden text-[12px] text-slate-500 truncate">
                   <span className="sm:hidden">no agents — tap <span className="text-cyan-200">spawn</span></span>
                   <span className="hidden sm:inline">no agents — click <span className="text-cyan-200">spawn</span> →, use operator, or resume</span>
                 </div>
@@ -712,7 +712,7 @@ export default function Workbench() {
               <button
                 ref={newBtnRef}
                 onClick={() => setShowSpawn((v) => !v)}
-                className="flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 text-sm md:px-2.5 md:py-1.5 md:text-xs text-cyan-100 hover:bg-cyan-300/20"
+                className="flex items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 text-[13px] md:px-2.5 md:py-1.5 md:text-[12px] text-cyan-100 hover:bg-cyan-300/20"
               >
                 <Plus size={14} /> spawn
                 <ChevronDown size={12} />
@@ -754,17 +754,17 @@ export default function Workbench() {
           </div>
 
           {resumeBanner && resumeBanner.wsId === activeWsId && (
-            <div className="flex items-center gap-3 border-b border-amber-300/20 bg-amber-300/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-3 border-b border-amber-300/20 bg-amber-300/5 px-3 py-2 text-[12px]">
               <History size={14} className="text-amber-300" />
               <span className="text-amber-100">
                 Pick up where you left off? <span className="text-amber-300">{resumeBanner.count}</span> agent(s) from the last session in this workspace.
                 <span className="ml-2 text-amber-100/70">Clear exited removes dead tabs; dismiss forgets this resume list.</span>
               </span>
               <div className="flex-1" />
-              <button onClick={resumeWorkspace} className="flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2.5 text-sm md:px-2 md:py-1 md:text-xs text-amber-200 hover:bg-amber-300/20">
+              <button onClick={resumeWorkspace} className="flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2.5 text-[13px] md:px-2 md:py-1 md:text-[12px] text-amber-200 hover:bg-amber-300/20">
                 <RotateCcw size={12} /> resume
               </button>
-              <button onClick={dismissResume} className="rounded-md border border-slate-400/20 bg-black/30 px-3 py-2.5 text-sm md:px-2 md:py-1 md:text-xs text-slate-300 hover:text-white">dismiss</button>
+              <button onClick={dismissResume} className="rounded-md border border-slate-400/20 bg-black/30 px-3 py-2.5 text-[13px] md:px-2 md:py-1 md:text-[12px] text-slate-300 hover:text-white">dismiss</button>
             </div>
           )}
 
@@ -803,7 +803,7 @@ export default function Workbench() {
         </main>
 
         {/* Right rail: operator context */}
-        <aside className={`flex-col overflow-hidden border-l border-slate-400/10 bg-[#05060a] md:bg-black/30 ${showMobileRight ? 'fixed inset-y-0 right-0 z-50 flex w-80' : 'hidden md:flex'}`}>
+        <aside className={`flex-col overflow-hidden border-l border-slate-400/10 bg-[var(--bg)] md:bg-black/30 ${showMobileRight ? 'fixed inset-y-0 right-0 z-50 flex w-80' : 'hidden md:flex'}`}>
           <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-400/10 px-2 py-1.5">
             <button
               onClick={() => setShowMobileRight(false)}
@@ -926,7 +926,7 @@ function AgentTab({ agent, isActive, onClick, onKill, onRename, onDragStart, onD
   const statusLabel = agentStatusLabel(agent)
 
   const tabClasses = [
-    'group flex shrink-0 cursor-grab items-center gap-2 rounded-lg border px-2.5 py-2.5 text-sm md:py-1.5 md:text-xs transition-all',
+    'group flex shrink-0 cursor-grab items-center gap-2 rounded-lg border px-2.5 py-2.5 text-[13px] md:py-1.5 md:text-[12px] transition-all',
     'max-w-[260px]',
     isActive
       ? 'border-cyan-300/50 bg-cyan-300/10 text-white shadow-[0_0_10px_rgba(52,211,255,0.18)]'
@@ -957,7 +957,7 @@ function AgentTab({ agent, isActive, onClick, onKill, onRename, onDragStart, onD
           onClick={(e) => e.stopPropagation()}
           onBlur={() => { if (val.trim() && val !== agent.name) onRename(val.trim()); setRenaming(false) }}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setRenaming(false); setVal(agent.name) } }}
-          className="w-28 shrink-0 rounded bg-black/40 px-1 text-xs text-white focus:outline-none"
+          className="w-28 shrink-0 rounded bg-black/40 px-1 text-[12px] text-white focus:outline-none"
         />
       ) : (
         <span
@@ -1036,7 +1036,7 @@ function WorkspaceSwitcher({ workspaces, agents, tasksByWs, activeId, onSelect, 
 
   return (
     <div className="relative">
-      <button ref={btnRef} onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 rounded-lg border border-slate-400/15 bg-black/40 px-2.5 py-2.5 text-sm md:px-2 md:py-1 md:text-xs text-slate-200 hover:text-white">
+      <button ref={btnRef} onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 rounded-lg border border-slate-400/15 bg-black/40 px-2.5 py-2.5 text-[13px] md:px-2 md:py-1 md:text-[12px] text-slate-200 hover:text-white">
         <FolderOpen size={12} className="text-cyan-300" />
         <span className={`font-semibold ${active && !active.name.trim() ? 'italic text-slate-400' : ''}`}>{active ? workspaceDisplayName(active) : 'no workspace'}</span>
         {activeActivity && activeActivity.active > 0 && (
@@ -1061,7 +1061,7 @@ function WorkspaceSwitcher({ workspaces, agents, tasksByWs, activeId, onSelect, 
             const taskCounts = workspaceTaskCounts(tasksByWs[w.id] ?? [], w.id)
             return (
             <div key={w.id} className={`group flex items-center gap-1 rounded-md ${w.id === activeId ? 'bg-cyan-300/10 text-cyan-100' : 'text-slate-200 hover:bg-slate-300/10'}`}>
-              <button onClick={() => { onSelect(w.id); setOpen(false) }} className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1.5 text-left text-xs">
+              <button onClick={() => { onSelect(w.id); setOpen(false) }} className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1.5 text-left text-[12px]">
                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
                   <span className={`min-w-0 truncate font-semibold ${w.name.trim() ? '' : 'italic text-slate-500'}`}>{workspaceDisplayName(w)}</span>
                   {activity.active > 0 && <span title="active agents" className="shrink-0 rounded-full bg-emerald-300/15 px-1.5 py-0 text-[9px] font-black text-emerald-200">{activity.active} active</span>}
@@ -1081,7 +1081,7 @@ function WorkspaceSwitcher({ workspaces, agents, tasksByWs, activeId, onSelect, 
             </div>
           )})}
           <div className="my-1 h-px bg-slate-400/10" />
-          <button onClick={() => { setOpen(false); onNew() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-cyan-200 hover:bg-cyan-300/10">
+          <button onClick={() => { setOpen(false); onNew() }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[12px] text-cyan-200 hover:bg-cyan-300/10">
             <Plus size={12} /> new workspace
           </button>
         </div>,
@@ -1161,7 +1161,7 @@ function SpawnMenu({ anchorRef, workspaces, activeWsId, onClose, onPick }: { anc
       <select
         value={wsId ?? ''}
         onChange={(e) => setWsId(e.target.value || null)}
-        className="mb-2 w-full appearance-none rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-xs text-white focus:border-cyan-300/40 focus:outline-none"
+        className="mb-2 w-full appearance-none rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[12px] text-white focus:border-cyan-300/40 focus:outline-none"
       >
         {workspaces.map((w) => (
           <option key={w.id} value={w.id} className="bg-black text-white">
@@ -1191,13 +1191,13 @@ function SpawnMenu({ anchorRef, workspaces, activeWsId, onClose, onPick }: { anc
       <div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">kind</div>
       <div className="mb-2 grid grid-cols-3 gap-1">
         {(['claude', 'codex', 'shell', 'gemini', 'python', 'custom'] as AgentKind[]).map((k) => (
-          <button key={k} onClick={() => { setKind(k); if (k !== 'claude') setRole(null) }} className={`rounded-md border px-2 py-1 text-xs transition ${kind === k ? KIND_COLOR[k] : 'border-slate-400/15 bg-black/30 text-slate-300 hover:text-white'}`}>{k}</button>
+          <button key={k} onClick={() => { setKind(k); if (k !== 'claude') setRole(null) }} className={`rounded-md border px-2 py-1 text-[12px] transition ${kind === k ? KIND_COLOR[k] : 'border-slate-400/15 bg-black/30 text-slate-300 hover:text-white'}`}>{k}</button>
         ))}
       </div>
       <input
         autoFocus placeholder={role ? `name (default: ${role})` : 'tab name (e.g. frontend, api, deploy)'} value={name} onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') onPick(kind, name || (role ?? ''), role ?? undefined, directive, wsId ?? undefined) }}
-        className="mb-2 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+        className="mb-2 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
       />
       <div className="mb-1 flex items-center justify-between">
         <label className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">directive</label>
@@ -1208,9 +1208,9 @@ function SpawnMenu({ anchorRef, workspaces, activeWsId, onClose, onPick }: { anc
         onChange={(e) => setDirective(e.target.value)}
         disabled={!supportsDirective}
         placeholder={kind === 'codex' ? 'Codex exec prompt: goal, files, tests, done signal' : 'Claude appended system prompt: role brief, scope, constraints'}
-        className="mb-2 h-24 w-full resize-none rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-xs leading-relaxed text-white placeholder:text-slate-600 focus:border-cyan-300/40 focus:outline-none disabled:opacity-40"
+        className="mb-2 h-24 w-full resize-none rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[12px] leading-relaxed text-white placeholder:text-slate-600 focus:border-cyan-300/40 focus:outline-none disabled:opacity-40"
       />
-      <button onClick={() => onPick(kind, name || (role ?? ''), role ?? undefined, directive, wsId ?? undefined)} className="flex w-full items-center justify-center gap-2 rounded-md border border-cyan-300/30 bg-cyan-300/10 py-1.5 text-sm text-cyan-100 hover:bg-cyan-300/20">
+      <button onClick={() => onPick(kind, name || (role ?? ''), role ?? undefined, directive, wsId ?? undefined)} className="flex w-full items-center justify-center gap-2 rounded-md border border-cyan-300/30 bg-cyan-300/10 py-1.5 text-[13px] text-cyan-100 hover:bg-cyan-300/20">
         <Sparkles size={12} /> spawn {role ? `${role} ${kind}` : kind}
       </button>
     </div>,
@@ -1226,15 +1226,15 @@ function WorkspaceDialog({ onClose, onCreate }: { onClose: () => void; onCreate:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
       <div className="w-full max-w-md rounded-2xl border border-slate-400/20 bg-black/90 p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-cyan-200/85">New workspace</div>
+        <div className="mb-3 text-[13px] font-bold uppercase tracking-[0.2em] text-cyan-200/85">New workspace</div>
         <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-slate-400">Name</label>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={inferredName ? `blank uses ${inferredName}` : 'optional'} className="mb-1 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={inferredName ? `blank uses ${inferredName}` : 'optional'} className="mb-1 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
         <div className="mb-3 text-[10px] text-slate-500">Leave blank to create a temporary workspace; choosing a cwd names it from the folder.</div>
         <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-slate-400">Working directory</label>
-        <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="${METIS_HOME}/projects/foo" className="mb-4 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="${METIS_HOME}/projects/foo" className="mb-4 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-xs text-slate-300 hover:text-white">Cancel</button>
-          <button onClick={() => onCreate(name.trim(), cwdTrimmed)} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-300/20">Create</button>
+          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-[12px] text-slate-300 hover:text-white">Cancel</button>
+          <button onClick={() => onCreate(name.trim(), cwdTrimmed)} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[12px] text-cyan-100 hover:bg-cyan-300/20">Create</button>
         </div>
       </div>
     </div>
@@ -1248,15 +1248,15 @@ function WorkspaceEditDialog({ workspace, onClose, onSave }: { workspace: Worksp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
       <div className="w-full max-w-md rounded-2xl border border-slate-400/20 bg-black/90 p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="mb-1 text-sm font-bold uppercase tracking-[0.2em] text-cyan-200/85">Edit workspace</div>
+        <div className="mb-1 text-[13px] font-bold uppercase tracking-[0.2em] text-cyan-200/85">Edit workspace</div>
         <div className="mb-3 text-[10px] text-slate-500">id: {workspace.id}</div>
         <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-slate-400">Name</label>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
         <label className="mb-2 block text-[11px] uppercase tracking-[0.18em] text-slate-400">Working directory (cwd)</label>
-        <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="${METIS_HOME}/projects/foo" className="mb-1 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="${METIS_HOME}/projects/foo" className="mb-1 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
         <div className="mb-4 text-[10px] text-slate-500">Tilde (~/...) is expanded automatically. New agents spawned in this workspace will use this path.</div>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-xs text-slate-300 hover:text-white">Cancel</button>
+          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-[12px] text-slate-300 hover:text-white">Cancel</button>
           <button
             onClick={() => {
               if (!dirty) { onClose(); return }
@@ -1266,7 +1266,7 @@ function WorkspaceEditDialog({ workspace, onClose, onSave }: { workspace: Worksp
               onSave(patch)
             }}
             disabled={!dirty}
-            className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40"
+            className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[12px] text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40"
           >Save</button>
         </div>
       </div>

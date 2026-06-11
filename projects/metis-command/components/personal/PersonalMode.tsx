@@ -129,9 +129,9 @@ export default function PersonalMode() {
 
   return (
     <div data-testid="personal-mode" className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
+      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
         <HeartPulse size={14} className="text-cyan-300" />
-        <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Personal</span>
+        <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Personal</span>
         <div className="flex-1" />
         {res && <span className="text-[13px] md:text-[10px] text-[var(--muted)]">{res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data'}</span>}
         <AnnotateTrigger />
@@ -146,10 +146,10 @@ export default function PersonalMode() {
           {/* Net Worth */}
           <StatusCard title="Net Worth" icon={<Wallet size={12} />} severity={fin?.error ? 'warn' : 'ok'}>
             {fin?.error ? (
-              <span className="text-sm md:text-[11px] text-amber-200">finance sync error</span>
+              <span className="text-[13px] md:text-[11px] text-amber-200">finance sync error</span>
             ) : (
-              <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
-                <span className="text-lg font-black text-slate-100">{usd(fin?.net_worth)}</span>
+              <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
+                <span className="text-[17px] font-black text-slate-100">{usd(fin?.net_worth)}</span>
                 <span>assets <span className="text-emerald-200">{usd(fin?.assets)}</span></span>
                 <span>liabilities <span className="text-rose-200">{usd(fin?.liabilities)}</span></span>
                 {fin?.updated_at && <span className="text-[13px] md:text-[10px]">updated {ageLabel(fin.updated_at, now)}</span>}
@@ -168,7 +168,7 @@ export default function PersonalMode() {
           {/* Budget */}
           <StatusCard title={`Budget · ${bud?.month ?? '—'}`} icon={<PiggyBank size={12} />}>
             <Meter label="Month elapsed" pct={monthProgress} />
-            <div className="mt-1 flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+            <div className="mt-1 flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
               <span>income <span className="text-emerald-200">{usd(bud?.income)}</span> · spent <span className="text-rose-200">{usd(bud?.expense)}</span></span>
               <span>savings rate <span className="text-slate-200">{asPct(bud?.savings_rate)}</span> · burn/day <span className="text-slate-200">{usd(bud?.daily_burn)}</span></span>
               <span>remaining <span className="text-cyan-200">{usd(bud?.budget_remaining)}</span></span>
@@ -177,9 +177,9 @@ export default function PersonalMode() {
 
           {/* Portfolio */}
           <StatusCard title="Portfolio" icon={<TrendingUp size={12} />} severity={flagged ? 'warn' : 'ok'}>
-            <span className="text-lg font-black text-slate-100">{usd(pf?.total_value)}</span>
+            <span className="text-[17px] font-black text-slate-100">{usd(pf?.total_value)}</span>
             {typeof pf?.concentration?.top_holding_pct === 'number' && <Meter label="Top holding" pct={Math.round(pf.concentration.top_holding_pct)} />}
-            <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+            <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
               <span>positions <span className="text-slate-200">{pf?.positions?.length ?? 0}</span> · top-5 <span className="text-slate-200">{asPct(pf?.concentration?.top5_pct)}</span></span>
               <span>cap breaches <span className={flagged ? 'text-amber-200' : 'text-emerald-200'}>{flagged}</span></span>
             </div>
@@ -187,7 +187,7 @@ export default function PersonalMode() {
 
           {/* Health (Garmin) */}
           <StatusCard title="Health · Garmin" icon={<HeartPulse size={12} />} severity={gar?.last_error ? 'warn' : 'ok'}>
-            <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+            <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
               <span className="flex items-center gap-1"><Footprints size={12} /> {num(gar?.daily?.steps)} steps · {num(gar?.daily?.active_minutes)} active min</span>
               <span className="flex items-center gap-1"><Moon size={12} /> sleep score {gar?.sleep?.sleep_score ?? '—'} · stress {gar?.daily?.stress_avg ?? '—'}</span>
               <span>body battery {gar?.daily?.body_battery_high ?? '—'} · floors {gar?.daily?.floors ?? '—'}</span>
@@ -198,9 +198,9 @@ export default function PersonalMode() {
           {/* Workouts (Fitbod) */}
           <StatusCard title="Workouts · Fitbod" icon={<Dumbbell size={12} />} severity={fb?.last_error ? 'warn' : 'ok'}>
             {fb?.last_error && !fb?.totals?.workouts ? (
-              <span className="text-sm md:text-[11px] text-amber-200">no workout data ingested yet</span>
+              <span className="text-[13px] md:text-[11px] text-amber-200">no workout data ingested yet</span>
             ) : (
-              <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+              <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
                 <span>workouts <span className="text-slate-200">{num(fb?.totals?.workouts)}</span> · sets <span className="text-slate-200">{num(fb?.totals?.sets)}</span></span>
                 <span>exercises <span className="text-slate-200">{num(fb?.totals?.exercises)}</span></span>
               </div>
@@ -210,7 +210,7 @@ export default function PersonalMode() {
           {/* GitHub repos (latest commit per tracked repo) */}
           <StatusCard title="GitHub · Repos" icon={<GitCommitHorizontal size={12} />}>
             {gh?.length ? (
-              <div className="flex flex-col gap-1 text-sm md:text-[11px] text-[var(--muted)]">
+              <div className="flex flex-col gap-1 text-[13px] md:text-[11px] text-[var(--muted)]">
                 {gh.slice(0, 4).map((r) => (
                   <div key={r.repo} className="flex flex-col">
                     <span className="font-bold text-slate-200">{r.repo}</span>
@@ -223,14 +223,14 @@ export default function PersonalMode() {
                 ))}
               </div>
             ) : (
-              <span className="text-sm md:text-[11px] text-[var(--muted)]">no repo data</span>
+              <span className="text-[13px] md:text-[11px] text-[var(--muted)]">no repo data</span>
             )}
           </StatusCard>
 
           {/* Calendar (upcoming events) */}
           <StatusCard title="Calendar" icon={<CalendarDays size={12} />}>
             {feeds?.calendar?.events?.length ? (
-              <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+              <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
                 {feeds.calendar.events.slice(0, 5).map((e, i) => (
                   <span key={i} className="truncate">
                     <span className="text-cyan-200">{e.start_fmt}</span> <span className="text-slate-300">{e.summary}</span>
@@ -238,13 +238,13 @@ export default function PersonalMode() {
                 ))}
               </div>
             ) : (
-              <span className="text-sm md:text-[11px] text-[var(--muted)]">no upcoming events</span>
+              <span className="text-[13px] md:text-[11px] text-[var(--muted)]">no upcoming events</span>
             )}
           </StatusCard>
 
           {/* To-Dos (Apple Reminders + Notion) */}
           <StatusCard title="To-Dos" icon={<ListChecks size={12} />}>
-            <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+            <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
               <span>reminders <span className="text-slate-200">{feeds?.reminders?.count ?? feeds?.reminders?.items?.length ?? 0}</span> · notion <span className="text-slate-200">{feeds?.notion?.items?.length ?? 0}</span></span>
               {(feeds?.reminders?.items ?? []).slice(0, 3).map((r, i) => (
                 <span key={`r${i}`} className="truncate">• {r.title}</span>

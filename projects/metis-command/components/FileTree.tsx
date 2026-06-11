@@ -117,7 +117,7 @@ export default function FileTree({ workspaceId, workspaceCwd, onPickFile }: Prop
         </div>
       </div>
       {error && <div className="mx-2 rounded border border-rose-300/30 bg-rose-300/5 p-2 text-[10px] text-rose-200">{error}</div>}
-      <div className="flex-1 overflow-y-auto px-1 pb-2 text-xs">
+      <div className="flex-1 overflow-y-auto px-1 pb-2 text-[12px]">
         {roots.map((r, i) => (
           <RootView
             key={r.abs}

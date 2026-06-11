@@ -2,7 +2,7 @@
 name: Free Work
 slug: free-work
 version: 1.0.0
-description: Show what work is open and unclaimed for THIS machine right now — browse without claiming. Use /next to claim atomically.
+description: "Show what work is open and unclaimed for THIS machine right now — browse without claiming. Use /next to claim atomically."
 ---
 
 ## Steps

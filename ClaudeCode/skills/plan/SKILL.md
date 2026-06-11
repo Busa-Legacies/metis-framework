@@ -2,7 +2,7 @@
 name: Plan
 slug: plan
 version: 1.0.0
-description: Produce a durable, reviewable build plan (docs/plans/PLAN-<slug>.md) — inspect the repo FIRST, scout best practices, write the ordered plan that /build gates on. Task: $ARGUMENTS
+description: "Produce a durable, reviewable build plan (docs/plans/PLAN-<slug>.md) — inspect the repo FIRST, scout best practices, write the ordered plan that /build gates on. Task: $ARGUMENTS"
 ---
 
 TRIGGER when: starting any feature/integration/refactor/buildout big enough that jumping straight to code risks wrong assumptions (the #065 "guessed Jekyll, actual Astro" class of failure), or when `/build` refuses for lack of a plan.

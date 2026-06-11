@@ -85,7 +85,7 @@ function LineTaskDetail({ task, lease, onClose }: {
   const g = task.doneGate
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[#0a0d14] shadow-2xl">
+      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--panel)] shadow-2xl">
         <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] py-3 pl-2 pr-4">
           <button onClick={onClose} aria-label="close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-white/5 hover:text-slate-200">
             <X size={20} />
@@ -101,7 +101,7 @@ function LineTaskDetail({ task, lease, onClose }: {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-xs">
+        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-[12px]">
           {/* Done-gate checklist — exactly what stands between this task and done */}
           {g && (
             <div className={`mb-4 rounded-xl border p-3 ${g.ready ? 'border-emerald-300/30 bg-emerald-300/5' : 'border-[var(--line)] bg-black/20'}`}>
@@ -190,7 +190,7 @@ function MilestoneCard({ ms, leases, expanded, onToggle, onTaskClick }: {
 }) {
   const done = ms.status === 'done'
   return (
-    <div className="mb-2 rounded-xl border border-[var(--line)] bg-[#13161f]/80 p-3">
+    <div className="mb-2 rounded-xl border border-[var(--line)] bg-gradient-to-b from-white/[0.025] to-black/25 backdrop-blur-sm p-3">
       <div className="flex items-center gap-2">
         <button onClick={onToggle} className="-ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-white/5 hover:text-slate-200" title={expanded ? 'collapse' : 'expand'}>
           {ms.tasks.length === 0 ? <span className="text-[10px]">·</span> : expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -216,10 +216,10 @@ function MilestoneCard({ ms, leases, expanded, onToggle, onTaskClick }: {
 
 function ProjectCard({ p, onOpen }: { p: MetisLineSummary; onOpen: () => void }) {
   return (
-    <button onClick={onOpen} className="flex w-full items-center gap-3 rounded-xl border border-[var(--line)] bg-[#13161f]/80 p-3 text-left hover:border-cyan-300/30 hover:bg-cyan-300/5">
+    <button onClick={onOpen} className="flex w-full items-center gap-3 rounded-xl border border-[var(--line)] bg-gradient-to-b from-white/[0.025] to-black/25 backdrop-blur-sm p-3 text-left hover:border-cyan-300/30 hover:bg-cyan-300/5">
       <Route size={16} className="shrink-0 text-cyan-300" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] md:text-[13px] font-semibold text-slate-100">{p.name}</div>
+        <div className="truncate text-[13px] font-semibold text-slate-100">{p.name}</div>
         <div className="flex items-center gap-2 text-[11px] md:text-[10px] text-[var(--muted)]">
           <span>{p.priority}</span>
           <span>{p.openCount} open</span>
@@ -285,7 +285,7 @@ export default function LinesOfWorkMode() {
   return (
     <div data-testid="lines-mode" className="flex h-full w-full flex-col overflow-hidden">
       {/* Header / breadcrumb */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-sm md:text-xs">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[13px] md:text-[12px]">
         {slug ? (
           <button onClick={back} className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-cyan-200 hover:bg-white/5" title="back to projects">
             <ChevronLeft size={16} /> <Route size={14} />
@@ -293,14 +293,14 @@ export default function LinesOfWorkMode() {
         ) : (
           <Route size={14} className="shrink-0 text-cyan-300" />
         )}
-        <span className="text-base md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">
+        <span className="text-[15px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">
           {slug ? (d?.project.name ?? slug) : 'Lines of Work'}
         </span>
         <div className="flex-1" />
         <button
           onClick={() => (slug ? loadDetail(slug) : loadIndex())}
           title="Refresh"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> refresh
         </button>
@@ -335,7 +335,7 @@ export default function LinesOfWorkMode() {
               {/* Project header */}
               <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] md:text-[13px] font-bold text-slate-50">{d.project.name}</span>
+                  <span className="text-[13px] font-bold text-slate-50">{d.project.name}</span>
                   <span className="text-[11px] md:text-[10px] text-[var(--muted)]">{d.project.priority} · {d.project.status}</span>
                   <div className="flex-1" />
                   {d.project.progress != null && <Bar progress={d.project.progress} tone="emerald" />}
@@ -363,7 +363,7 @@ export default function LinesOfWorkMode() {
 
               {/* Unassigned (project tasks not linked to a milestone) */}
               {d.unassigned.length > 0 && (
-                <div className="mb-2 rounded-xl border border-[var(--line)] bg-[#13161f]/60 p-3">
+                <div className="mb-2 rounded-xl border border-[var(--line)] bg-gradient-to-b from-white/[0.02] to-black/20 backdrop-blur-sm p-3">
                   <div className="mb-1.5 flex items-center gap-2 border-b border-[var(--line)] pb-1.5 text-[12px] md:text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--muted)]">
                     <Layers size={13} /> Unassigned <span className="font-normal">· {d.unassigned.length}</span>
                   </div>

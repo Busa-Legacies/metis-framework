@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agent checkout coordinator for Ant-openclaw-framework.
+"""Agent checkout coordinator for Metis OS.
 
 GitHub Issues are the cross-machine source of truth when gh is authenticated;
 docs/process/state/active-checkouts.json is the local/offline lease cache.
@@ -24,7 +24,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATE = ROOT / "docs/process/state/active-checkouts.json"
-DEFAULT_WORKTREES = ROOT.parent / "Ant-openclaw-worktrees"
+DEFAULT_WORKTREES = ROOT.parent / f"{ROOT.name}-worktrees"  # self-adjusts to repo dir name
 DEFAULT_LEASE_HOURS = 4
 TERMINAL = {"done", "released", "blocked", "expired", "stolen"}
 AUTOSYNC_PLIST = Path.home() / "Library/LaunchAgents/ant.openclaw-git-sync.plist"

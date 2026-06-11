@@ -145,7 +145,7 @@ function ItemCard({ task, now, actions, gate, onOpen }: {
         {/* No action-type chip here — the section header already groups by type,
             so a per-card badge is redundant (mobile annotation, #240). */}
         <div className="min-w-0 flex-1">
-          <div className={`truncate text-[13px] md:text-[13px] ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>
+          <div className={`truncate text-[13px] ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>
             {task.title}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] md:text-[10px] text-[var(--muted)]">
@@ -227,7 +227,7 @@ function DecisionCard({ decision, busy, onResolve, onUpdate }: {
   return (
     <div className="rounded-xl border border-amber-300/20 bg-[#1a1710]/70 p-3">
       <div className="min-w-0">
-        <div className="text-[13px] md:text-[13px] font-semibold text-slate-50">{decision.title}</div>
+        <div className="text-[13px] font-semibold text-slate-50">{decision.title}</div>
         {(decision.context || decision.task_context) && (
           <div className="mt-0.5 text-[12px] md:text-[11px] text-[var(--muted)]">{decision.context ?? decision.task_context}</div>
         )}
@@ -448,7 +448,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
   }, [onClose])
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[#0a0d14] shadow-2xl">
+      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--panel)] shadow-2xl">
         <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] py-3 pl-2 pr-4">
           <button onClick={onClose} aria-label="close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-white/5 hover:text-slate-200">
             <X2 size={20} />
@@ -464,7 +464,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-xs">
+        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-[12px]">
           <div className="mb-4 flex gap-1.5">
             <button
               onClick={() => setEditing((v) => !v)}
@@ -509,7 +509,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
               <div className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-amber-200">
                 <GitMerge size={13} /> Decision needed
               </div>
-              <div className="text-[13px] md:text-[13px] font-semibold leading-snug text-amber-50">{ctx?.question ?? task.nextDecisionPoint}</div>
+              <div className="text-[13px] font-semibold leading-snug text-amber-50">{ctx?.question ?? task.nextDecisionPoint}</div>
               {/* Curated context: the why + resolved task refs + spec paths the
                   decision touches — only what's needed to make the call. */}
               {ctx && <DecisionFrame ctx={ctx} />}
@@ -525,7 +525,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {opts.map((o) => (
                     <button key={o} onClick={() => onRecord(task, o)} disabled={busy}
-                      className="flex h-10 items-center gap-1.5 rounded-lg border border-amber-300/40 bg-amber-300/15 px-3.5 text-[13px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/30 disabled:opacity-50">
+                      className="flex h-10 items-center gap-1.5 rounded-lg border border-amber-300/40 bg-amber-300/15 px-3.5 text-[13px] font-bold text-amber-100 hover:bg-amber-300/30 disabled:opacity-50">
                       <CheckCircle2 size={15} /> {o}
                     </button>
                   ))}
@@ -542,7 +542,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
               <button
                 onClick={() => onRecord(task, text.trim())}
                 disabled={busy}
-                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 text-[13px] md:text-[13px] font-bold text-amber-100 hover:bg-amber-300/20 disabled:opacity-50"
+                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 text-[13px] font-bold text-amber-100 hover:bg-amber-300/20 disabled:opacity-50"
               >
                 <CheckCircle2 size={18} /> {text.trim() ? 'Record decision' : 'Clear decision gate'}
               </button>
@@ -780,9 +780,9 @@ export default function InboxMode() {
   return (
     <div data-testid="inbox-mode" className="flex h-full w-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-sm md:text-xs">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[13px] md:text-[12px]">
         <InboxIcon size={14} className="shrink-0 text-cyan-300" />
-        <span className="text-base md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Inbox</span>
+        <span className="text-[15px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Inbox</span>
         {data && <span className="rounded-full bg-cyan-300/10 px-2 text-[12px] md:text-[11px] font-bold text-cyan-200">{data.counts.total}</span>}
         <div className="flex-1" />
         {res && (
@@ -793,7 +793,7 @@ export default function InboxMode() {
         <button
           onClick={load}
           title="Refresh"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> refresh
         </button>
@@ -825,10 +825,10 @@ export default function InboxMode() {
             })}
           </div>
           {msg && (
-            <div className="mb-3 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm md:text-xs text-cyan-100">{msg}</div>
+            <div className="mb-3 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-[13px] md:text-[12px] text-cyan-100">{msg}</div>
           )}
           {undo && (
-            <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm md:text-xs text-amber-100">
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-[13px] md:text-[12px] text-amber-100">
               <CheckCircle2 size={14} className="shrink-0" />
               <span className="min-w-0 flex-1 truncate">Logged · {undo.label}</span>
               <button
@@ -852,7 +852,7 @@ export default function InboxMode() {
           )}
 
           {data.counts.total === 0 ? (
-            <div className="py-12 text-center text-[13px] md:text-[13px] text-[var(--muted)]">
+            <div className="py-12 text-center text-[13px] text-[var(--muted)]">
               <CheckCircle2 size={28} className="mx-auto mb-2 text-emerald-300/60" />
               Nothing needs you right now. 🎉
             </div>

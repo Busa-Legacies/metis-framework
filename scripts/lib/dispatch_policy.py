@@ -9,6 +9,7 @@ and review, and deep engines only when risk/judgment justifies it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 import re
 
 
@@ -107,6 +108,19 @@ def infer_mutation(message: str, work_type: str, hint: str = "auto") -> str:
     return "proposal-only"
 
 
+def _claude_tier_allowed(override: bool | None) -> bool:
+    """Anthropic (Claude) is the orchestrator's own usage pool. Unattended daemons
+    set DISPATCH_NO_CLAUDE_TIER=1 so autonomous cycles never draw from it — the
+    ladder substitutes the equivalent Codex tier instead (Codex is Ant's separate
+    ChatGPT quota, with its own <10% fallback to free local). This encodes the
+    CLAUDE.md doctrine ("route generation to free/Codex lanes, reserve Claude for
+    interactive orchestration") as a mechanical ceiling, not a per-task judgment
+    call. `override` (for tests) wins over the env when not None."""
+    if override is not None:
+        return override
+    return os.environ.get("DISPATCH_NO_CLAUDE_TIER", "").strip().lower() not in {"1", "true", "yes"}
+
+
 def resolve_default_engine(
     role: str,
     message: str,
@@ -115,11 +129,13 @@ def resolve_default_engine(
     risk: str = "auto",
     mutation: str = "auto",
     local_failures: int = 0,
+    allow_claude_tier: bool | None = None,
 ) -> DispatchPolicyDecision:
     """Resolve a default engine and guard metadata for a dispatch request."""
     wt = infer_work_type(role, message, work_type)
     rk = infer_risk(message, wt, risk)
     mut = infer_mutation(message, wt, mutation)
+    claude_ok = _claude_tier_allowed(allow_claude_tier)
 
     if local_failures >= 2 and rk in {"low", "medium"}:
         return DispatchPolicyDecision(
@@ -148,12 +164,17 @@ def resolve_default_engine(
         )
 
     if rk == "high" or mut in {"external", "live-runtime"}:
+        # No-Claude ceiling: high-risk non-security normally goes to Sonnet; when
+        # Claude is barred (unattended daemon), use deep Codex — same high-judgment
+        # intent, different (ChatGPT) quota.
+        high_engine = SONNET_ENGINE if claude_ok else DEEP_CODEX_ENGINE
         return DispatchPolicyDecision(
-            engine=DEEP_CODEX_ENGINE if wt == "security" else SONNET_ENGINE,
+            engine=DEEP_CODEX_ENGINE if wt == "security" else high_engine,
             work_type=wt,
             risk=rk,
             mutation=mut,
-            reason="high-risk/security/external scope is not local-model default",
+            reason="high-risk/security/external scope is not local-model default"
+            + ("" if claude_ok else " (no-Claude ceiling → Codex)"),
             # Engine still escalates on inferred risk; the human gate applies
             # only to routes that can execute (mutate/external/live-runtime).
             requires_approval=(mut in {"mutates", "external", "live-runtime"}),
@@ -172,12 +193,16 @@ def resolve_default_engine(
         )
 
     if wt in REVIEW_WORK:
+        # shield review prefers Sonnet's judgment; under the no-Claude ceiling it
+        # drops to standard Codex (5.4) — still stronger than a local draft.
+        shield_engine = SONNET_ENGINE if claude_ok else STANDARD_CODEX_ENGINE
         return DispatchPolicyDecision(
-            engine=SONNET_ENGINE if role == "shield" else MINI_CODEX_ENGINE,
+            engine=shield_engine if role == "shield" else MINI_CODEX_ENGINE,
             work_type=wt,
             risk=rk,
             mutation=mut,
-            reason="review/quality route uses stronger judgment than local draft",
+            reason="review/quality route uses stronger judgment than local draft"
+            + ("" if claude_ok or role != "shield" else " (no-Claude ceiling → Codex)"),
             requires_approval=False,
             proposal_only=True,
         )

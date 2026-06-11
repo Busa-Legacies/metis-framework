@@ -2,7 +2,7 @@
 name: Build
 slug: build
 version: 1.0.0
-description: Research-first build gate — scout best practices first, then route to forge for implementation. Enforces the plan gate for non-trivial work. Feature: $ARGUMENTS
+description: "Research-first build gate — scout best practices first, then route to forge for implementation. Enforces the plan gate for non-trivial work. Feature: $ARGUMENTS"
 ---
 
 TRIGGER when: building any non-trivial feature, integration, config change, or refactor.

@@ -2,7 +2,7 @@
 name: Add Task
 slug: add-task
 version: 1.0.0
-description: Create a new governed task in tasks.json and project it to the board. Task description: $ARGUMENTS
+description: "Create a new governed task in tasks.json and project it to the board. Task description: $ARGUMENTS"
 ---
 
 Tasks are **born governed** (#098): `docs/process/state/tasks.json` is the single source of truth. `task-queue.md` is a rendered projection — never hand-edit its governed section. Every task carries three mandatory documentation fields: **what**, **why**, and **how**.

@@ -72,7 +72,7 @@ export default function AgentActivityCard() {
       actionHint="Open Agents"
     >
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl md:text-xl font-black tabular-nums text-slate-100">{total}</span>
+        <span className="text-[24px] md:text-[20px] font-black tabular-nums text-slate-100">{total}</span>
         <span className="text-[12px] md:text-[11px] text-[var(--muted)]">working now · {live.length} here · {remoteLeases.length} remote</span>
       </div>
 

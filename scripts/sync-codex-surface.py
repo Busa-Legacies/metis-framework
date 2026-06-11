@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CLAUDE_SKILLS = ROOT / "ClaudeCode" / "skills"
 CLAUDE_COMMANDS = ROOT / "ClaudeCode" / "commands"
 CODEX_PROMPTS = ROOT / ".codex" / "prompts"
+CODEX_SKILLS = ROOT / ".codex" / "skills"
 AGENTS_SKILLS = ROOT / ".agents" / "skills"
 MARKER = "<!-- GENERATED: scripts/sync-codex-surface.py -->"
 
@@ -177,6 +178,12 @@ def ensure_repo_skill_links(
             actions.append(f"PRUNE {rel(child)}")
 
 
+def ensure_legacy_skills_link(check: bool, actions: list[str], errors: list[str]) -> None:
+    """Keep the old .codex/skills path as a symlink to the new .agents/skills surface."""
+
+    ensure_symlink(CODEX_SKILLS, AGENTS_SKILLS, check, actions, errors)
+
+
 def sync_prompts(expected: dict[str, Workflow], check: bool, force: bool, actions: list[str], errors: list[str]) -> None:
     CODEX_PROMPTS.mkdir(parents=True, exist_ok=True)
     for slug, workflow in expected.items():
@@ -221,6 +228,7 @@ def main() -> int:
     errors: list[str] = []
 
     ensure_repo_skill_links(expected, args.check, actions, errors)
+    ensure_legacy_skills_link(args.check, actions, errors)
     sync_prompts(expected, args.check, args.force, actions, errors)
 
     if errors:

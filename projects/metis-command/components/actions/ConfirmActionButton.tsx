@@ -55,7 +55,7 @@ export function ConfirmActionButton({
     <>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(true) }}
-        className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-sm md:text-[11px] font-bold ${
+        className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[13px] md:text-[11px] font-bold ${
           danger
             ? 'border-rose-300/40 bg-rose-300/10 text-rose-200 hover:bg-rose-300/20'
             : 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/20'
@@ -69,12 +69,12 @@ export function ConfirmActionButton({
           <div className="panel w-full max-w-sm rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center gap-2">
               <AlertTriangle size={16} className={danger ? 'text-rose-200' : 'text-cyan-200'} />
-              <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.16em] text-slate-100">{title}</span>
+              <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.16em] text-slate-100">{title}</span>
             </div>
-            <p className="mb-3 text-[15px] md:text-xs text-slate-300">{body}</p>
+            <p className="mb-3 text-[15px] md:text-[12px] text-slate-300">{body}</p>
 
             {result ? (
-              <div className={`mb-3 rounded-lg border p-2 text-sm md:text-[11px] ${result.ok ? 'border-emerald-300/30 bg-emerald-300/5 text-emerald-200' : 'border-rose-300/30 bg-rose-300/5 text-rose-200'}`}>
+              <div className={`mb-3 rounded-lg border p-2 text-[13px] md:text-[11px] ${result.ok ? 'border-emerald-300/30 bg-emerald-300/5 text-emerald-200' : 'border-rose-300/30 bg-rose-300/5 text-rose-200'}`}>
                 <div className="flex items-center gap-1 font-bold">
                   {result.ok ? <Check size={12} /> : <X size={12} />} {result.ok ? 'Done' : 'Failed'}
                 </div>
@@ -83,14 +83,14 @@ export function ConfirmActionButton({
             ) : null}
 
             <div className="flex justify-end gap-2">
-              <button onClick={close} disabled={busy} className="rounded-lg border border-slate-400/20 bg-black/30 px-3 py-1 text-[15px] md:text-xs text-slate-300 hover:text-white disabled:opacity-50">
+              <button onClick={close} disabled={busy} className="rounded-lg border border-slate-400/20 bg-black/30 px-3 py-1 text-[15px] md:text-[12px] text-slate-300 hover:text-white disabled:opacity-50">
                 {result ? 'Close' : 'Cancel'}
               </button>
               {!result && (
                 <button
                   onClick={onConfirm}
                   disabled={busy}
-                  className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-[15px] md:text-xs font-bold disabled:opacity-50 ${
+                  className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-[15px] md:text-[12px] font-bold disabled:opacity-50 ${
                     danger ? 'border-rose-300/40 bg-rose-300/10 text-rose-200 hover:bg-rose-300/20' : 'border-cyan-300/40 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/20'
                   }`}
                 >

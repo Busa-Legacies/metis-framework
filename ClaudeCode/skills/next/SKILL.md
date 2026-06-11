@@ -2,7 +2,7 @@
 name: Next Task
 slug: next
 version: 1.0.0
-description: Atomically claim the next-highest-priority free task for THIS machine — collision-free even when several sessions wrap up at once. Write-side companion to /free-work.
+description: "Atomically claim the next-highest-priority free task for THIS machine — collision-free even when several sessions wrap up at once. Write-side companion to /free-work."
 ---
 
 ## Steps

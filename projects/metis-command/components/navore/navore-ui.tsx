@@ -31,7 +31,7 @@ export function NavoreTaskRow({ task }: { task: NavoreTask }) {
   const tone = navoreStatusTone(task.status)
   const done = tone === 'done'
   return (
-    <li className="flex items-start gap-2 py-1 text-sm md:text-[11px]">
+    <li className="flex items-start gap-2 py-1 text-[13px] md:text-[11px]">
       <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${TONE_DOT[tone]}`} title={task.status} />
       <div className="min-w-0 flex-1">
         <div className={`truncate ${done ? 'text-slate-500 line-through' : 'font-medium text-slate-200'}`}>{task.name}</div>
@@ -61,7 +61,7 @@ export function NavoreTaskRow({ task }: { task: NavoreTask }) {
 
 /** A sorted, length-capped task list with an explicit empty state. */
 export function NavoreTaskList({ tasks, limit = 8, empty = 'No tasks' }: { tasks: NavoreTask[]; limit?: number; empty?: string }) {
-  if (!tasks.length) return <span className="text-sm md:text-[11px] text-[var(--muted)]">{empty}</span>
+  if (!tasks.length) return <span className="text-[13px] md:text-[11px] text-[var(--muted)]">{empty}</span>
   const sorted = sortNavoreTasks(tasks).slice(0, limit)
   return (
     <ul className="flex flex-col divide-y divide-white/5">
@@ -118,16 +118,16 @@ export function NavoreModeHeader({
   onRefresh: () => void
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
+    <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
       <Briefcase size={14} className="text-amber-300" />
-      <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-amber-100">{title}</span>
+      <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-amber-100">{title}</span>
       <span className="rounded-full bg-amber-300/15 px-1.5 py-0 text-[9px] font-bold text-amber-200">Navore</span>
       <div className="flex-1" />
       {ageText && <span className="text-[13px] md:text-[10px] text-[var(--muted)]">{ageText}</span>}
       <button
         onClick={onRefresh}
         title="Refresh (flush server cache)"
-        className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-300 hover:border-amber-300/40 hover:text-amber-100"
+        className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-300 hover:border-amber-300/40 hover:text-amber-100"
       >
         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> refresh
       </button>

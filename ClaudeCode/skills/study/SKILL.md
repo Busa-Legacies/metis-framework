@@ -2,7 +2,7 @@
 name: Study
 slug: study
 version: 1.0.0
-description: Read and discuss content with Ant in a Socratic conversation, then write a summary of his thoughts and insights. Input: $ARGUMENTS
+description: "Read and discuss content with Ant in a Socratic conversation, then write a summary of his thoughts and insights. Input: $ARGUMENTS"
 ---
 
 ## Pre-flight

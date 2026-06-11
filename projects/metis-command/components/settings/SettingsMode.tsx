@@ -28,9 +28,9 @@ export default function SettingsMode() {
 
   return (
     <div data-testid="settings-mode" className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
+      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
         <Settings size={14} className="text-cyan-300" />
-        <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Settings</span>
+        <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Settings</span>
         <div className="flex-1" />
         {res && <span className="text-[13px] md:text-[10px] text-[var(--muted)]">{res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data'}</span>}
         <AnnotateTrigger />
@@ -54,7 +54,7 @@ export default function SettingsMode() {
           <StatusCard title="Integrations · Auth" icon={<Plug size={12} />}>
             <ul className="flex flex-col gap-1.5">
               {integrationStatuses(data).map((s) => (
-                <li key={s.name} className="flex items-start gap-1.5 text-sm md:text-[11px]">
+                <li key={s.name} className="flex items-start gap-1.5 text-[13px] md:text-[11px]">
                   <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${SEV_DOT[s.severity]}`} />
                   <span className="shrink-0 text-slate-200">{s.name}</span>
                   <span className={`ml-auto truncate text-[13px] md:text-[10px] ${s.severity === 'ok' ? 'text-[var(--muted)]' : SEV_TEXT[s.severity]}`}>{s.detail}</span>
@@ -67,15 +67,15 @@ export default function SettingsMode() {
           <StatusCard title="Machines · Routing" icon={<Network size={12} />}>
             <StatusDot on={data.jay.gateway_running} labelOn="Jay gateway up" labelOff="Jay gateway down" />
             <StatusDot on={data.ollama.running} labelOn={`Ollama up · ${data.ollama.models?.length ?? 0} models`} labelOff="Ollama down" />
-            <span className="text-sm md:text-[11px] text-[var(--muted)]">tailscale: <span className="text-slate-300">{data.remote.tailscale_ip || '—'}</span></span>
-            <span className="text-sm md:text-[11px] text-[var(--muted)]">model: <span className="text-slate-300">{data.jay.primary_model || '—'}</span></span>
+            <span className="text-[13px] md:text-[11px] text-[var(--muted)]">tailscale: <span className="text-slate-300">{data.remote.tailscale_ip || '—'}</span></span>
+            <span className="text-[13px] md:text-[11px] text-[var(--muted)]">model: <span className="text-slate-300">{data.jay.primary_model || '—'}</span></span>
           </StatusCard>
 
           {/* Action gates (safety model, §8.6) */}
           <StatusCard title="Action Gates" icon={<ShieldCheck size={12} />}>
             <ul className="flex flex-col gap-1.5">
               {ACTION_TIERS.map((t) => (
-                <li key={t.tier} className="flex flex-col text-sm md:text-[11px]">
+                <li key={t.tier} className="flex flex-col text-[13px] md:text-[11px]">
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-200">{t.tier}</span>
                     <span className="ml-auto rounded-full bg-cyan-300/10 px-1.5 py-0 text-[9px] font-bold text-cyan-200">{t.gate}</span>
@@ -149,7 +149,7 @@ function WorkspaceToggle() {
                   : 'border-[var(--line)] bg-black/20 hover:border-slate-400/40'
               }`}
             >
-              <span className={`flex items-center gap-1.5 text-sm md:text-[12px] font-bold ${active ? (accent ? 'text-amber-100' : 'text-cyan-100') : 'text-slate-300'}`}>
+              <span className={`flex items-center gap-1.5 text-[13px] md:text-[12px] font-bold ${active ? (accent ? 'text-amber-100' : 'text-cyan-100') : 'text-slate-300'}`}>
                 {WORKSPACE_ICON[id]} {w.label}
                 {active && <span className="ml-auto text-[10px] uppercase tracking-[0.1em] opacity-70">active</span>}
               </span>

@@ -33,7 +33,7 @@ export function AnnotateTrigger() {
       onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
       data-testid="annotate-trigger"
       title="Annotate this page — ask Metis to fix or add something"
-      className="hidden items-center gap-1.5 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1.5 text-sm md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20 md:flex"
+      className="hidden items-center gap-1.5 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1.5 text-[13px] md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20 md:flex"
     >
       <MessageSquarePlus size={14} /> annotate
     </button>
@@ -427,7 +427,7 @@ export default function AnnotateWidget() {
         <div data-annotate-ignore="true" className="fixed inset-0 z-[70] flex items-end justify-end bg-black/50 md:items-stretch" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}>
           <div
             data-testid="annotate-panel"
-            className="flex max-h-[78vh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-cyan-300/20 bg-[#0a0d14] shadow-2xl md:h-full md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
+            className="flex max-h-[78vh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-cyan-300/20 bg-[var(--panel)] shadow-2xl md:h-full md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
           >
             <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] py-3 pl-2 pr-3">
               <button
@@ -438,7 +438,7 @@ export default function AnnotateWidget() {
                 <X size={20} />
               </button>
               <div className="min-w-0 flex-1">
-                <div className="text-[15px] md:text-sm font-black uppercase tracking-[0.16em] text-cyan-100">Annotate</div>
+                <div className="text-[15px] md:text-[13px] font-black uppercase tracking-[0.16em] text-cyan-100">Annotate</div>
                 <div className="truncate text-[12px] md:text-[11px] text-[var(--muted)]">about: {modeLabel} · fixes & features land via agents</div>
               </div>
               {messages.length > 0 && (
@@ -454,7 +454,7 @@ export default function AnnotateWidget() {
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3">
               {messages.length === 0 && (
-                <div className="px-2 py-6 text-center text-[13px] md:text-xs text-[var(--muted)]">
+                <div className="px-2 py-6 text-center text-[13px] md:text-[12px] text-[var(--muted)]">
                   Tell Metis what to fix or add on this page —<br />
                   “make the titles bigger”, “add a blocked-only filter”, “this card is redundant”.
                 </div>
@@ -527,7 +527,7 @@ export default function AnnotateWidget() {
                       <button
                         onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
                         aria-label={`remove ${a.name}`}
-                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-rose-300/40 bg-[#0a0d14] text-rose-300 hover:bg-rose-300/20"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-rose-300/40 bg-[var(--panel)] text-rose-300 hover:bg-rose-300/20"
                       >
                         <X size={12} />
                       </button>
@@ -578,7 +578,7 @@ export default function AnnotateWidget() {
                   }}
                   placeholder={`Fix or add something on ${modeLabel}…`}
                   rows={2}
-                  className="min-h-[48px] min-w-0 flex-1 resize-none rounded-xl border border-[var(--line)] bg-black/40 px-3 py-2.5 text-[15px] md:text-sm text-slate-200 placeholder-[var(--muted)] focus:border-cyan-300/40 focus:outline-none"
+                  className="min-h-[48px] min-w-0 flex-1 resize-none rounded-xl border border-[var(--line)] bg-black/40 px-3 py-2.5 text-[15px] md:text-[13px] text-slate-200 placeholder-[var(--muted)] focus:border-cyan-300/40 focus:outline-none"
                 />
                 <button
                   onClick={send}

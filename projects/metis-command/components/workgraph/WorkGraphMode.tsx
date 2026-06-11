@@ -34,7 +34,7 @@ function OwnerChip({ agent }: { agent: string | null | undefined }) {
 function TaskRow({ t, owner, onClick }: { t: MetisPriorityItem; owner?: string | null; onClick?: () => void }) {
   const p1 = t.priority === 'P1'
   return (
-    <li className={`flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm md:text-[11px] ${onClick ? 'cursor-pointer hover:bg-white/5' : ''}`} onClick={onClick}>
+    <li className={`flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-[13px] md:text-[11px] ${onClick ? 'cursor-pointer hover:bg-white/5' : ''}`} onClick={onClick}>
       <span className={`h-2 w-2 shrink-0 rounded-full ${stateDotCls(t.state)}`} title={t.state.replace(/_/g, ' ')} />
       <span className={`min-w-0 flex-1 truncate ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-300'}`}>{t.title}</span>
       <OwnerChip agent={owner} />
@@ -50,7 +50,7 @@ function GoalCard({ g, selected, onClick }: { g: MetisGoal; selected: boolean; o
       onClick={onClick}
       className={`flex flex-col gap-1.5 rounded-lg border p-2.5 text-left transition-colors ${selected ? 'border-cyan-300/50 bg-cyan-300/10' : 'border-[var(--line)] bg-black/20 hover:border-cyan-300/30 hover:bg-white/[0.03]'}`}
     >
-      <div className="flex items-center gap-1.5 text-[15px] md:text-xs">
+      <div className="flex items-center gap-1.5 text-[15px] md:text-[12px]">
         <span className="font-bold text-cyan-200">{g.id}</span>
         <span className="truncate text-slate-400">{g.title}</span>
         <span className="ml-auto shrink-0 font-bold text-emerald-200">{pct}%</span>
@@ -73,7 +73,7 @@ function ProjectRow({ p, selected, onClick }: { p: MetisTaskSummary; selected: b
   return (
     <li
       onClick={onClick}
-      className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm md:text-[11px] ${selected ? 'bg-cyan-300/10' : 'hover:bg-white/5'}`}
+      className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-[13px] md:text-[11px] ${selected ? 'bg-cyan-300/10' : 'hover:bg-white/5'}`}
     >
       <StatusChip label={p.priority} severity={prioSeverity(p.priority)} />
       <span className="truncate text-slate-200">{p.project}</span>
@@ -87,7 +87,7 @@ function GovernedTaskRow({ task }: { task: MetisGoverndTask }) {
   const p1 = task.priority === 'P1'
   return (
     <li className="rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2">
-      <div className="flex items-center gap-2 text-sm md:text-[11px]">
+      <div className="flex items-center gap-2 text-[13px] md:text-[11px]">
         <span className={`h-2 w-2 shrink-0 rounded-full ${stateDotCls(task.state)}`} title={task.state.replace(/_/g, ' ')} />
         <span className={`min-w-0 flex-1 truncate ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>{task.title}</span>
       </div>
@@ -152,9 +152,9 @@ export default function WorkGraphMode() {
 
   return (
     <div data-testid="work-graph" className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
+      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
         <GitBranch size={14} className="text-cyan-300" />
-        <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Work Graph</span>
+        <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Work Graph</span>
         {p && (
           <span className="hidden gap-2 sm:flex">
             <StatusChip label={`${p.active_total} active`} severity="ok" />
@@ -186,7 +186,7 @@ export default function WorkGraphMode() {
                 ))}
               </div>
             ) : (
-              <span className="text-[15px] md:text-xs text-[var(--muted)]">no goals tracked</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no goals tracked</span>
             )}
           </StatusCard>
 
@@ -197,7 +197,7 @@ export default function WorkGraphMode() {
                 <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => { setSelectedGoalId(t.goals?.[0] ?? null); setSelectedProject(null) }} />
               ))}</ul>
             ) : (
-              <span className="text-[15px] md:text-xs text-emerald-200">queue clear</span>
+              <span className="text-[15px] md:text-[12px] text-emerald-200">queue clear</span>
             )}
           </StatusCard>
 
@@ -208,7 +208,7 @@ export default function WorkGraphMode() {
                 <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => { setSelectedGoalId(t.goals?.[0] ?? null); setSelectedProject(null) }} />
               ))}</ul>
             ) : (
-              <span className="text-[15px] md:text-xs text-emerald-200">nothing blocked</span>
+              <span className="text-[15px] md:text-[12px] text-emerald-200">nothing blocked</span>
             )}
           </StatusCard>
 
@@ -221,7 +221,7 @@ export default function WorkGraphMode() {
                   // page edge on phones (Ant annotation 2026-06-10). Identity up
                   // top, fence/renewed metadata below — everything truncates.
                   <li key={`${l.session}-${l.fenceToken}`} className="flex flex-col gap-0.5">
-                    <div className="flex min-w-0 items-center gap-2 text-sm md:text-[11px]">
+                    <div className="flex min-w-0 items-center gap-2 text-[13px] md:text-[11px]">
                       <OwnerChip agent={l.agent} />
                       {l.taskId && <span className="min-w-0 shrink-[2] truncate text-cyan-200">{l.taskId}</span>}
                       <span className="min-w-0 flex-1 truncate text-slate-300">{l.title}</span>
@@ -234,7 +234,7 @@ export default function WorkGraphMode() {
                 ))}
               </ul>
             ) : (
-              <span className="text-[15px] md:text-xs text-[var(--muted)]">no active leases</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no active leases</span>
             )}
           </StatusCard>
 
@@ -245,7 +245,7 @@ export default function WorkGraphMode() {
                 <ProjectRow key={i} p={pr} selected={selectedProject === pr.project} onClick={() => { setSelectedProject(pr.project); setSelectedGoalId(null) }} />
               ))}</ul>
             ) : (
-              <span className="text-[15px] md:text-xs text-[var(--muted)]">no project rollup</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no project rollup</span>
             )}
           </StatusCard>
 
@@ -254,29 +254,29 @@ export default function WorkGraphMode() {
             {detailTitle ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[15px] md:text-xs font-bold text-slate-200">{detailTitle}</span>
+                  <span className="min-w-0 flex-1 truncate text-[15px] md:text-[12px] font-bold text-slate-200">{detailTitle}</span>
                   <StatusChip label={`${detailTasks.length} tasks`} severity="ok" />
                   <button onClick={clearDetail} className="rounded p-1 text-[var(--muted)] hover:text-slate-200" title="clear focus">
                     <X size={14} />
                   </button>
                 </div>
-                {selectedGoal?.marker && <div className="text-sm md:text-[11px] text-[var(--muted)]">{selectedGoal.marker}</div>}
+                {selectedGoal?.marker && <div className="text-[13px] md:text-[11px] text-[var(--muted)]">{selectedGoal.marker}</div>}
                 {detailTasks.length ? (
                   <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-1">
                     {detailTasks.map((task) => <GovernedTaskRow key={task.taskId} task={task} />)}
                   </ul>
                 ) : (
-                  <span className="text-[15px] md:text-xs text-[var(--muted)]">no governed tasks found for this focus</span>
+                  <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no governed tasks found for this focus</span>
                 )}
                 <button
                   onClick={() => nav.goto('tasks')}
-                  className="mt-1 flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2 py-1.5 text-sm md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20"
+                  className="mt-1 flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2 py-1.5 text-[13px] md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20"
                 >
                   open in Tasks
                 </button>
               </div>
             ) : (
-              <span className="text-[15px] md:text-xs text-[var(--muted)]">click a goal, project, or task row to focus its work</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">click a goal, project, or task row to focus its work</span>
             )}
           </StatusCard>
         </div>

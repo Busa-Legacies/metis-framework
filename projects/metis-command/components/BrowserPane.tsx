@@ -57,7 +57,7 @@ export default function BrowserPane({ url, onChangeUrl, onClose, onCapture }: Pr
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="localhost:3000 or https://…"
-            className="w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-xs text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+            className="w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-[12px] text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
           />
         </form>
         <button onClick={onClose} className="rounded p-1 text-slate-400 hover:text-rose-300" title="close browser"><X size={12} /></button>
@@ -71,7 +71,7 @@ export default function BrowserPane({ url, onChangeUrl, onClose, onCapture }: Pr
             sandbox="allow-forms allow-popups allow-presentation allow-same-origin allow-scripts allow-modals"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-slate-500">enter a URL above</div>
+          <div className="flex h-full items-center justify-center text-[12px] text-slate-500">enter a URL above</div>
         )}
       </div>
     </div>

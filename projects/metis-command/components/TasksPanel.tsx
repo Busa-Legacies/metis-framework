@@ -109,7 +109,7 @@ export default function TasksPanel({ workspaceId, agents, onError }: { workspace
   }
 
   if (!workspaceId) {
-    return <div className="flex h-full items-center justify-center text-xs text-slate-500">no workspace selected</div>
+    return <div className="flex h-full items-center justify-center text-[12px] text-slate-500">no workspace selected</div>
   }
 
   return (
@@ -120,9 +120,9 @@ export default function TasksPanel({ workspaceId, agents, onError }: { workspace
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') create() }}
           placeholder="add a task… (enter to save)"
-          className="flex-1 rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-xs text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="flex-1 rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-[12px] text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
         />
-        <button onClick={create} disabled={!newTitle.trim()} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-2 py-1 text-xs text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40" title="add task">
+        <button onClick={create} disabled={!newTitle.trim()} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-2 py-1 text-[12px] text-cyan-100 hover:bg-cyan-300/20 disabled:opacity-40" title="add task">
           <Plus size={12} />
         </button>
       </div>
@@ -266,28 +266,28 @@ function TaskEditDialog({ task, agents, workspaceId, onClose, onSaved, onError }
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
       <div className="w-full max-w-md rounded-2xl border border-slate-400/20 bg-black/95 p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center gap-2">
-          <div className="flex-1 text-sm font-bold uppercase tracking-[0.2em] text-cyan-200/85">edit task</div>
+          <div className="flex-1 text-[13px] font-bold uppercase tracking-[0.2em] text-cyan-200/85">edit task</div>
           <button onClick={onClose} className="rounded p-1 text-slate-400 hover:text-white"><X size={14} /></button>
         </div>
 
         <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">title</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
 
         <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none" />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none" />
 
         <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">owner agent</label>
-        <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-sm text-white focus:border-cyan-300/40 focus:outline-none">
+        <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className="mb-3 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 text-[13px] text-white focus:border-cyan-300/40 focus:outline-none">
           <option value="">— none —</option>
           {agents.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.kind})</option>)}
         </select>
 
         <label className="mb-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">files (one per line; blocks overlap with other active tasks)</label>
-        <textarea value={filesText} onChange={(e) => setFilesText(e.target.value)} rows={4} placeholder="src/foo.ts\nsrc/bar.ts" className="mb-4 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 font-mono text-xs text-white focus:border-cyan-300/40 focus:outline-none" />
+        <textarea value={filesText} onChange={(e) => setFilesText(e.target.value)} rows={4} placeholder="src/foo.ts\nsrc/bar.ts" className="mb-4 w-full rounded-md border border-slate-400/15 bg-black/40 px-2 py-1.5 font-mono text-[12px] text-white focus:border-cyan-300/40 focus:outline-none" />
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-xs text-slate-300 hover:text-white">cancel</button>
-          <button onClick={save} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-300/20">save</button>
+          <button onClick={onClose} className="rounded-md border border-slate-400/15 px-3 py-1.5 text-[12px] text-slate-300 hover:text-white">cancel</button>
+          <button onClick={save} className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-1.5 text-[12px] text-cyan-100 hover:bg-cyan-300/20">save</button>
         </div>
       </div>
     </div>

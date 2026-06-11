@@ -1,6 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
+
+// Layout effect on the client (runs before paint, so an already-shown reload can
+// hide the cover with no flash); plain effect on the server to avoid the SSR warning.
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 /**
  * Métis boot screen — the web/mobile first-paint cover, mirroring the Electron
@@ -18,11 +22,13 @@ const HOLD_MS = 2600 // let the readout reach "ready" before we start leaving
 const FADE_MS = 500 // matches .metis-boot transition
 
 export default function BootScreen() {
-  // Start hidden; decide on mount so SSR markup is stable and we can read
-  // sessionStorage / prefers-reduced-motion (client-only).
-  const [phase, setPhase] = useState<'idle' | 'visible' | 'leaving' | 'gone'>('idle')
+  // Start VISIBLE so the cover is the very first paint on a cold load — the app
+  // shell never flashes in front of it. SSR renders 'visible' too, so hydration
+  // matches. A layout effect then either hides it instantly (already shown this
+  // tab session — runs before paint, no flash) or schedules the fade-out.
+  const [phase, setPhase] = useState<'visible' | 'leaving' | 'gone'>('visible')
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     let shown = false
     try {
       shown = window.sessionStorage.getItem(SESSION_KEY) === '1'
@@ -36,7 +42,6 @@ export default function BootScreen() {
 
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const hold = reduce ? 700 : HOLD_MS
-    setPhase('visible')
 
     const leave = window.setTimeout(() => setPhase('leaving'), hold)
     const done = window.setTimeout(() => {
@@ -54,7 +59,7 @@ export default function BootScreen() {
     }
   }, [])
 
-  if (phase === 'idle' || phase === 'gone') return null
+  if (phase === 'gone') return null
 
   return (
     <div className={`metis-boot${phase === 'leaving' ? ' is-leaving' : ''}`} role="status" aria-label="Métis is starting up">

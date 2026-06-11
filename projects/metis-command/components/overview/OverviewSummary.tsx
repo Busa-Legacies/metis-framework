@@ -31,8 +31,8 @@ export default function OverviewSummary() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       {/* header / freshness rail */}
-      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
-        <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Overview</span>
+      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
+        <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Overview</span>
         <span className="badge">native</span>
         <div className="flex-1" />
         {res && (
@@ -59,14 +59,14 @@ export default function OverviewSummary() {
             {data.alerts?.length ? (
               <ul className="flex flex-col gap-1">
                 {data.alerts.slice(0, 5).map((a, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-[15px] md:text-xs">
+                  <li key={i} className="flex items-start gap-1.5 text-[15px] md:text-[12px]">
                     <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${SEV_BAR[levelToSeverity(a.level)]}`} />
                     <span className="text-slate-300">{a.msg}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <span className="text-[15px] md:text-xs text-emerald-200">All clear</span>
+              <span className="text-[15px] md:text-[12px] text-emerald-200">All clear</span>
             )}
           </StatusCard>
 
@@ -80,7 +80,7 @@ export default function OverviewSummary() {
           {/* Jay / Ollama → Ops */}
           <StatusCard title="Jay · Models" icon={<Server size={12} />} severity={data.jay.gateway_running && data.ollama.running ? 'ok' : 'critical'} onClick={() => nav.goto('ops')} actionHint="Open Ops">
             <StatusDot on={data.jay.gateway_running} labelOn="gateway up" labelOff="gateway down" />
-            <span className="text-sm md:text-[11px] text-[var(--muted)]">model: <span className="text-slate-300">{data.jay.primary_model || '—'}</span></span>
+            <span className="text-[13px] md:text-[11px] text-[var(--muted)]">model: <span className="text-slate-300">{data.jay.primary_model || '—'}</span></span>
             <StatusDot on={data.ollama.running} labelOn={`ollama up · ${data.ollama.models?.length ?? 0} models`} labelOff="ollama down" />
           </StatusCard>
 
@@ -88,7 +88,7 @@ export default function OverviewSummary() {
           <StatusCard title="Trading Bot" icon={<CandlestickChart size={12} />} severity={data.bot.running ? 'ok' : 'warn'} onClick={() => nav.goto('ops')} actionHint="Open Ops">
             <StatusDot on={data.bot.running} labelOn={`running · ${data.bot.mode}`} labelOff="stopped" />
             {data.bot.strategy && (
-              <span className="text-sm md:text-[11px] text-[var(--muted)]">
+              <span className="text-[13px] md:text-[11px] text-[var(--muted)]">
                 {data.bot.strategy.name} ({data.bot.strategy.fast_ma}/{data.bot.strategy.slow_ma})
               </span>
             )}
@@ -102,12 +102,12 @@ export default function OverviewSummary() {
               <Meter label="Claude 7d" pct={data.ratelimits.claude.seven_day.pct} detail={`$${(data.ratelimits.claude.total_cost ?? 0).toFixed(2)} spent`} />
             ) : null}
             {typeof codexPct === 'number' ? <Meter label="Codex target" pct={codexPct} detail={data.ratelimits?.codex?.limit_known ? undefined : 'soft target'} /> : null}
-            {!data.ratelimits?.claude && !data.ratelimits?.codex && <span className="text-[15px] md:text-xs text-[var(--muted)]">no usage data</span>}
+            {!data.ratelimits?.claude && !data.ratelimits?.codex && <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no usage data</span>}
           </StatusCard>
 
           {/* Active work → Work / Map */}
           <StatusCard title="Active Work" icon={<ListTodo size={12} />} severity={data.priorities?.blocked_count ? 'warn' : 'ok'} onClick={() => nav.goto('work-graph')} actionHint="Open Work Map">
-            <div className="flex gap-3 text-[15px] md:text-xs">
+            <div className="flex gap-3 text-[15px] md:text-[12px]">
               <span className="text-slate-300">{data.priorities?.active_total ?? 0} active</span>
               <span className={data.priorities?.blocked_count ? 'text-amber-200' : 'text-[var(--muted)]'}>
                 {data.priorities?.blocked_count ?? 0} blocked
@@ -115,7 +115,7 @@ export default function OverviewSummary() {
             </div>
             <ul className="flex flex-col gap-0.5">
               {(data.priorities?.next ?? []).slice(0, 4).map((t) => (
-                <li key={t.taskId} className="truncate text-sm md:text-[11px] text-slate-400">
+                <li key={t.taskId} className="truncate text-[13px] md:text-[11px] text-slate-400">
                   <span className="text-cyan-200">{t.taskId}</span> {t.title}
                 </li>
               ))}

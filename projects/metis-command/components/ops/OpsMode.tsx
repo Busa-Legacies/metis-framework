@@ -33,9 +33,9 @@ export default function OpsMode() {
 
   return (
     <div data-testid="ops-mode" className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-xs">
+      <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
         <Server size={14} className="text-cyan-300" />
-        <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Ops</span>
+        <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Ops</span>
         <div className="flex-1" />
         {res && <span className="text-[13px] md:text-[10px] text-[var(--muted)]">{res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data'}</span>}
         <AnnotateTrigger />
@@ -78,7 +78,7 @@ export default function OpsMode() {
 
           {/* Memory RAG */}
           <StatusCard title="Memory RAG" icon={<Database size={12} />}>
-            <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+            <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
               <span>chunks indexed: <span className="text-slate-300">{memory.chunks_indexed.toLocaleString()}</span></span>
               <span>files indexed: <span className="text-slate-300">{memory.files_indexed}</span></span>
               <span>reranker: <span className={memory.reranker_available ? 'text-emerald-200' : 'text-amber-200'}>{memory.reranker_available ? 'available' : 'off'}</span></span>
@@ -88,7 +88,7 @@ export default function OpsMode() {
 
           {/* Remote access */}
           <StatusCard title="Remote Access" icon={<Wifi size={12} />}>
-            <span className="text-sm md:text-[11px] text-[var(--muted)]">tailscale: <span className="text-slate-300">{data.remote.tailscale_ip || '—'}</span></span>
+            <span className="text-[13px] md:text-[11px] text-[var(--muted)]">tailscale: <span className="text-slate-300">{data.remote.tailscale_ip || '—'}</span></span>
             <StatusDot on={data.remote.ssh?.running} labelOn="ssh up" labelOff="ssh down" />
             <StatusDot on={data.remote.ttyd?.running} labelOn="ttyd up" labelOff="ttyd down" />
             {data.remote.tmux_sessions && <span className="truncate text-[13px] md:text-[10px] text-[var(--muted)]">tmux: {data.remote.tmux_sessions}</span>}

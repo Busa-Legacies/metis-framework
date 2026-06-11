@@ -39,7 +39,7 @@ export default function BroadcastBar({ workspaceId, agentCount, kindCounts }: Pr
   const target = kind ? `${kindCounts[kind] ?? 0} ${kind}` : `${agentCount} agents`
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-amber-300/15 bg-amber-300/[0.04] px-3 py-1.5 text-xs">
+    <div className="flex flex-wrap items-center gap-2 border-b border-amber-300/15 bg-amber-300/[0.04] px-3 py-1.5 text-[12px]">
       <Megaphone size={12} className="text-amber-300" />
       <span className="font-bold uppercase tracking-[0.2em] text-amber-200/80">broadcast</span>
 
@@ -62,7 +62,7 @@ export default function BroadcastBar({ workspaceId, agentCount, kindCounts }: Pr
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') send() }}
         placeholder='type once, send to all (e.g. "read README.md and summarize")'
-        className="flex-1 rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-xs text-white placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
+        className="flex-1 rounded-md border border-slate-400/15 bg-black/40 px-2 py-1 text-[12px] text-white placeholder:text-slate-500 focus:border-amber-300/40 focus:outline-none"
       />
 
       <label className="flex items-center gap-1 text-[10px] text-slate-400" title="append newline (submit) when sending">

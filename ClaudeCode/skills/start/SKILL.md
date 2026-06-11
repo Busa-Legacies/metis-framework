@@ -2,7 +2,7 @@
 name: Start Session
 slug: start
 version: 1.0.0
-description: Begin a new session — collect git/system/task state, detect cold pickup, and present a ranked workstream briefing. Optional focus hint: $ARGUMENTS
+description: "Begin a new session — collect git/system/task state, detect cold pickup, and present a ranked workstream briefing. Optional focus hint: $ARGUMENTS"
 ---
 
 Run the following steps **in order**, collecting data before presenting anything.

@@ -25,7 +25,7 @@ function CountChip({ label, n, icon }: { label: string; n: number; icon: React.R
   return (
     <div className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-1.5">
       <span className="text-amber-300">{icon}</span>
-      <span className="text-lg font-black text-slate-100">{n}</span>
+      <span className="text-[17px] font-black text-slate-100">{n}</span>
       <span className="text-[12px] md:text-[10px] uppercase tracking-[0.12em] text-[var(--muted)]">{label}</span>
     </div>
   )
@@ -41,7 +41,7 @@ function useNavore() {
 function ClickupErrorNote({ error }: { error: string }) {
   return (
     <StatusCard title="ClickUp" icon={<ListChecks size={12} />} severity="warn">
-      <span className="text-sm md:text-[11px] text-amber-200">{error}</span>
+      <span className="text-[13px] md:text-[11px] text-amber-200">{error}</span>
       <span className="text-[12px] md:text-[10px] text-[var(--muted)]">
         Set CLICKUP_TOKEN in the dashboard .env to surface Navore Market tasks.
       </span>
@@ -103,9 +103,9 @@ export default function NavoreMode() {
               {/* MS365 (Navore Teams/Outlook) */}
               <StatusCard title="Comms · MS365" icon={<Mail size={12} />} severity={ms.error ? 'warn' : 'ok'}>
                 {ms.error ? (
-                  <span className="text-sm md:text-[11px] text-amber-200">{ms.error}</span>
+                  <span className="text-[13px] md:text-[11px] text-amber-200">{ms.error}</span>
                 ) : (
-                  <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+                  <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
                     <span className="flex items-center gap-1"><Mail size={12} /> {ms.email.length} recent emails</span>
                     <span className="flex items-center gap-1"><CalendarClock size={12} /> {ms.calendar.length} calendar items</span>
                     {ms.cache_age_min != null && (
@@ -118,7 +118,7 @@ export default function NavoreMode() {
               {/* Navore GitHub */}
               <StatusCard title="GitHub · Navore" icon={<GitCommitHorizontal size={12} />}>
                 {repos.length ? (
-                  <div className="flex flex-col gap-1 text-sm md:text-[11px] text-[var(--muted)]">
+                  <div className="flex flex-col gap-1 text-[13px] md:text-[11px] text-[var(--muted)]">
                     {repos.map((r) => (
                       <div key={r.repo} className="flex flex-col">
                         <span className="font-bold text-slate-200">{r.repo}</span>
@@ -135,7 +135,7 @@ export default function NavoreMode() {
                     ))}
                   </div>
                 ) : (
-                  <span className="text-sm md:text-[11px] text-[var(--muted)]">no Navore repo data</span>
+                  <span className="text-[13px] md:text-[11px] text-[var(--muted)]">no Navore repo data</span>
                 )}
               </StatusCard>
             </div>
@@ -168,8 +168,8 @@ export function NavoreOverview() {
       ) : (
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
           <StatusCard title="Open Work" icon={<ListChecks size={12} />} severity={navoreOpenWork(cu) ? 'warn' : 'ok'}>
-            <span className="text-lg font-black text-slate-100">{navoreOpenWork(cu)}</span>
-            <span className="text-sm md:text-[11px] text-[var(--muted)]">
+            <span className="text-[17px] font-black text-slate-100">{navoreOpenWork(cu)}</span>
+            <span className="text-[13px] md:text-[11px] text-[var(--muted)]">
               {counts.ops} ops · {counts.dev} dev · {counts.projects} projects · {counts.milestones} milestones
             </span>
           </StatusCard>
@@ -184,9 +184,9 @@ export function NavoreOverview() {
 
           <StatusCard title="Comms · MS365" icon={<Mail size={12} />} severity={ms.error ? 'warn' : 'ok'}>
             {ms.error ? (
-              <span className="text-sm md:text-[11px] text-amber-200">{ms.error}</span>
+              <span className="text-[13px] md:text-[11px] text-amber-200">{ms.error}</span>
             ) : (
-              <div className="flex flex-col gap-0.5 text-sm md:text-[11px] text-[var(--muted)]">
+              <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
                 <span>{ms.email.length} emails · {ms.calendar.length} calendar items</span>
                 {ms.cache_age_min != null && <span className="text-[12px] md:text-[10px]">synced {ms.cache_age_min}m ago{ms.stale ? ' · stale' : ''}</span>}
               </div>

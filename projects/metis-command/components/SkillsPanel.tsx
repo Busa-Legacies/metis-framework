@@ -71,7 +71,7 @@ export default function SkillsPanel({ workspaceId, workspaceName }: Props) {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b border-slate-400/10 px-4 py-3">
         <Hammer size={14} className="text-cyan-300" />
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/85">Skills</div>
+        <div className="text-[12px] font-bold uppercase tracking-[0.2em] text-cyan-200/85">Skills</div>
         <span className="truncate text-[10px] text-slate-500">— {workspaceName}</span>
         <div className="flex-1" />
         {loading ? <Loader2 size={12} className="animate-spin text-slate-400" /> : null}

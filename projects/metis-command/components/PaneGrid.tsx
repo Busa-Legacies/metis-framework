@@ -213,7 +213,7 @@ function LeafView({ leaf, agents, controlCenterWorkspace, activeLeafId, maximize
           e.dataTransfer.setData('text/x-aw-leaf', leaf.id)
         }}
         onDragEnd={() => setDraggingLeafId(null)}
-        className={`flex items-center gap-1.5 border-b border-slate-400/10 px-1.5 py-1 text-xs ${active ? 'bg-cyan-300/[0.04]' : 'bg-black/30'} ${empty ? '' : 'cursor-grab active:cursor-grabbing'}`}
+        className={`flex items-center gap-1.5 border-b border-slate-400/10 px-1.5 py-1 text-[12px] ${active ? 'bg-cyan-300/[0.04]' : 'bg-black/30'} ${empty ? '' : 'cursor-grab active:cursor-grabbing'}`}
         title={empty ? '' : 'drag header to swap with another pane'}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -299,7 +299,7 @@ function PaneKebab({ isMaxed, closeTitle, onRename, onToggleMaximize, onSplitDow
   onClose: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-xs text-slate-200 hover:bg-slate-300/10'
+  const item = 'flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-[12px] text-slate-200 hover:bg-slate-300/10'
   return (
     <div className="relative md:hidden">
       <button
@@ -373,7 +373,7 @@ function classifyActivity(agent: Agent): { label: string; dot: string; ring: str
 
 function EmptyDrop({ leafId, onAssignUrl }: { leafId: string; onAssignUrl: (id: string, url: string | null) => void }) {
   return (
-    <div className="mc-in flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden p-4 text-xs text-slate-500">
+    <div className="mc-in flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden p-4 text-[12px] text-slate-500">
       <MetisMark size={28} className="opacity-50" />
       <p className="w-full text-center text-[13px] font-semibold tracking-wide text-slate-400">No agent in this pane</p>
       <p className="w-full text-center">
@@ -382,7 +382,7 @@ function EmptyDrop({ leafId, onAssignUrl }: { leafId: string; onAssignUrl: (id: 
       </p>
       <button
         onClick={(e) => { e.stopPropagation(); const u = window.prompt('Open URL in this pane:', 'http://localhost:3000'); if (u) onAssignUrl(leafId, u) }}
-        className="flex items-center gap-1 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 text-sm md:px-2.5 md:py-1 md:text-xs text-cyan-100 hover:bg-cyan-300/20"
+        className="flex items-center gap-1 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2.5 text-[13px] md:px-2.5 md:py-1 md:text-[12px] text-cyan-100 hover:bg-cyan-300/20"
       >
         <Globe size={12} /> open browser preview
       </button>

@@ -2,7 +2,7 @@
 name: File
 slug: file
 version: 1.0.0
-description: Triage, dedup, relocate, and retire files across a repo surface — link-aware. Keeps the tree aligned with docs/repo-structure-filing-standard.md. Surface to audit (optional): $ARGUMENTS
+description: "Triage, dedup, relocate, and retire files across a repo surface — link-aware. Keeps the tree aligned with docs/repo-structure-filing-standard.md. Surface to audit (optional): $ARGUMENTS"
 ---
 
 TRIGGER when: a directory has sprawled, a file feels misfiled, running the #107 repo-wide alignment audit, or after a burst of doc creation that left things un-indexed.

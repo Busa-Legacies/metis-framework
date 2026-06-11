@@ -84,7 +84,7 @@ export function Meter({ label, pct, detail }: { label: string; pct: number; deta
   const sev: Severity = pct >= 90 ? 'critical' : pct >= 75 ? 'warn' : 'ok'
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between text-[15px] md:text-xs">
+      <div className="flex items-baseline justify-between text-[15px] md:text-[12px]">
         <span className="text-slate-400">{label}</span>
         <span className={`font-bold ${SEV_TEXT[sev]}`}>{Math.round(pct)}%</span>
       </div>
@@ -98,7 +98,7 @@ export function Meter({ label, pct, detail }: { label: string; pct: number; deta
 
 export function StatusDot({ on, labelOn, labelOff }: { on: boolean; labelOn: string; labelOff: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[15px] md:text-xs">
+    <span className="inline-flex items-center gap-1.5 text-[15px] md:text-[12px]">
       <span className={`h-2 w-2 rounded-full ${on ? 'bg-emerald-300' : 'bg-rose-300 pulse-dot'}`} />
       <span className={on ? 'text-slate-200' : 'text-rose-200'}>{on ? labelOn : labelOff}</span>
     </span>
@@ -168,8 +168,8 @@ export function CardLoading({ label = 'loading…' }: { label?: string }) {
 export function CardError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-      <div className="text-[17px] md:text-sm font-bold text-rose-200">Data unavailable</div>
-      <div className="max-w-md text-[15px] md:text-xs text-[var(--muted)]">{message}</div>
+      <div className="text-[17px] md:text-[13px] font-bold text-rose-200">Data unavailable</div>
+      <div className="max-w-md text-[15px] md:text-[12px] text-[var(--muted)]">{message}</div>
       {onRetry && (
         <button
           onClick={onRetry}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install-scripts.sh — Wire up ~/.local/bin symlinks on any device
 #
-# Run once after cloning Ant-openclaw-framework on a new machine.
+# Run once after cloning metis-os on a new machine.
 # The git-sync LaunchAgent (every 5 min) keeps the repo up to date,
 # and symlinks mean updates are instant — no re-install needed.
 #

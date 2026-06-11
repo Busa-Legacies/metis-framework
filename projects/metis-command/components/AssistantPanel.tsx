@@ -236,7 +236,7 @@ function ControlCenterNextActionsDrawer({ summary, onClose, onRefresh, onAcknowl
       <div className="flex items-center gap-2 border-b border-slate-400/10 px-3 py-2">
         <PanelRightOpen size={14} className="text-cyan-200" />
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-100">Control Center queue</div>
+          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-cyan-100">Control Center queue</div>
           <div className="text-[10px] text-slate-500">{summary.totals.workspaces} workspace{summary.totals.workspaces === 1 ? '' : 's'} · {summary.totals.nextActionCount} action{summary.totals.nextActionCount === 1 ? '' : 's'}</div>
         </div>
         <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-300/10 hover:text-white" title="close Control Center queue">
@@ -246,7 +246,7 @@ function ControlCenterNextActionsDrawer({ summary, onClose, onRefresh, onAcknowl
       <div className="flex-1 overflow-y-auto px-3 py-3">
         <div className="mb-4">
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-100/85">CEO overnight</div>
+            <div className="text-[12px] font-bold uppercase tracking-[0.16em] text-cyan-100/85">CEO overnight</div>
           </div>
           {ceoActionCount === 0 ? (
             <div className="mb-2 rounded border border-emerald-300/25 bg-emerald-300/10 px-2 py-1 text-[11px] text-emerald-100">
@@ -352,7 +352,7 @@ function ControlCenterNextActionsDrawer({ summary, onClose, onRefresh, onAcknowl
 
         <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">next actions</div>
         {grouped.length === 0 ? (
-          <div className="rounded-lg border border-slate-400/15 bg-black/30 p-3 text-xs text-slate-400">No queued Control Center actions.</div>
+          <div className="rounded-lg border border-slate-400/15 bg-black/30 p-3 text-[12px] text-slate-400">No queued Control Center actions.</div>
         ) : grouped.map(({ workspace, actions }) => (
           <div key={workspace.workspaceId} className="mb-3">
             <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -712,7 +712,7 @@ export default function AssistantPanel({ activeWorkspaceId, onAfterTurn, onOpenA
       <div className="border-b border-slate-400/10 px-4 py-2">
         <div className="flex items-center gap-2">
           {persona === 'metis-brain' ? <Sparkles size={16} className="text-amber-300" /> : <Bot size={16} className="text-cyan-300" />}
-          <div className={`text-xs font-bold uppercase tracking-[0.2em] ${persona === 'metis-brain' ? 'text-amber-200/85' : 'text-cyan-200/85'}`}>
+          <div className={`text-[12px] font-bold uppercase tracking-[0.2em] ${persona === 'metis-brain' ? 'text-amber-200/85' : 'text-cyan-200/85'}`}>
             {persona === 'metis-brain' ? 'Metis Brain' : 'Workbench Assistant'}
           </div>
           <div className="flex-1" />
@@ -815,7 +815,7 @@ export default function AssistantPanel({ activeWorkspaceId, onAfterTurn, onOpenA
       <div className="relative flex-1 overflow-hidden">
         <div ref={scrollRef} onScroll={onScroll} className="absolute inset-0 space-y-2.5 overflow-y-auto px-3 py-3">
           {messages.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-400/15 p-3 text-xs leading-5 text-slate-500">
+            <div className="rounded-xl border border-dashed border-slate-400/15 p-3 text-[12px] leading-5 text-slate-500">
               Try: <span className="text-slate-300">"open 2 claude code, 1 codex, 1 shell — name them frontend, api, deploy."</span>
               <br />Hold <kbd className="rounded bg-black/40 px-1 text-slate-300">Space</kbd> to dictate.
             </div>
@@ -823,7 +823,7 @@ export default function AssistantPanel({ activeWorkspaceId, onAfterTurn, onOpenA
           {messages.map((m) => (
             <ChatMessage key={m.id} m={m} />
           ))}
-          {busy && <MetisLoader size={18} label="Métis is working…" inline className="text-xs" />}
+          {busy && <MetisLoader size={18} label="Métis is working…" inline className="text-[12px]" />}
         </div>
         {!stickToBottom && (
           <button
@@ -897,7 +897,7 @@ export default function AssistantPanel({ activeWorkspaceId, onAfterTurn, onOpenA
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder='ask Metis… or drag/paste an image'
-          className="flex-1 rounded-lg border border-slate-400/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
+          className="flex-1 rounded-lg border border-slate-400/15 bg-black/40 px-3 py-2 text-[13px] text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none"
         />
         <button
           type="submit"

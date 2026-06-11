@@ -2,7 +2,7 @@
 name: End Session
 slug: end
 version: 1.0.0
-description: Run the full session close protocol — commit, push, update state, compose daily log, sweep tasks, send handoff, integrity check. Session name: $ARGUMENTS
+description: "Run the full session close protocol — commit, push, update state, compose daily log, sweep tasks, send handoff, integrity check. Session name: $ARGUMENTS"
 ---
 
 **Steps 1–3 are the minimum viable close** — do them first in case rate limits hit mid-protocol.

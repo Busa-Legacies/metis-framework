@@ -2,7 +2,7 @@
 name: Fix Bug
 slug: fix
 version: 1.0.0
-description: Fix a bug through a quality-controlled workflow — reproduce, find root cause, fix (never a band-aid), verify empirically, route the lesson. Bug: $ARGUMENTS
+description: "Fix a bug through a quality-controlled workflow — reproduce, find root cause, fix (never a band-aid), verify empirically, route the lesson. Bug: $ARGUMENTS"
 ---
 
 TRIGGER when: something is broken/misbehaving, or a task is a bug fix.

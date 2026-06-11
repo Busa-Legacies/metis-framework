@@ -37,10 +37,10 @@ export default function ReviewMode() {
         <AnnotateTrigger />
         {track === 'dev' && devUrl && (
           <>
-            <a href={devUrl} target="_blank" rel="noreferrer" title="Open dev-review in a new tab" className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100">
+            <a href={devUrl} target="_blank" rel="noreferrer" title="Open dev-review in a new tab" className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100">
               <ExternalLink size={14} /> open
             </a>
-            <button onClick={() => setReloadKey((k) => k + 1)} title="Reload" className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100">
+            <button onClick={() => setReloadKey((k) => k + 1)} title="Reload" className="flex items-center gap-1 rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100">
               <RefreshCw size={14} /> reload
             </button>
           </>
@@ -66,15 +66,15 @@ function ContentReview() {
       <div className="panel flex h-14 w-14 items-center justify-center rounded-2xl">
         <FileText size={28} className="text-cyan-200" />
       </div>
-      <div className="text-base font-black uppercase tracking-[0.18em] text-cyan-100">Content Production</div>
-      <div className="max-w-md text-[17px] md:text-sm text-slate-300">
+      <div className="text-[15px] font-black uppercase tracking-[0.18em] text-cyan-100">Content Production</div>
+      <div className="max-w-md text-[17px] md:text-[13px] text-slate-300">
         Draft → comments → fold-back → asset production → publish. Voice-profile deltas fold back into the writing system.
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <a href="https://www.notion.so" target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-1.5 text-[15px] md:text-xs text-cyan-100 hover:bg-cyan-300/20">
+        <a href="https://www.notion.so" target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-1.5 text-[15px] md:text-[12px] text-cyan-100 hover:bg-cyan-300/20">
           <ExternalLink size={14} /> Notion Command Center
         </a>
-        <span className="rounded-lg border border-slate-400/20 bg-black/30 px-3 py-1.5 text-[15px] md:text-xs text-slate-400">drafts: projects/writing/drafts/</span>
+        <span className="rounded-lg border border-slate-400/20 bg-black/30 px-3 py-1.5 text-[15px] md:text-[12px] text-slate-400">drafts: projects/writing/drafts/</span>
       </div>
       <span className="badge">in-shell content review · later milestone</span>
     </div>
@@ -85,7 +85,7 @@ function Toggle({ active, onClick, icon, label }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm md:text-[11px] font-bold ${
+      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] md:text-[11px] font-bold ${
         active ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-100' : 'border-transparent text-slate-400 hover:text-slate-200'
       }`}
     >

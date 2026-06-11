@@ -2,7 +2,7 @@
 name: Checkpoint
 slug: checkpoint
 version: 1.0.0
-description: Bank a completed task mid-session — commit with intent, refresh forward state, keep working. Non-terminating; a strict subset of /end. Optional label: $ARGUMENTS
+description: "Bank a completed task mid-session — commit with intent, refresh forward state, keep working. Non-terminating; a strict subset of /end. Optional label: $ARGUMENTS"
 ---
 
 This is a light, NON-TERMINATING close. It banks a finished task so the next step continues cleanly and the work is durable against context compaction or a crash.

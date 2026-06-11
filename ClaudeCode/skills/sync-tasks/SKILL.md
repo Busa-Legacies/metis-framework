@@ -2,7 +2,7 @@
 name: Sync Tasks
 slug: sync-tasks
 version: 1.0.0
-description: Reconcile drift between task-queue.md and OPEN_TASKS.md — mark done items complete, surface orphans and missing entries.
+description: "Reconcile drift between task-queue.md and OPEN_TASKS.md — mark done items complete, surface orphans and missing entries."
 ---
 
 ## What this fixes

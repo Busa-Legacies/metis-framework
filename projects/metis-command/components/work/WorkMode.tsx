@@ -43,14 +43,14 @@ function AttentionCard({ inbox, loading, onOpen }: {
   if (loading) {
     return (
       <StatusCard title="Needs You" icon={<Inbox size={12} />}>
-        <span className="text-[13px] md:text-xs text-[var(--muted)]">checking attention queue...</span>
+        <span className="text-[13px] md:text-[12px] text-[var(--muted)]">checking attention queue...</span>
       </StatusCard>
     )
   }
   if (!inbox?.ok) {
     return (
       <StatusCard title="Needs You" icon={<Inbox size={12} />} severity="warn">
-        <span className="text-[13px] md:text-xs text-amber-200">attention queue unavailable</span>
+        <span className="text-[13px] md:text-[12px] text-amber-200">attention queue unavailable</span>
       </StatusCard>
     )
   }
@@ -60,7 +60,7 @@ function AttentionCard({ inbox, loading, onOpen }: {
     <StatusCard title="Needs You" icon={<Inbox size={12} />} severity={c.total > 0 || waiting ? 'warn' : 'ok'}>
       <div className="flex flex-col gap-3">
         <div className="flex items-end gap-2">
-          <div className={`text-4xl font-black tabular-nums ${c.total > 0 ? 'text-amber-100' : 'text-emerald-200'}`}>{c.total}</div>
+          <div className={`text-[36px] font-black tabular-nums ${c.total > 0 ? 'text-amber-100' : 'text-emerald-200'}`}>{c.total}</div>
           <div className="pb-1 text-[12px] text-[var(--muted)]">items needing a human call</div>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -131,9 +131,9 @@ export default function WorkMode({ professional = false, initialView }: { profes
   return (
     <div data-testid="work-mode" className="flex h-full w-full flex-col overflow-hidden">
       <div className="shrink-0 border-b border-[var(--line)] bg-black/20">
-        <div className="flex items-center gap-2 px-3 py-2 text-[15px] md:text-xs">
+        <div className="flex items-center gap-2 px-3 py-2 text-[15px] md:text-[12px]">
           <GitBranch size={14} className="text-cyan-300" />
-          <span className="text-[17px] md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Work</span>
+          <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Work</span>
           <span className="hidden text-[12px] text-[var(--muted)] sm:inline">big picture, attention, plan, execution</span>
           <div className="flex-1" />
           {priorities && (
@@ -145,14 +145,14 @@ export default function WorkMode({ professional = false, initialView }: { profes
           <span className="text-[13px] md:text-[10px] text-[var(--muted)]">data {stale}</span>
           <AnnotateTrigger />
         </div>
-        <div className="flex gap-1 overflow-x-auto px-2 pb-2 sm:px-3">
+        <div className="flex gap-1 overflow-x-auto px-1.5 pb-2 sm:px-3">
           {WORK_VIEWS.map((v) => {
             const active = v.id === view
             return (
               <button
                 key={v.id}
                 onClick={() => setView(v.id)}
-                className={`flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-bold transition-colors sm:h-9 sm:px-3 sm:text-[12px] ${
+                className={`flex h-8 shrink-0 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors sm:h-9 sm:gap-1.5 sm:px-3 sm:text-[12px] ${
                   active
                     ? 'border-cyan-300/50 bg-cyan-300/10 text-cyan-100'
                     : 'border-transparent bg-black/20 text-slate-400 hover:border-cyan-300/25 hover:text-slate-200'
@@ -172,7 +172,7 @@ export default function WorkMode({ professional = false, initialView }: { profes
           <CardLoading label="loading work summary..." />
         ) : (
           <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4">
-            <div className="mc-stagger grid gap-2.5 sm:gap-3 lg:grid-cols-[1.25fr_0.75fr]">
+            <div className="mc-stagger grid grid-cols-1 gap-2.5 sm:gap-3 lg:grid-cols-[1.25fr_0.75fr]">
               <StatusCard title="Command Brief" icon={<Target size={12} />}>
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2">
@@ -192,7 +192,7 @@ export default function WorkMode({ professional = false, initialView }: { profes
                     {topGoal?.marker && <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[var(--muted)] sm:text-[12px]">{topGoal.marker}</div>}
                   </div>
 
-                  <div className="grid gap-2 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                     <BriefList title="Next Up" rows={(priorities.next ?? []).slice(0, 3)} empty="queue clear" tone="cyan" />
                     <BriefList title="Blocked" rows={(priorities.blocked ?? []).slice(0, 3)} empty="nothing blocked" tone="rose" />
                   </div>
@@ -256,7 +256,7 @@ export default function WorkMode({ professional = false, initialView }: { profes
 function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className="min-w-0 rounded-lg border border-[var(--line)] bg-black/20 px-2 py-1.5 sm:px-3 sm:py-2">
-      <div className={`text-[17px] font-black leading-none tabular-nums sm:text-2xl ${tone}`}>{value}</div>
+      <div className={`text-[17px] font-black leading-none tabular-nums sm:text-[24px] ${tone}`}>{value}</div>
       <div className="mt-1 truncate text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--muted)] sm:text-[10px] sm:tracking-[0.12em]">{label}</div>
     </div>
   )

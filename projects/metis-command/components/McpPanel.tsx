@@ -100,7 +100,7 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-2 border-b border-slate-400/10 px-4 py-3">
         <Plug size={14} className="text-cyan-300" />
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/85">MCP Servers</div>
+        <div className="text-[12px] font-bold uppercase tracking-[0.2em] text-cyan-200/85">MCP Servers</div>
         <span className="text-[10px] text-slate-500 truncate">— {workspaceName}</span>
         <div className="flex-1" />
         {loading && <Loader2 size={12} className="animate-spin text-slate-400" />}
@@ -108,7 +108,7 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
 
       <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
         {servers.length === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-400/15 p-3 text-xs text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-400/15 p-3 text-[12px] text-slate-500">
             No MCP servers configured. Add one below — they auto-load when you spawn a Claude agent in this workspace.
           </div>
         )}
@@ -121,7 +121,7 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
               <input
                 value={s.name}
                 onChange={(e) => update(s.id, { name: e.target.value })}
-                className="rounded-md border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-xs font-semibold text-white focus:border-cyan-300/40 focus:outline-none"
+                className="rounded-md border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-[12px] font-semibold text-white focus:border-cyan-300/40 focus:outline-none"
               />
               <div className="flex-1" />
               <button onClick={() => remove(s.id)} className="rounded p-1 text-slate-400 hover:text-rose-300"><Trash2 size={12} /></button>
@@ -132,14 +132,14 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
                 value={s.command}
                 onChange={(e) => update(s.id, { command: e.target.value })}
                 placeholder="npx"
-                className="rounded border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-xs text-white focus:border-cyan-300/40 focus:outline-none"
+                className="rounded border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-[12px] text-white focus:border-cyan-300/40 focus:outline-none"
               />
               <span className="text-slate-500">args</span>
               <input
                 value={(s.args ?? []).join(' ')}
                 onChange={(e) => update(s.id, { args: e.target.value.split(/\s+/).filter(Boolean) })}
                 placeholder="-y @modelcontextprotocol/server-filesystem ~"
-                className="rounded border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-xs text-white focus:border-cyan-300/40 focus:outline-none"
+                className="rounded border border-slate-400/15 bg-black/40 px-1.5 py-0.5 text-[12px] text-white focus:border-cyan-300/40 focus:outline-none"
               />
               <span className="text-slate-500">env</span>
               <EnvEditor value={s.env ?? {}} onChange={(env) => update(s.id, { env })} />
@@ -188,7 +188,7 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
           <div className="w-full max-w-lg rounded-2xl border border-slate-400/20 bg-black/95 p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center gap-2">
               <Download size={14} className="text-violet-300" />
-              <div className="text-sm font-bold uppercase tracking-[0.2em] text-violet-200">Import MCP servers</div>
+              <div className="text-[13px] font-bold uppercase tracking-[0.2em] text-violet-200">Import MCP servers</div>
               <div className="flex-1" />
               <button onClick={() => setShowImport(false)} className="rounded p-1 text-slate-400 hover:text-white"><X size={12} /></button>
             </div>
@@ -219,15 +219,15 @@ export default function McpPanel({ workspaceId, workspaceName }: Props) {
                 )
               })}
               {discovered.length === 0 && (
-                <div className="rounded-md border border-slate-400/15 p-3 text-xs text-slate-400">No MCP servers found in your existing configs.</div>
+                <div className="rounded-md border border-slate-400/15 p-3 text-[12px] text-slate-400">No MCP servers found in your existing configs.</div>
               )}
             </div>
             <div className="mt-3 flex justify-end gap-2">
-              <button onClick={() => setShowImport(false)} className="rounded-md border border-slate-400/20 px-3 py-1.5 text-xs text-slate-300 hover:text-white">Cancel</button>
+              <button onClick={() => setShowImport(false)} className="rounded-md border border-slate-400/20 px-3 py-1.5 text-[12px] text-slate-300 hover:text-white">Cancel</button>
               <button
                 onClick={importPicked}
                 disabled={importing || Object.values(picked).every((v) => !v)}
-                className="flex items-center gap-1 rounded-md border border-violet-300/30 bg-violet-300/10 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-300/20 disabled:opacity-40"
+                className="flex items-center gap-1 rounded-md border border-violet-300/30 bg-violet-300/10 px-3 py-1.5 text-[12px] text-violet-100 hover:bg-violet-300/20 disabled:opacity-40"
               >
                 {importing ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                 Import {Object.values(picked).filter(Boolean).length} server{Object.values(picked).filter(Boolean).length === 1 ? '' : 's'}

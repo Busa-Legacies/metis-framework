@@ -2,7 +2,7 @@
 name: gap-analysis
 slug: gap-analysis
 version: 1.0.0
-description: Read goals + task board, identify uncovered work, present a scored gap table, and mint tasks on approval (origin=collab).
+description: "Read goals + task board, identify uncovered work, present a scored gap table, and mint tasks on approval (origin=collab)."
 ---
 
 ## Steps

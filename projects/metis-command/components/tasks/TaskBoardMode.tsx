@@ -215,7 +215,7 @@ function TaskDetail({ task, onClose, onStart, onTransition, onComplete, onUnbloc
       className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[#0a0d14] shadow-2xl">
+      <div className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-[var(--line)] bg-[var(--panel)] shadow-2xl">
         {/* Header: close top-left (HIG detail-view pattern), title prominent.
             The primary Start action lives in a bottom bar, far from dismiss —
             destructive/primary adjacency is a basic-design-principles no-go. */}
@@ -236,7 +236,7 @@ function TaskDetail({ task, onClose, onStart, onTransition, onComplete, onUnbloc
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-xs">
+        <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-[12px]">
           <DetailField label="Summary" value={task.summary} />
           <DetailField label="Why" value={task.why} />
           <DetailField label="How" value={task.how} />
@@ -321,7 +321,7 @@ function TaskDetail({ task, onClose, onStart, onTransition, onComplete, onUnbloc
           <button
             onClick={() => onStart(task, plan ?? undefined)}
             disabled={startDisabled}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-300/10 text-[15px] md:text-sm font-bold text-emerald-100 hover:bg-emerald-300/20 active:bg-emerald-300/25 disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-300/10 text-[15px] md:text-[13px] font-bold text-emerald-100 hover:bg-emerald-300/20 active:bg-emerald-300/25 disabled:opacity-50"
             title={plan?.workbenchSpawn.enabled === false ? 'routing says this task needs a blocker or decision resolved first' : 'claim or resume, move to in-progress, and spin the routed agent in Agents'}
           >
             <Play size={20} /> {busy ? 'starting...' : startLabel}
@@ -726,9 +726,9 @@ export default function TaskBoardMode() {
   return (
     <div data-testid="tasks-mode" className="flex h-full w-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-sm md:text-xs">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[13px] md:text-[12px]">
         <LayoutList size={14} className="shrink-0 text-cyan-300" />
-        <span className="text-base md:text-sm font-black uppercase tracking-[0.18em] text-cyan-100">Tasks</span>
+        <span className="text-[15px] md:text-[13px] font-black uppercase tracking-[0.18em] text-cyan-100">Tasks</span>
         <div className="flex-1" />
         {res && (
           <span className="hidden text-[11px] md:text-[10px] text-[var(--muted)] sm:inline">
@@ -737,7 +737,7 @@ export default function TaskBoardMode() {
         )}
         <button
           onClick={() => setIncludeDone((v) => !v)}
-          className="rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-sm md:text-[11px] text-slate-400 hover:text-slate-200"
+          className="rounded-lg border border-slate-400/20 bg-black/30 px-2.5 py-1.5 text-[13px] md:text-[11px] text-slate-400 hover:text-slate-200"
         >
           {includeDone ? 'hide done' : 'show done'}
         </button>
@@ -751,7 +751,7 @@ export default function TaskBoardMode() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="search tasks…"
-          className="w-44 shrink-0 rounded-lg border border-[var(--line)] bg-black/40 px-3 py-1.5 font-mono text-sm md:text-xs text-slate-200 placeholder-[var(--muted)] focus:border-cyan-300/40 focus:outline-none"
+          className="w-44 shrink-0 rounded-lg border border-[var(--line)] bg-black/40 px-3 py-1.5 font-mono text-[13px] md:text-[12px] text-slate-200 placeholder-[var(--muted)] focus:border-cyan-300/40 focus:outline-none"
         />
         {raw && STATE_ORDER.filter((s) => (raw.stateCounts[s] ?? 0) > 0).map((s) => {
           const active = stateFilter === s
@@ -810,7 +810,7 @@ export default function TaskBoardMode() {
       {data && (
         <div className="flex-1 overflow-y-auto p-3">
           {actionMsg && (
-            <div className="mb-3 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-sm md:text-xs text-cyan-100">
+            <div className="mb-3 rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-[13px] md:text-[12px] text-cyan-100">
               {actionMsg}
             </div>
           )}

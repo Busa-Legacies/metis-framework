@@ -168,7 +168,7 @@ function ControlCenterInner() {
               data-testid={`mode-nav-${m.id}`}
               ref={(el) => { if (active && el) el.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }) }}
               onClick={() => select(m.id)}
-              className={`flex min-w-[80px] flex-1 flex-col items-center gap-1 px-2 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+              className={`flex min-w-[80px] flex-1 flex-col items-center gap-1 px-2 pb-1 pt-2.5 text-[12px] font-bold uppercase tracking-wide transition-colors ${
                 active ? 'text-cyan-200' : 'text-slate-400 active:text-slate-200'
               }`}
             >
@@ -206,10 +206,10 @@ function ModePlaceholder({ mode }: { mode: ControlCenterMode }) {
       <div className="panel flex h-16 w-16 items-center justify-center rounded-2xl">
         <Icon size={28} className="text-cyan-200" />
       </div>
-      <div className="text-base font-black uppercase tracking-[0.18em] text-cyan-100">{mode.label}</div>
-      <div className="max-w-md text-sm text-slate-300">{mode.description}</div>
+      <div className="text-[15px] font-black uppercase tracking-[0.18em] text-cyan-100">{mode.label}</div>
+      <div className="max-w-md text-[13px] text-slate-300">{mode.description}</div>
       <span className="badge">Planned · {mode.milestone}</span>
-      <div className="max-w-sm text-xs text-[var(--muted)]">
+      <div className="max-w-sm text-[12px] text-[var(--muted)]">
         This mode lands in a later convergence milestone. Until then, use{' '}
         <span className="text-cyan-200">Agents</span> for command and{' '}
         <span className="text-cyan-200">Overview</span> for the legacy dashboard.

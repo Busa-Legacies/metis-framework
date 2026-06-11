@@ -33,7 +33,7 @@ export function MetisLoader({
   return (
     <div className={`flex flex-col items-center justify-center gap-3 text-[var(--muted)] ${className}`}>
       <MetisMark size={size} animated />
-      {label && <span className="text-xs tracking-wide animate-pulse">{label}</span>}
+      {label && <span className="text-[12px] tracking-wide animate-pulse">{label}</span>}
     </div>
   )
 }

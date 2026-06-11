@@ -26,7 +26,7 @@ export function ChatMessage({ m }: { m: UiMessage }) {
   const isUser = m.role === 'user'
   return (
     <div
-      className={`rounded-xl border px-3 py-2 text-sm leading-5 ${
+      className={`rounded-xl border px-3 py-2 text-[13px] leading-5 ${
         isUser
           ? 'border-cyan-300/30 bg-cyan-300/8 text-cyan-50'
           : 'border-slate-400/15 bg-black/30 text-slate-100'

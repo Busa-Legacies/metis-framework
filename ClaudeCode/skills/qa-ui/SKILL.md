@@ -2,7 +2,7 @@
 name: QA UI
 slug: qa-ui
 version: 1.0.0
-description: Automated frontend QA — score a UI against docs/design-guidelines.md and report design-system violations. Tiered: static scan always runs; headless render escalates only when runtime rules are in question. Target (path or URL, optional): $ARGUMENTS
+description: "Automated frontend QA — score a UI against docs/design-guidelines.md and report design-system violations. Tiered: static scan always runs; headless render escalates only when runtime rules are in question. Target (path or URL, optional): $ARGUMENTS"
 ---
 
 TRIGGER when: you've built or changed any HTML/CSS/dashboard UI, before shipping a frontend change, or reviewing a page against the design system.

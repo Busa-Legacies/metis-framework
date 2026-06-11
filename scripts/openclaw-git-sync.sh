@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Auto-sync Ant-openclaw-framework bidirectionally (commit+push local, pull remote).
+# Auto-sync Metis OS bidirectionally (commit+push local, pull remote).
 #
 # Safety contract:
 #   - never commit/push from a non-main branch
