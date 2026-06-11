@@ -23,7 +23,9 @@ jobs:
         run: |
           python -m compileall -q scripts config build || exit 1
       - name: Core self-tests
-        run: python scripts/test-self-heal.py
+        run: |
+          python scripts/test-self-heal.py
+          python scripts/test-governance-core.py
       - name: Parameterization guard (no personal values in core)
         run: |
           set -e

@@ -6,6 +6,11 @@ names, script CLIs) may still shift between minor versions.
 
 ## [Unreleased]
 ### Added
+- `scripts/test-governance-core.py` — dependency-free test suite for the two
+  safety-critical cores: the forward-only task state DAG + done-gate
+  (`update-tier1-state.py`) and Kleppmann fencing tokens + lease activeness
+  (`agent-work.py`). ~40 assertions, hermetic (no git/gh/live state), wired into
+  `core-ci.yml` next to `test-self-heal.py`. Mutation-checked non-vacuous.
 - `docs/QUICKSTART.md` — fresh-consumer setup walkthrough (subtree vendor →
   `METIS_HOME` → fill `config/infrastructure.json` field-by-field → smoke-test →
   session lifecycle → sync/troubleshooting). Folds in the config fill-in guide;

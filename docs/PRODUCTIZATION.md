@@ -51,6 +51,9 @@ Keep this invariant: **no framework-core file may import or reference `navore/`.
 - [ ] navore/ cut out of the product line (Phase 2)
 - [x] Quickstart / install docs for a fresh consumer (`docs/QUICKSTART.md`)
 - [x] Fill-in walkthrough for `config/infrastructure.json` (folded into QUICKSTART §3)
-- [ ] Test coverage on the governance core (reconcile, agent-work, state DAG)
+- [x] Test coverage on the governance core — `scripts/test-governance-core.py`
+      (forward-only state DAG, done-gate, task-shape/board enums, Kleppmann
+      fencing tokens, lease activeness); wired into `core-ci.yml`. reconcile.py
+      invariant coverage still open (broader fixture surface).
 - [ ] Branch-protection enforcement (needs GitHub Team for private repos)
 - [ ] Secrets/IP review by a human before first external grant
