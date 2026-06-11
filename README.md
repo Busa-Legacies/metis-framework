@@ -27,6 +27,12 @@ It is consumed by downstream repos (e.g. an org's private operating repo) via
 | **Templates** | `docs/process/decisions/TEMPLATE.md`, `ClaudeCode/skills/plan/`, `docs/process/future-agent-scaffold-template.md` | Decision Records, plans, agent scaffolds. |
 | **Config seam** | `config/infrastructure.json` | The one file a consuming org fills in: machines, agents, model, domains, network. |
 
+## Getting started
+
+New consumer? Follow **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)** — vendor the
+core, declare your topology in one config file, smoke-test, and run the session
+lifecycle in ~15 minutes. The short version is below.
+
 ## Consuming metis-core via git subtree
 
 In your org's operating repo:

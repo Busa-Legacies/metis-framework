@@ -5,6 +5,12 @@ versions are semver. Pre-1.0: the public contract (config schema, skill/protocol
 names, script CLIs) may still shift between minor versions.
 
 ## [Unreleased]
+### Added
+- `docs/QUICKSTART.md` — fresh-consumer setup walkthrough (subtree vendor →
+  `METIS_HOME` → fill `config/infrastructure.json` field-by-field → smoke-test →
+  session lifecycle → sync/troubleshooting). Folds in the config fill-in guide;
+  linked from README. All documented commands verified runnable.
+
 ### Changed
 - LICENSE: replaced the proprietary placeholder with **FSL-1.1-Apache-2.0**
   (Functional Source License — source-available, blocks Competing Use, converts
