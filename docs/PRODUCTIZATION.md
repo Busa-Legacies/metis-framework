@@ -45,8 +45,9 @@ Keep this invariant: **no framework-core file may import or reference `navore/`.
 - [x] Clean-core CI guard (no leaked IPs/paths — `core-ci.yml`)
 - [x] Versioning + changelog (`VERSION`, `CHANGELOG.md`)
 - [x] CODEOWNERS review gate (advisory; enforce when org upgrades to GitHub Team)
-- [x] Interim LICENSE notice
-- [ ] Licensing decision (commercial EULA / source-available / OSI) — replaces LICENSE
+- [x] Licensing decision — **FSL-1.1-Apache-2.0** (source-available; blocks
+      Competing Use, auto-converts to Apache-2.0 two years after each version
+      ships). Least-regret: preserves the commercial window now, opens later.
 - [ ] navore/ cut out of the product line (Phase 2)
 - [ ] Quickstart / install docs for a fresh consumer
 - [ ] Fill-in walkthrough for `config/infrastructure.json`

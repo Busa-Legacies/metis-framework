@@ -5,6 +5,11 @@ versions are semver. Pre-1.0: the public contract (config schema, skill/protocol
 names, script CLIs) may still shift between minor versions.
 
 ## [Unreleased]
+### Changed
+- LICENSE: replaced the proprietary placeholder with **FSL-1.1-Apache-2.0**
+  (Functional Source License — source-available, blocks Competing Use, converts
+  to Apache-2.0 two years after each version ships). Productization licensing
+  decision; see `docs/PRODUCTIZATION.md`.
 
 ## [0.1.0] — 2026-06-11
 ### Added
