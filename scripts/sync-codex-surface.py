@@ -29,6 +29,8 @@ CLAUDE_COMMANDS = ROOT / "ClaudeCode" / "commands"
 CODEX_PROMPTS = ROOT / ".codex" / "prompts"
 CODEX_SKILLS = ROOT / ".codex" / "skills"
 AGENTS_SKILLS = ROOT / ".agents" / "skills"
+CODEX_HOME = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+USER_CODEX_SKILLS = CODEX_HOME / "skills"
 MARKER = "<!-- GENERATED: scripts/sync-codex-surface.py -->"
 
 
@@ -41,7 +43,10 @@ class Workflow:
 
 
 def rel(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def read_description(path: Path) -> str:
@@ -184,6 +189,62 @@ def ensure_legacy_skills_link(check: bool, actions: list[str], errors: list[str]
     ensure_symlink(CODEX_SKILLS, AGENTS_SKILLS, check, actions, errors)
 
 
+
+
+def ensure_user_skill_links(
+    expected: dict[str, Workflow], check: bool, actions: list[str], errors: list[str]
+) -> None:
+    """Expose repo skills in $CODEX_HOME/skills while preserving bundled .system skills.
+
+    Codex loads local skills from CODEX_HOME/skills. The curated/system skills also
+    live there under .system, so this cannot be a root symlink to .agents/skills; it
+    must be a real directory containing per-skill symlinks plus the existing .system
+    directory. This is the bridge that keeps ClaudeCode/skills discoverable by Codex
+    without hiding OpenAI's built-in skills.
+    """
+
+    skill_slugs = {slug for slug, workflow in expected.items() if workflow.source_kind == "skill"}
+
+    if USER_CODEX_SKILLS.is_symlink():
+        if check:
+            errors.append(f"{USER_CODEX_SKILLS} is a root symlink; expected a directory preserving .system")
+            return
+        old_target = os.readlink(USER_CODEX_SKILLS)
+        USER_CODEX_SKILLS.unlink()
+        USER_CODEX_SKILLS.mkdir(parents=True, exist_ok=True)
+        actions.append(f"UNLINK {USER_CODEX_SKILLS} root symlink -> {old_target}")
+    elif USER_CODEX_SKILLS.exists() and not USER_CODEX_SKILLS.is_dir():
+        if check:
+            errors.append(f"{USER_CODEX_SKILLS} exists but is not a directory")
+            return
+        backup = USER_CODEX_SKILLS.with_name(USER_CODEX_SKILLS.name + ".pre-codex-sync")
+        if backup.exists():
+            if backup.is_dir() and not backup.is_symlink():
+                shutil.rmtree(backup)
+            else:
+                backup.unlink()
+        USER_CODEX_SKILLS.rename(backup)
+        USER_CODEX_SKILLS.mkdir(parents=True, exist_ok=True)
+        actions.append(f"BACKUP {USER_CODEX_SKILLS} -> {backup}")
+
+    if check and not USER_CODEX_SKILLS.exists():
+        errors.append(f"{USER_CODEX_SKILLS} missing")
+        return
+    USER_CODEX_SKILLS.mkdir(parents=True, exist_ok=True)
+
+    for slug in sorted(skill_slugs):
+        ensure_symlink(USER_CODEX_SKILLS / slug, AGENTS_SKILLS / slug, check, actions, errors)
+
+    for child in sorted(USER_CODEX_SKILLS.iterdir()):
+        if child.name in skill_slugs or child.name == ".system":
+            continue
+        if child.is_symlink():
+            if check:
+                errors.append(f"{child} has no source skill")
+                continue
+            child.unlink()
+            actions.append(f"PRUNE {child}")
+
 def sync_prompts(expected: dict[str, Workflow], check: bool, force: bool, actions: list[str], errors: list[str]) -> None:
     CODEX_PROMPTS.mkdir(parents=True, exist_ok=True)
     for slug, workflow in expected.items():
@@ -221,6 +282,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true", help="report drift without writing")
     ap.add_argument("--force", action="store_true", help="regenerate hand-written prompt adapters too")
+    ap.add_argument("--skip-user-home", action="store_true", help="do not sync per-skill links into $CODEX_HOME/skills")
     args = ap.parse_args()
 
     expected = workflows()
@@ -229,6 +291,8 @@ def main() -> int:
 
     ensure_repo_skill_links(expected, args.check, actions, errors)
     ensure_legacy_skills_link(args.check, actions, errors)
+    if not args.skip_user_home:
+        ensure_user_skill_links(expected, args.check, actions, errors)
     sync_prompts(expected, args.check, args.force, actions, errors)
 
     if errors:

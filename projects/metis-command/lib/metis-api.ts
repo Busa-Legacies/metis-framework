@@ -103,8 +103,8 @@ export const metisApi = {
    * (decisions.json audit trail) AND advances the task (clears the gate, writes
    * nextAction) in one governed move. `question`/`options` enrich the record.
    */
-  taskDecide: (taskId: string, expectedRevision: number, response: string, question?: string, options?: string[]) =>
-    postGoverned('tasks/governed/decide', { taskId, expectedRevision, response, question, options }),
+  taskDecide: (taskId: string, expectedRevision: number, response: string, question?: string, options?: string[], chosenKey?: string) =>
+    postGoverned('tasks/governed/decide', { taskId, expectedRevision, response, question, options, chosenKey }),
   /** Reverse a just-logged decision (8s undo): restore the task + remove the record. */
   taskDecideUndo: (taskId: string, expectedRevision: number, decisionId: string | undefined, restorePoint: string, restoreAction: string) =>
     postGoverned('tasks/governed/decide-undo', { taskId, expectedRevision, decisionId, restorePoint, restoreAction }),

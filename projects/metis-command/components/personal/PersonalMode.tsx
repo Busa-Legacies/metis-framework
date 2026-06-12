@@ -1,6 +1,7 @@
 'use client'
 
-import { HeartPulse, Wallet, PiggyBank, TrendingUp, Dumbbell, Moon, Footprints, GitCommitHorizontal, CalendarDays, ListChecks } from 'lucide-react'
+import { useState } from 'react'
+import { HeartPulse, Wallet, PiggyBank, TrendingUp, Dumbbell, Moon, Footprints, GitCommitHorizontal, CalendarDays, ListChecks, X, ChevronRight } from 'lucide-react'
 import { ageLabel } from '@/lib/metis-api'
 import { useMetisAll } from '@/lib/use-metis-all'
 import { StatusCard, Meter, CardLoading, CardError } from '../overview/cards'
@@ -18,10 +19,21 @@ import { AnnotateTrigger } from '../annotate/AnnotateWidget'
 // metis-api-types until a card needs them — keeps the strict contract operational).
 interface Finance { net_worth?: number; assets?: number; liabilities?: number; updated_at?: string; error?: string | null }
 interface Budget { month?: string; income?: number; expense?: number; net_cashflow?: number; savings_rate?: number; daily_burn?: number; budget_remaining?: number; days_in_month?: number; day_elapsed?: number }
-interface Portfolio { total_value?: number; concentration?: { top_holding_pct?: number; top5_pct?: number; flagged?: unknown[] }; positions?: unknown[] }
+interface Position {
+  account?: string; symbol?: string; name?: string; asset_class?: string
+  quantity?: number; price?: number; value?: number
+  cost_basis?: number | null; gain?: number | null; gain_pct?: number | null
+  source?: string; weight_pct?: number
+}
+interface Portfolio {
+  total_value?: number
+  concentration?: { top_holding_pct?: number; top5_pct?: number; flagged?: { symbol?: string }[] }
+  positions?: Position[]
+  holdings_are_coarse?: boolean
+}
 interface Garmin { daily?: { steps?: number; active_minutes?: number; calories_active?: number; body_battery_high?: number; stress_avg?: number; floors?: number }; sleep?: { sleep_score?: number }; last_sync?: string; last_error?: string | null }
 interface Fitbod { totals?: { workouts?: number; sets?: number; exercises?: number }; last_error?: string | null }
-interface GithubRepo { repo: string; commits?: { sha?: string; message?: string; author?: string; date?: string }[] }
+interface GithubRepo { repo: string; repo_url?: string; commits?: { sha?: string; message?: string; author?: string; date?: string; url?: string }[] }
 interface PersonalFeeds {
   reminders?: { items?: { list?: string; title?: string }[]; count?: number; age_min?: number }
   calendar?: { events?: { start_fmt?: string; summary?: string }[] }
@@ -67,6 +79,7 @@ export default function PersonalMode() {
 
   const flagged = pf?.concentration?.flagged?.length ?? 0
   const monthProgress = bud?.days_in_month ? Math.round(((bud.day_elapsed ?? 0) / bud.days_in_month) * 100) : 0
+  const [pfOpen, setPfOpen] = useState(false)
 
   async function linkPlaid() {
     try {
@@ -180,8 +193,20 @@ export default function PersonalMode() {
             <span className="text-[17px] font-black text-slate-100">{usd(pf?.total_value)}</span>
             {typeof pf?.concentration?.top_holding_pct === 'number' && <Meter label="Top holding" pct={Math.round(pf.concentration.top_holding_pct)} />}
             <div className="flex flex-col gap-0.5 text-[13px] md:text-[11px] text-[var(--muted)]">
-              <span>positions <span className="text-slate-200">{pf?.positions?.length ?? 0}</span> · top-5 <span className="text-slate-200">{asPct(pf?.concentration?.top5_pct)}</span></span>
-              <span>cap breaches <span className={flagged ? 'text-amber-200' : 'text-emerald-200'}>{flagged}</span></span>
+              {(pf?.positions?.length ?? 0) > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setPfOpen(true)}
+                  className="flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left hover:bg-white/5"
+                  title="view all positions"
+                >
+                  <span>positions <span className="text-slate-200">{pf?.positions?.length ?? 0}</span> · top-5 <span className="text-slate-200">{asPct(pf?.concentration?.top5_pct)}</span></span>
+                  <ChevronRight size={12} className="ml-auto shrink-0 text-[var(--muted)]" />
+                </button>
+              ) : (
+                <span>positions <span className="text-slate-200">0</span> · top-5 <span className="text-slate-200">{asPct(pf?.concentration?.top5_pct)}</span></span>
+              )}
+              <span className="px-1">cap breaches <span className={flagged ? 'text-amber-200' : 'text-emerald-200'}>{flagged}</span></span>
             </div>
           </StatusCard>
 
@@ -213,10 +238,18 @@ export default function PersonalMode() {
               <div className="flex flex-col gap-1 text-[13px] md:text-[11px] text-[var(--muted)]">
                 {gh.slice(0, 4).map((r) => (
                   <div key={r.repo} className="flex flex-col">
-                    <span className="font-bold text-slate-200">{r.repo}</span>
+                    {r.repo_url ? (
+                      <a href={r.repo_url} target="_blank" rel="noopener noreferrer" className="font-bold text-slate-200 hover:text-cyan-200" title="open repo on GitHub">{r.repo}</a>
+                    ) : (
+                      <span className="font-bold text-slate-200">{r.repo}</span>
+                    )}
                     {r.commits?.[0] && (
                       <span className="truncate text-[13px] md:text-[10px]">
-                        <span className="text-cyan-200">{r.commits[0].sha}</span> {r.commits[0].message} · {r.commits[0].author}
+                        {r.commits[0].url ? (
+                          <a href={r.commits[0].url} target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline" title="open commit on GitHub">{r.commits[0].sha}</a>
+                        ) : (
+                          <span className="text-cyan-200">{r.commits[0].sha}</span>
+                        )}{' '}{r.commits[0].message} · {r.commits[0].author}
                       </span>
                     )}
                   </div>
@@ -250,14 +283,81 @@ export default function PersonalMode() {
                 <span key={`r${i}`} className="truncate">• {r.title}</span>
               ))}
               {(feeds?.notion?.items ?? []).slice(0, 2).map((t, i) => (
-                <span key={`n${i}`} className="truncate">
-                  ◆ {t.title} {t.status ? <span className="text-[13px] md:text-[10px] text-amber-200/80">[{t.status}]</span> : null}
-                </span>
+                t.url ? (
+                  <a key={`n${i}`} href={t.url} target="_blank" rel="noopener noreferrer" className="truncate hover:text-cyan-200" title="open in Notion">
+                    ◆ {t.title} {t.status ? <span className="text-[13px] md:text-[10px] text-amber-200/80">[{t.status}]</span> : null}
+                  </a>
+                ) : (
+                  <span key={`n${i}`} className="truncate">
+                    ◆ {t.title} {t.status ? <span className="text-[13px] md:text-[10px] text-amber-200/80">[{t.status}]</span> : null}
+                  </span>
+                )
               ))}
             </div>
           </StatusCard>
         </div>
       )}
+
+      {pfOpen && pf && (
+        <PortfolioSheet pf={pf} onClose={() => setPfOpen(false)} />
+      )}
+    </div>
+  )
+}
+
+// ── Portfolio positions slide-over ────────────────────────────────────────────
+// Full per-holding breakdown behind the Portfolio card's positions line. Read-only;
+// values render straight from the local data plane (same public-launch-safe contract
+// as the rest of this file — no money is hardcoded here).
+function PortfolioSheet({ pf, onClose }: { pf: Portfolio; onClose: () => void }) {
+  const flaggedSyms = new Set((pf.concentration?.flagged ?? []).map((f) => f.symbol))
+  const positions = [...(pf.positions ?? [])].sort((a, b) => (b.weight_pct ?? 0) - (a.weight_pct ?? 0))
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Portfolio positions">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative flex h-full w-full max-w-md flex-col border-l border-[var(--line)] bg-[var(--panel)] shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-[var(--line)] bg-black/30 px-4 py-3">
+          <TrendingUp size={14} className="text-cyan-300" />
+          <span className="text-[15px] md:text-[13px] font-black uppercase tracking-[0.16em] text-cyan-100">Positions</span>
+          <span className="text-[13px] md:text-[11px] text-[var(--muted)]">{positions.length} · {usd(pf.total_value)}</span>
+          <button type="button" onClick={onClose} className="ml-auto rounded-md p-1 text-[var(--muted)] hover:bg-white/5 hover:text-slate-100" aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+        {pf.holdings_are_coarse && (
+          <div className="border-b border-[var(--line)] bg-amber-300/5 px-4 py-2 text-[12px] md:text-[10px] text-amber-200/90">
+            Holdings are account-level (coarse) — link Plaid for per-security detail.
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto p-3">
+          <ul className="flex flex-col gap-1.5">
+            {positions.map((p, i) => {
+              const flag = flaggedSyms.has(p.symbol)
+              return (
+                <li key={`${p.symbol ?? 'pos'}-${i}`} className="rounded-lg border border-[var(--line)] bg-black/20 px-3 py-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="truncate font-semibold text-slate-100">{p.name || p.symbol || 'position'}</span>
+                    {flag && <span className="shrink-0 rounded-full bg-amber-300/15 px-1.5 py-0 text-[9px] font-bold text-amber-200">cap breach</span>}
+                    <span className="ml-auto shrink-0 font-mono text-slate-200">{usd(p.value)}</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2 text-[12px] md:text-[10px] text-[var(--muted)]">
+                    <span className="truncate">{p.account || '—'}{p.asset_class && p.asset_class !== 'Unclassified' ? ` · ${p.asset_class}` : ''}</span>
+                    <span className="ml-auto shrink-0 font-mono text-cyan-200/80">{asPct(p.weight_pct)}</span>
+                  </div>
+                  {/* weight bar */}
+                  <div className="mt-1 h-1 rounded-full bg-white/5">
+                    <div
+                      className={`h-full rounded-full ${flag ? 'bg-amber-300/70' : 'bg-cyan-300/60'}`}
+                      style={{ width: `${Math.min(100, Math.max(0, p.weight_pct ?? 0))}%` }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }

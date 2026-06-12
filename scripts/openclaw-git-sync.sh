@@ -339,15 +339,34 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
         exit 1
       fi
     else
-      log "pull failed — unresolved conflict (no rerere/driver resolution); restoring clean tree, manual resolve may be needed"
-      if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
-        git merge --abort >> "$LOG" 2>&1 || true
+      # --- Tier 3: AI author-intent resolution BEFORE the fail-soft abort --------
+      # Deterministic layers (merge drivers + rerere) couldn't resolve this; unmerged
+      # CODE paths remain. ai-merge-resolver.py resolves honoring BOTH sides' intent
+      # and stages ONLY a result that clears every gate (no-markers + blast-radius +
+      # independent intent-review + compile/tests). It stages nothing otherwise, so a
+      # decline/failure is byte-identical to the old abort below — never a corrupt
+      # push. Kill-switch: METIS_AI_MERGE=0. Contract: docs/process/sync-merge-boundary.md
+      AI_SUMMARY="$LOCK_DIR/ai-merge-summary.txt"
+      if [ "${METIS_AI_MERGE:-1}" = "1" ] \
+         && python3 "$REPO/scripts/ai-merge-resolver.py" --repo "$REPO" --summary-file "$AI_SUMMARY" >> "$LOG" 2>&1 \
+         && git commit --no-edit >> "$LOG" 2>&1; then
+        AI_SHA=$(git rev-parse --short HEAD)
+        AI_MSG=$(cat "$AI_SUMMARY" 2>/dev/null || echo "auto-resolved code conflict")
+        log "Tier-3 AI-resolved code conflict — merge completed ($AI_SHA)"
+        alert_discord "🧩 git-sync auto-resolved a CODE conflict on $(hostname -s): $AI_MSG — pushed as $AI_SHA. Undo: git revert -m 1 $AI_SHA"
+        rm -f "$AI_SUMMARY"
+        # fall through to T-SYNC-11 deletion guard + stash-restore + push below
+      else
+        log "pull failed — unresolved conflict; Tier-3 resolver declined/failed/disabled — restoring clean tree, manual resolve may be needed"
+        if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+          git merge --abort >> "$LOG" 2>&1 || true
+        fi
+        if [ -n "$STASH_REF" ]; then
+          git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"
+        fi
+        rm -f "$PULL_OUT" "$AI_SUMMARY"
+        exit 1
       fi
-      if [ -n "$STASH_REF" ]; then
-        git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"
-      fi
-      rm -f "$PULL_OUT"
-      exit 1
     fi
   fi
 fi

@@ -18,7 +18,9 @@ FORGE = os.path.dirname(HERE)
 REPO = os.path.dirname(os.path.dirname(FORGE))
 
 LIB = os.path.join(FORGE, "lib", "x1c.scad")
+SEGMENT = os.path.join(FORGE, "lib", "segment.scad")
 EXAMPLE = os.path.join(FORGE, "models", "cable-clip", "cable-clip.scad")
+SPLIT_MODEL = os.path.join(FORGE, "models", "garden-lantern", "roof-pieces.scad")
 RENDER = os.path.join(REPO, "scripts", "forge3d-render.sh")
 BBOX = os.path.join(HERE, "stl-bbox.py")
 
@@ -51,6 +53,17 @@ def main():
     for p in (RENDER, BBOX):
         ok &= check(f"{os.path.basename(p)} is executable", os.access(p, os.X_OK))
 
+    # 3b. Segmentation engine (#249): the split library + a model that uses the
+    #     piece convention, and the render script's split mode that drives them.
+    seg = open(SEGMENT).read()
+    for token in ("module radial_piece", "module seam_dovetail_tongue", "module rod_bore"):
+        ok &= check(f"segment.scad defines {token!r}", token in seg)
+    split = open(SPLIT_MODEL).read()
+    ok &= check("split model exposes the piece convention", "piece" in split and "radial_piece" in split)
+    render_src = open(RENDER).read()
+    for token in ("--pieces", "--piece-var", "fit-report", "assembled preview"):
+        ok &= check(f"render script split mode handles {token!r}", token in render_src)
+
     # 4. Live loop when OpenSCAD is available; skip cleanly otherwise.
     if shutil.which("openscad"):
         with tempfile.TemporaryDirectory() as td:
@@ -75,6 +88,32 @@ def main():
                 fits = all(dims[i] <= bboxmod.BED[i] for i in range(3))
                 ok &= check("STL parses + fits the X1C bed", fits,
                             f"{dims[0]:.0f}x{dims[1]:.0f}x{dims[2]:.0f} mm")
+
+            # Split mode end-to-end: the roof splits into 3 pieces. Each piece
+            # must export an STL, fit the bed, and land in the fit report.
+            lant = os.path.join(td, "models", "garden-lantern")
+            os.makedirs(lant)
+            for f in os.listdir(os.path.dirname(SPLIT_MODEL)):
+                if f.endswith(".scad"):
+                    shutil.copy(os.path.join(os.path.dirname(SPLIT_MODEL), f), lant)
+            rs = subprocess.run(
+                ["bash", RENDER, os.path.join(lant, "roof-pieces.scad"), "--pieces", "3"],
+                capture_output=True, text=True,
+            )
+            piece_stls = [os.path.join(lant, "stl", f"roof-pieces-piece{i}.stl") for i in range(3)]
+            report = os.path.join(lant, "roof-pieces-fit-report.txt")
+            ok &= check("split mode exported 3 piece STLs", all(os.path.exists(p) for p in piece_stls))
+            ok &= check("split mode wrote a fit report", os.path.exists(report))
+            if os.path.exists(report):
+                rep = open(report).read()
+                ok &= check("fit report has a RESULT verdict", "RESULT:" in rep)
+            if all(os.path.exists(p) for p in piece_stls):
+                allfit = all(
+                    all(d <= b for d, b in zip(bboxmod.bbox(p), bboxmod.BED))
+                    for p in piece_stls
+                )
+                ok &= check("every split piece fits the X1C bed", allfit)
+                ok &= check("split mode exits 0 when all pieces fit", rs.returncode == 0)
     else:
         print("  [SKIP] openscad not installed — structural checks only")
 

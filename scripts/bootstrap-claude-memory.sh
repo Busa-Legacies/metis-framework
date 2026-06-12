@@ -173,20 +173,21 @@ fi
 #    (incl. post-merge) so it self-heals after a pull strips .git/hooks.
 PRE_COMMIT="$GIT_HOOKS_DIR/pre-commit"
 if [[ -d "$GIT_HOOKS_DIR" ]]; then
-    if [[ ! -f "$PRE_COMMIT" ]] || ! grep -q 'pre-commit-conflict-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-path-replica-guard' "$PRE_COMMIT" 2>/dev/null; then
+    if [[ ! -f "$PRE_COMMIT" ]] || ! grep -q 'pre-commit-conflict-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-path-replica-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-bash32-portability-guard' "$PRE_COMMIT" 2>/dev/null; then
         cat > "$PRE_COMMIT" << 'HOOKEOF'
 #!/usr/bin/env bash
-# Auto-installed by bootstrap-claude-memory.sh (#058, #076)
+# Auto-installed by bootstrap-claude-memory.sh (#058, #076, #264)
 # Runs all pre-commit guard scripts; any non-zero exit blocks the commit.
 ROOT="$(git rev-parse --show-toplevel)"
 
 bash "$ROOT/scripts/git-hooks/pre-commit-conflict-guard.sh" || exit 1
 bash "$ROOT/scripts/git-hooks/pre-commit-path-replica-guard.sh" || exit 1
+bash "$ROOT/scripts/git-hooks/pre-commit-bash32-portability-guard.sh" || exit 1
 
 exit 0
 HOOKEOF
         chmod +x "$PRE_COMMIT"
-        echo "[bootstrap] Installed git pre-commit guards (conflict-marker + path-replica): $PRE_COMMIT"
+        echo "[bootstrap] Installed git pre-commit guards (conflict-marker + path-replica + bash32-portability): $PRE_COMMIT"
     else
         echo "[bootstrap] Git pre-commit guards already present."
     fi

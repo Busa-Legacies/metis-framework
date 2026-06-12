@@ -41,6 +41,7 @@ link dispatch        dispatch
 link jlane           jlane          # deprecated shim -> dispatch (PLAN §8)
 link lane-health     lane-health
 link lane-debug      lane-debug
+link lane.sh         lane           # terminal GOAL lanes (hub+g1..g6) — NOT Ollama lanes
 link session-pivot.sh session-pivot
 link task-verify.sh   task-verify
 link task-ready.sh    task-ready

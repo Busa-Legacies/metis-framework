@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutList, AlertTriangle, X, ChevronRight, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Play, Unlock, Ban, Pause, CheckCircle2, Link2, Link2Off } from 'lucide-react'
+import { LayoutList, AlertTriangle, X, ChevronRight, ChevronDown, ChevronUp, ArrowDown, ArrowUp, Play, Unlock, Ban, Pause, CheckCircle2, Link2, Link2Off, Target } from 'lucide-react'
 import { metisApi, ageLabel, type MetisResult } from '@/lib/metis-api'
 import type { MetisGoverned, MetisGoverndProject, MetisGoverndTask, MetisTaskRoutePlan } from '@/lib/metis-api-types'
 import { CardLoading, CardError } from '../overview/cards'
 import { ptyApi } from '@/lib/pty-client'
 import type { AgentKind, AgentRole } from '@/lib/types'
 import { useControlCenterNav } from '@/lib/control-center-nav'
+import { useMetisAll } from '@/lib/use-metis-all'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
 import { STATE_BG, stateDotCls, stateTextCls } from '@/lib/task-state'
 
@@ -382,7 +383,14 @@ function ProgressBar({ progress }: { progress: number }) {
 
 // ── Filter logic ──────────────────────────────────────────────────────────────
 
-function applyFilters(data: MetisGoverned, query: string, stateFilter: string | null, sortBy: string): MetisGoverned {
+function applyFilters(
+  data: MetisGoverned,
+  query: string,
+  stateFilter: string | null,
+  sortBy: string,
+  goalFilter: string | null,
+  goalsByTask: Map<string, string[]>,
+): MetisGoverned {
   const q = query.trim().toLowerCase()
   const PRIO_ORDER: Record<string, number> = { P1: 0, P2: 1, P3: 2 }
 
@@ -390,6 +398,9 @@ function applyFilters(data: MetisGoverned, query: string, stateFilter: string | 
     .map((g) => {
       let tasks = g.tasks.filter((t) => {
         if (stateFilter && t.state !== stateFilter) return false
+        // Goal membership lives on the priorities feed (MetisPriorityItem.goals),
+        // not the governed task — map it in via taskId.
+        if (goalFilter && !(goalsByTask.get(t.taskId)?.includes(goalFilter))) return false
         if (q && !`${t.taskId} ${t.title ?? ''} ${t.summary ?? ''}`.toLowerCase().includes(q)) return false
         return true
       })
@@ -462,12 +473,23 @@ function ProjectGroup({ project, collapsed, onToggle, onMove, canMoveUp, canMove
 
 export default function TaskBoardMode() {
   const nav = useControlCenterNav()
+  // Priorities carry the goal→task membership the governed task lacks; we read
+  // the shared /api/all to map taskId → goals for the goal-filter deep-link.
+  const { data: allData } = useMetisAll()
+  const goalsByTask = useMemo(() => {
+    const p = allData?.priorities
+    const rows = [...(p?.next ?? []), ...(p?.blocked ?? []), ...(p?.orphans ?? []), ...Object.values(p?.by_system ?? {}).flat()]
+    const m = new Map<string, string[]>()
+    for (const row of rows) if (row.goals?.length) m.set(row.taskId, row.goals)
+    return m
+  }, [allData?.priorities])
   const [res, setRes] = useState<MetisResult<MetisGoverned> | null>(null)
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => Date.now())
   const [includeDone, setIncludeDone] = useState(false)
   const [query, setQuery] = useState('')
   const [stateFilter, setStateFilter] = useState<string | null>(null)
+  const [goalFilter, setGoalFilter] = useState<{ id: string; label: string } | null>(null)
   const [sortBy, setSortBy] = useState('default')
   const [selected, setSelected] = useState<MetisGoverndTask | null>(null)
   const [routePlan, setRoutePlan] = useState<MetisResult<MetisTaskRoutePlan> | null>(null)
@@ -529,9 +551,25 @@ export default function TaskBoardMode() {
     return () => { alive = false }
   }, [selected?.taskId])
 
+  // Deep-link in from a goal card (WorkGraph) → pre-filter the board to that goal.
+  // A navigation that carries no goalId (e.g. Overview → Tasks) clears the filter
+  // so a prior goal scope never leaks across an unrelated jump.
+  useEffect(() => {
+    if (nav.params?.goalId) setGoalFilter({ id: nav.params.goalId, label: nav.params.goalLabel ?? nav.params.goalId })
+    else setGoalFilter(null)
+  }, [nav.params?.goalId, nav.params?.goalLabel])
+
+  // Deep-link to a single task (Overview work rows) → open its detail once loaded.
+  useEffect(() => {
+    const tid = nav.params?.taskId
+    if (!tid || !res?.ok) return
+    const found = res.data.projects.flatMap((p) => p.tasks).find((t) => t.taskId === tid)
+    if (found) setSelected(found)
+  }, [nav.params?.taskId, res])
+
   const raw = res?.ok ? res.data : null
-  const data = raw ? applyFilters(raw, query, stateFilter, sortBy) : null
-  const hasFilter = !!query || !!stateFilter
+  const data = raw ? applyFilters(raw, query, stateFilter, sortBy, goalFilter?.id ?? null, goalsByTask) : null
+  const hasFilter = !!query || !!stateFilter || !!goalFilter
   const orderedProjects = useMemo(() => {
     const projects = data?.projects ?? []
     if (!projects.length) return []
@@ -796,13 +834,31 @@ export default function TaskBoardMode() {
         </select>
         {hasFilter && (
           <button
-            onClick={() => { setQuery(''); setStateFilter(null); setSortBy('default') }}
+            onClick={() => { setQuery(''); setStateFilter(null); setSortBy('default'); setGoalFilter(null) }}
             className="rounded-lg border border-rose-400/30 bg-transparent px-2.5 py-1.5 text-[12px] md:text-[10px] text-rose-300 hover:border-rose-400/60"
           >
             ✕ clear
           </button>
         )}
       </div>
+
+      {/* Goal-filter banner — set when you drill in from a goal card in the Work
+          Map. Makes the active scope obvious and gives a one-tap way out. */}
+      {goalFilter && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-2">
+          <Target size={13} className="shrink-0 text-cyan-300" />
+          <span className="text-[12px] md:text-[11px] text-[var(--muted)]">Goal</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] md:text-[12px] font-semibold text-cyan-100">{goalFilter.label}</span>
+          <span className="shrink-0 text-[12px] md:text-[11px] text-[var(--muted)]">{data?.projects.reduce((n, p) => n + p.tasks.length, 0) ?? 0} tasks</span>
+          <button
+            onClick={() => setGoalFilter(null)}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-300/30 bg-black/20 px-2 py-1 text-[12px] md:text-[11px] text-cyan-100 hover:bg-cyan-300/10"
+            title="clear goal filter"
+          >
+            <X size={13} /> all tasks
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       {res && !res.ok && <CardError message={res.error} onRetry={load} />}
@@ -823,7 +879,7 @@ export default function TaskBoardMode() {
               <ProjectGroup
                 key={g.slug}
                 project={g}
-                collapsed={collapsed.has(g.slug)}
+                collapsed={goalFilter ? false : collapsed.has(g.slug)}
                 onToggle={() => toggleProject(g.slug)}
                 onMove={(direction) => moveProject(g.slug, direction)}
                 canMoveUp={index > 0}

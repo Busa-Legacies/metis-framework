@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Route, RefreshCw, ChevronRight, ChevronDown, ChevronLeft, X, AlertTriangle,
-  CheckCircle2, Circle, Bot, Flag, Layers,
+  CheckCircle2, Circle, Bot, Flag, Layers, ArrowUpRight,
 } from 'lucide-react'
 import { metisApi, ageLabel, type MetisResult } from '@/lib/metis-api'
 import type {
@@ -12,6 +12,7 @@ import type {
 } from '@/lib/metis-api-types'
 import { CardLoading, CardError } from '../overview/cards'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
+import { useControlCenterNav } from '@/lib/control-center-nav'
 import { stateDotCls, stateTextCls } from '@/lib/task-state'
 
 // ── Lines of work (#240 Phase 3) ──────────────────────────────────────────────
@@ -77,6 +78,7 @@ function LineTaskDetail({ task, lease, onClose }: {
   lease?: MetisLineLease
   onClose: () => void
 }) {
+  const nav = useControlCenterNav()
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', h)
@@ -99,6 +101,15 @@ function LineTaskDetail({ task, lease, onClose }: {
               <AgentChip lease={lease} />
             </div>
           </div>
+          {/* Lines is a read-and-trace surface; the act-on-it verbs live in Tasks.
+              Bridge there so the observe→act loop isn't a dead end. */}
+          <button
+            onClick={() => nav.goto('tasks', { taskId: task.taskId })}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1.5 text-[12px] md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20"
+            title="open this task in the board to act on it"
+          >
+            <ArrowUpRight size={14} /> Open in Tasks
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 font-mono text-[12px]">

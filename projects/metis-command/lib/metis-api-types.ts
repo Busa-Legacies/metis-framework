@@ -242,8 +242,21 @@ export interface MetisGoverndTask {
   doneGate?: MetisDoneGate
   /** Curated decision frame (only set on /api/inbox decide-bucket items). */
   decisionContext?: MetisDecisionContext
+  /** Structured one-tap decision options (#323) — SoT both surfaces render from. */
+  decisionOptions?: MetisDecisionOption[]
+  /** Agent's recommended option (key + why), starred in the UI. */
+  recommendation?: string | null
+  /** Resolved outcome — set once Ant decides; closes the decision-point. */
+  decision?: string | null
   /** Ranked review material — plan/spec/design to open in-card (decide + verify items). */
   material?: MetisMaterial
+}
+
+/** One tappable decision option (#323). */
+export interface MetisDecisionOption {
+  key: string
+  label: string
+  detail?: string | null
 }
 
 /** A single reviewable file attached to an inbox item. */

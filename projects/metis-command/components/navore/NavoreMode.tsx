@@ -11,6 +11,7 @@ import {
   navoreOpenWork,
 } from '@/lib/navore-data'
 import { StatusCard, CardLoading, CardError } from '../overview/cards'
+import { useControlCenterNav } from '@/lib/control-center-nav'
 import { NavoreTaskList, NavoreModeHeader } from './navore-ui'
 
 /**
@@ -149,6 +150,7 @@ export default function NavoreMode() {
 // ── Overview (professional variant) ──────────────────────────────────────────
 
 export function NavoreOverview() {
+  const nav = useControlCenterNav()
   const { res, data, loading, now, hardReload, cu } = useNavore()
   const counts = navoreCounts(cu)
   const ms = selectMs365(data)
@@ -167,7 +169,7 @@ export function NavoreOverview() {
         <CardLoading label="loading Navore overview…" />
       ) : (
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
-          <StatusCard title="Open Work" icon={<ListChecks size={12} />} severity={navoreOpenWork(cu) ? 'warn' : 'ok'}>
+          <StatusCard title="Open Work" icon={<ListChecks size={12} />} severity={navoreOpenWork(cu) ? 'warn' : 'ok'} onClick={() => nav.goto('tasks')} actionHint="Open Navore Tasks">
             <span className="text-[17px] font-black text-slate-100">{navoreOpenWork(cu)}</span>
             <span className="text-[13px] md:text-[11px] text-[var(--muted)]">
               {counts.ops} ops · {counts.dev} dev · {counts.projects} projects · {counts.milestones} milestones

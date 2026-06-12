@@ -49,7 +49,9 @@ TASKS_ARCHIVE_JSON = REPO_ROOT / "docs/process/state/tasks-archive.json"
 TERMINAL_STATES = {"done"}
 WC_LINE_BUDGET = 35
 
-_ID_RE = re.compile(r"#(\d{2,})")
+# Matches '#NNN' and the checkout path's 'issue-NNN' / 'issue NNN' lease titles —
+# both name the same governed task id (#314 lesson: lease 'issue-314' must resolve).
+_ID_RE = re.compile(r"(?:#|\bissue[- ])(\d{2,})", re.IGNORECASE)
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -159,11 +161,18 @@ def check_I4(opens: list, tasks: list, leases: list, owner_is_mine=None) -> list
         owner_is_mine = lambda _o: False  # noqa: E731
     canonical = {(t.get("title") or "").lower(): t for t in tasks}
     lease_titles = {lease_label(c).lower() for c in leases if lease_label(c)}
+    # Id-first lease coverage: lease '#316 command-center-ui-polish' covers board
+    # item '#316 command-center UI polish pass (...)' even though neither title
+    # substring-contains the other (the #316/#314 FP class).
+    lease_ids = {extract_task_id(lease_label(c)) for c in leases} - {None}
     out = []
     for it in opens:
         if not it.get("open"):
             continue
         label_l = it["label"].lower()
+        label_id = extract_task_id(it["label"])
+        if label_id and label_id in lease_ids:
+            continue  # claimed by a live lease (matched by task id)
         if any(len(lt) > 6 and (lt in label_l or label_l in lt) for lt in lease_titles):
             continue  # claimed by a live lease
         matched = None

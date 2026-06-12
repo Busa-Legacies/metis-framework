@@ -15,7 +15,7 @@ import AnnotateWidget from './annotate/AnnotateWidget'
 import NavoreMode, { NavoreOverview } from './navore/NavoreMode'
 import { NavoreScopeBanner } from './navore/navore-ui'
 import { CONTROL_CENTER_MODES, DEFAULT_MODE, normalizeTopLevelMode, type ControlCenterMode, type ModeId } from '@/lib/control-center-modes'
-import { ControlCenterNavProvider } from '@/lib/control-center-nav'
+import { ControlCenterNavProvider, type NavParams } from '@/lib/control-center-nav'
 import { WorkspaceProvider, useWorkspace } from '@/lib/workspace-context'
 import { workspaceMeta } from '@/lib/workspace'
 
@@ -43,6 +43,7 @@ export default function ControlCenterShell() {
 
 function ControlCenterInner() {
   const [mode, setMode] = useState<ModeId>(DEFAULT_MODE)
+  const [navParams, setNavParams] = useState<NavParams | null>(null)
   const { workspace } = useWorkspace()
   const meta = workspaceMeta(workspace)
   const pro = workspace === 'professional'
@@ -57,8 +58,11 @@ function ControlCenterInner() {
     }
   }, [])
 
-  const select = (id: ModeId) => {
+  const select = (id: ModeId, params?: NavParams) => {
     setMode(id)
+    // A plain nav click carries no payload → clear any prior deep-link filter so
+    // a goal filter / task focus never leaks across an unrelated navigation.
+    setNavParams(params ?? null)
     try {
       window.localStorage.setItem(STORAGE_KEY, id)
     } catch {
@@ -74,7 +78,7 @@ function ControlCenterInner() {
   const activeTopMode = normalizeTopLevelMode(mode)
 
   return (
-    <ControlCenterNavProvider value={{ goto: select, current: mode }}>
+    <ControlCenterNavProvider value={{ goto: select, current: mode, params: navParams }}>
     <BootScreen />
     <div className="grid-bg flex h-screen w-screen flex-col overflow-hidden text-white">
       <div className="flex min-h-0 flex-1">

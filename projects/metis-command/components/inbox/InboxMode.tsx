@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Inbox as InboxIcon, RefreshCw, AlertTriangle, CheckCircle2, Unlock, Play,
-  GitMerge, ListChecks, Hourglass, Sparkles, Check, X as X2, ChevronRight, Pencil, Undo2,
+  GitMerge, ListChecks, Hourglass, Sparkles, Check, X as X2, ChevronRight, Pencil, Undo2, Star,
 } from 'lucide-react'
 import { metisApi, ageLabel, type MetisResult } from '@/lib/metis-api'
 import type { MetisInbox, MetisGoverndTask, MetisDecision, MetisDecisionContext } from '@/lib/metis-api-types'
@@ -370,6 +370,7 @@ function DField({ label, value }: { label: string; value: string | null | undefi
 // linked spec" is actually linked, and missing context (refs that resolve) is
 // surfaced rather than left as a bare "#213".
 function DecisionFrame({ ctx }: { ctx: MetisDecisionContext }) {
+  const nav = useControlCenterNav()
   const hasRefs = ctx.refs.length > 0
   const hasSpecs = ctx.specs.length > 0
   if (!ctx.context && !hasRefs && !hasSpecs) return null
@@ -386,11 +387,18 @@ function DecisionFrame({ ctx }: { ctx: MetisDecisionContext }) {
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200/70">Referenced tasks</div>
           <div className="flex flex-col gap-1">
             {ctx.refs.map((r) => (
-              <div key={r.taskId} className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-black/30 px-2.5 py-1.5">
+              <button
+                key={r.taskId}
+                type="button"
+                onClick={() => nav.goto('tasks', { taskId: r.taskId })}
+                className="flex w-full items-center gap-2 rounded-lg border border-[var(--line)] bg-black/30 px-2.5 py-1.5 text-left transition-colors hover:border-cyan-300/30 hover:bg-cyan-300/[0.05]"
+                title="open this task in the board"
+              >
                 <span className="shrink-0 font-mono text-[12px] md:text-[11px] text-cyan-200">{r.taskId}</span>
                 <span className="min-w-0 flex-1 truncate text-[12px] md:text-[11px] text-slate-300">{r.title ?? '— unknown task —'}</span>
                 {r.state && <span className={`shrink-0 text-[11px] md:text-[10px] font-bold ${stateTextCls(r.state)}`}>{r.state.replace(/_/g, ' ')}</span>}
-              </div>
+                <ChevronRight size={13} className="shrink-0 text-[var(--muted)]" />
+              </button>
             ))}
           </div>
         </div>
@@ -413,7 +421,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
   task: MetisGoverndTask
   busy: boolean
   onClose: () => void
-  onRecord: (task: MetisGoverndTask, decision: string) => void
+  onRecord: (task: MetisGoverndTask, decision: string, chosenKey?: string) => void
   onSaveTask: (task: MetisGoverndTask, patch: Record<string, unknown>) => void
   actions: React.ReactNode
 }) {
@@ -438,8 +446,13 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
     verificationMethod: task.verificationMethod ?? '',
     blockerOrNone: task.blocker ?? 'none',
   }))
-  const isDecide = !!task.nextDecisionPoint
-  const opts = decisionOptions(task.nextDecisionPoint)
+  const isDecide = !!task.nextDecisionPoint || !!task.decisionOptions?.length
+  // Prefer structured #323 options (key/label/detail, recommended starred); fall
+  // back to the regex parser over freeform nextDecisionPoint for legacy cards.
+  const structured = task.decisionOptions?.length ? task.decisionOptions : null
+  const recKey = (task.recommendation ?? '').trim().toLowerCase()
+  const isRec = (k: string) => !!recKey && (recKey.startsWith(k.toLowerCase()) || recKey.includes(`${k.toLowerCase()})`) || recKey.includes(`option ${k.toLowerCase()}`))
+  const opts = structured ? null : decisionOptions(task.nextDecisionPoint)
   const ctx = task.decisionContext
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -518,9 +531,33 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
               {task.material?.files?.length ? (
                 <div className="mt-3"><MaterialViewer material={task.material} /></div>
               ) : null}
-              <div className="mb-3 mt-3 border-t border-amber-300/15 pt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200/70">Your call</div>
+              {task.recommendation && (
+                <div className="mb-3 mt-3 flex items-start gap-1.5 rounded-lg border border-amber-300/25 bg-amber-300/10 px-2.5 py-2 text-[12px] text-amber-100">
+                  <Star size={13} className="mt-0.5 shrink-0 fill-amber-300 text-amber-300" />
+                  <span><span className="font-bold">Recommended:</span> {task.recommendation}</span>
+                </div>
+              )}
+              <div className="mb-3 mt-3 border-t border-amber-300/15 pt-3 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200/70">Your call — tap one, or type your own below</div>
               {/* Recorder lives in the scrollable body (not the footer) so the
-                  mobile keyboard never covers it. One-tap options + freeform. */}
+                  mobile keyboard never covers it. Structured #323 one-tap options
+                  (label + detail, recommended starred), else regex fallback, plus
+                  the always-present freeform "Other" path. */}
+              {structured && (
+                <div className="mb-2 flex flex-col gap-1.5">
+                  {structured.map((o) => (
+                    <button key={o.key} onClick={() => onRecord(task, o.label, o.key)} disabled={busy}
+                      className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors disabled:opacity-50 ${isRec(o.key) ? 'border-amber-300/60 bg-amber-300/20 hover:bg-amber-300/30' : 'border-amber-300/30 bg-amber-300/10 hover:bg-amber-300/20'}`}>
+                      {isRec(o.key)
+                        ? <Star size={15} className="mt-0.5 shrink-0 fill-amber-300 text-amber-300" />
+                        : <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-amber-200" />}
+                      <span className="min-w-0">
+                        <span className="text-[13px] font-bold text-amber-100">{o.key.toUpperCase()}) {o.label}</span>
+                        {o.detail && <span className="mt-0.5 block text-[12px] md:text-[11px] font-normal leading-snug text-slate-300">{o.detail}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {opts && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {opts.map((o) => (
@@ -535,8 +572,8 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={3}
-                autoFocus={!opts}
-                placeholder={opts ? 'Other / add a note…' : 'Type your decision / the direction to take…'}
+                autoFocus={!opts && !structured}
+                placeholder={(opts || structured) ? '✏️ Other — type your own alternative…' : 'Type your decision / the direction to take…'}
                 className="w-full resize-none rounded-lg border border-amber-300/20 bg-black/40 px-2.5 py-2 font-mono text-[13px] md:text-[12px] text-slate-100 placeholder-[var(--muted)] focus:border-amber-300/50 focus:outline-none"
               />
               <button
@@ -648,7 +685,7 @@ export default function InboxMode() {
     undoTimer.current = setTimeout(() => setUndo(null), 8000)
   }, [])
 
-  const recordDecision = useCallback(async (task: MetisGoverndTask, decision: string) => {
+  const recordDecision = useCallback(async (task: MetisGoverndTask, decision: string, chosenKey?: string) => {
     setBusyId(task.taskId)
     setMsg(null)
     const prevPoint = task.nextDecisionPoint ?? 'none'
@@ -656,8 +693,11 @@ export default function InboxMode() {
     try {
       // A non-empty answer is logged as a tracked decision (decisions.json) AND
       // advances the task. Empty just clears the gate (no decision to log).
+      // chosenKey (when a structured #323 option is tapped) sets the task's
+      // `decision` field so the decision-point closes and the card leaves the lane.
+      const auditOpts = (task.decisionOptions?.map((o) => o.label)) ?? decisionOptions(task.nextDecisionPoint) ?? undefined
       const r = decision
-        ? await metisApi.taskDecide(task.taskId, task.revision, decision, task.nextDecisionPoint ?? undefined, decisionOptions(task.nextDecisionPoint) ?? undefined)
+        ? await metisApi.taskDecide(task.taskId, task.revision, decision, task.nextDecisionPoint ?? undefined, auditOpts, chosenKey)
         : await metisApi.taskUpdate(task.taskId, task.revision, { nextDecisionPoint: '' })
       if (!r.ok) { setMsg(`✕ ${task.taskId}: ${r.error ?? 'failed'}`); return }
       setDetail(null)

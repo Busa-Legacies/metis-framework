@@ -68,14 +68,43 @@ TASK_MUTABLE_FIELDS = {
     "agent",
     "machine",
     "project",
+    "domain",
     "milestone",
     "origin",
     "originRef",
+    "doneWhen",
+    "decisionOptions",
+    "recommendation",
+    "decisionContext",
+    "decision",  # resolved outcome: the chosen decisionOptions.key (writeback sets it)
 }
+
+# queue-runner-v2 hybrid doneWhen contract (docs/process/queue-runner-v2-design.md).
+# Optional today; the v2 runner executes/judges it so curator-approve == done
+# honestly. type=check -> runnable command (exit 0 = pass); acceptance -> explicit
+# criteria curator judges; both -> run the check AND confirm the criteria.
+VALID_DONEWHEN_TYPES = {"check", "acceptance", "both"}
 
 # WHO originated the task: ant=Ant directly asked; agent=agent proposed autonomously;
 # collab=agent proposed, Ant approved; system=automated review/check caught it
 VALID_ORIGINS = {"ant", "agent", "collab", "system"}
+
+
+def _load_valid_domains():
+    """Canonical domains from the SoT (docs/process/taxonomy.yaml); fail-open to the
+    known set so a yaml hiccup never blocks a task write."""
+    try:
+        import pathlib
+        import yaml
+        spec = yaml.safe_load(
+            (pathlib.Path(__file__).resolve().parents[1] / "docs/process/taxonomy.yaml").read_text())
+        vals = set((spec.get("domains") or {}).keys())
+        return vals or {"business", "brand", "finance", "health", "home", "learning"}
+    except Exception:
+        return {"business", "brand", "finance", "health", "home", "learning"}
+
+
+VALID_DOMAINS = _load_valid_domains()
 
 FOCUS_MUTABLE_FIELDS = {
     "focusSummary",
@@ -149,6 +178,74 @@ def validate_task_shape(task_id: str, task: dict, require_rich: bool = True):
     if state == "execution_finished" and not task.get("verificationMethod"):
         raise ValueError(f"{task_id}: execution_finished task must preserve verificationMethod")
 
+    validate_done_when(task_id, task)
+    validate_decision(task_id, task)
+
+
+def validate_decision(task_id: str, task: dict):
+    """Validate the optional structured decision affordances (#323, decision-inbox).
+    Both Notion and Control Center render these instead of scraping nextDecisionPoint prose:
+      decisionOptions: [{"key": "a", "label": "...", "detail"?: "..."}]  # the one-tap choices
+      recommendation:  "<key or short text> — why"                       # agent's pick
+      decisionContext: "why it matters / trade-offs / links"             # context to decide
+    """
+    opts = task.get("decisionOptions")
+    if opts is not None:
+        if not isinstance(opts, list) or not opts:
+            raise ValueError(f"{task_id}: decisionOptions must be a non-empty list")
+        keys = set()
+        for o in opts:
+            if not isinstance(o, dict):
+                raise ValueError(f"{task_id}: each decisionOption must be an object {{key,label}}")
+            k, label = o.get("key"), o.get("label")
+            if not isinstance(k, str) or not k.strip():
+                raise ValueError(f"{task_id}: decisionOption needs a non-empty 'key'")
+            if not isinstance(label, str) or not label.strip():
+                raise ValueError(f"{task_id}: decisionOption {k!r} needs a non-empty 'label'")
+            if "detail" in o and not isinstance(o["detail"], str):
+                raise ValueError(f"{task_id}: decisionOption {k!r} 'detail' must be a string")
+            if k in keys:
+                raise ValueError(f"{task_id}: duplicate decisionOption key {k!r}")
+            keys.add(k)
+    for f in ("recommendation", "decisionContext"):
+        v = task.get(f)
+        if v is not None and (not isinstance(v, str) or not v.strip()):
+            raise ValueError(f"{task_id}: {f} must be a non-empty string when present")
+
+
+def validate_done_when(task_id: str, task: dict):
+    """Validate the optional structured doneWhen (queue-runner-v2). When present it
+    must be USABLE — the v2 runner executes the check or curator judges the
+    criteria, so a malformed contract would silently break the apply+verify loop.
+      {"type": "check"|"acceptance"|"both",
+       "check": "<shell command, exit 0 = pass>",   # required for check/both
+       "criteria": ["explicit acceptance bullet", ...]}  # required for acceptance/both
+    """
+    dw = task.get("doneWhen")
+    if dw is None:
+        return
+    if not isinstance(dw, dict):
+        raise ValueError(f"{task_id}: doneWhen must be an object")
+    dtype = dw.get("type")
+    if dtype not in VALID_DONEWHEN_TYPES:
+        raise ValueError(
+            f"{task_id}: doneWhen.type must be one of {', '.join(sorted(VALID_DONEWHEN_TYPES))}"
+        )
+    if dtype in {"check", "both"}:
+        check = dw.get("check")
+        if not isinstance(check, str) or not check.strip():
+            raise ValueError(
+                f"{task_id}: doneWhen.type={dtype} requires a non-empty 'check' command string"
+            )
+    if dtype in {"acceptance", "both"}:
+        crit = dw.get("criteria")
+        if not isinstance(crit, list) or not crit or not all(
+            isinstance(c, str) and c.strip() for c in crit
+        ):
+            raise ValueError(
+                f"{task_id}: doneWhen.type={dtype} requires a non-empty 'criteria' list of strings"
+            )
+
 
 def load_valid_areas():
     """Area names from task-areas.json — single source of truth shared with the
@@ -211,6 +308,10 @@ def validate_board_fields(task_id: str, task: dict, require_present: bool = True
         raise ValueError(f"{task_id}: missing required field: origin (valid: {', '.join(sorted(VALID_ORIGINS))})")
     if origin is not None and origin not in VALID_ORIGINS:
         raise ValueError(f"{task_id}: invalid origin {origin!r} (valid: {', '.join(sorted(VALID_ORIGINS))})")
+
+    domain = task.get("domain")
+    if domain is not None and domain not in VALID_DOMAINS:
+        raise ValueError(f"{task_id}: invalid domain {domain!r} (valid: {', '.join(sorted(VALID_DOMAINS))})")
 
 
 def validate_task_patch(task_id: str, patch: dict):

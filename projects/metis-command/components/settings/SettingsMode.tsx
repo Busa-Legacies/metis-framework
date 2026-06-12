@@ -54,10 +54,22 @@ export default function SettingsMode() {
           <StatusCard title="Integrations · Auth" icon={<Plug size={12} />}>
             <ul className="flex flex-col gap-1.5">
               {integrationStatuses(data).map((s) => (
-                <li key={s.name} className="flex items-start gap-1.5 text-[13px] md:text-[11px]">
-                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${SEV_DOT[s.severity]}`} />
-                  <span className="shrink-0 text-slate-200">{s.name}</span>
-                  <span className={`ml-auto truncate text-[13px] md:text-[10px] ${s.severity === 'ok' ? 'text-[var(--muted)]' : SEV_TEXT[s.severity]}`}>{s.detail}</span>
+                <li key={s.name} className="flex flex-col gap-0.5 text-[13px] md:text-[11px]">
+                  <div className="flex items-start gap-1.5">
+                    <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${SEV_DOT[s.severity]}`} />
+                    <span className="shrink-0 text-slate-200">{s.name}</span>
+                    <span className={`ml-auto truncate text-[13px] md:text-[10px] ${s.severity === 'ok' ? 'text-[var(--muted)]' : SEV_TEXT[s.severity]}`}>{s.detail}</span>
+                  </div>
+                  {s.fix && (
+                    <a
+                      href={s.fix.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-3 inline-flex w-fit items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/5 px-1.5 py-0.5 text-[12px] md:text-[10px] text-amber-200 hover:bg-amber-300/10"
+                    >
+                      {s.fix.label} <span aria-hidden>↗</span>
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

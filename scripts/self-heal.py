@@ -53,8 +53,15 @@ DEFAULT_TIER = AGENT
 
 
 def sh(cmd, timeout=60):
+    # METIS_PYTHON pins children to the interpreter running this harness. Needed
+    # because command-checks run under `bash -lc`, whose /etc/profile rebuilds
+    # PATH (Ant's real PATH lives in zsh files bash never sources) and resolves
+    # python3 to a yaml-less /usr/local/bin install — the taxonomy meter died
+    # under it (found 2026-06-11). An env var survives profile sourcing; PATH
+    # does not.
+    env = dict(os.environ, METIS_PYTHON=sys.executable)
     try:
-        p = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout, env=env)
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except Exception as e:
         return 1, str(e)
@@ -382,16 +389,28 @@ def meter_signoff(recs):
     g = [r for r in recs if r.get("session") and r.get("decision")]
     total = len(g)
     blocks = [r for r in g if r["decision"] == "block"]
-    # A TRUE false-positive candidate = a block whose closing text actually contains a
-    # sign-off FIELD LABEL (`Next:`/`Done:`/…) — i.e. the model wrote a block but the gate
-    # rejected it (a regex miss worth reviewing). A bare header match is too loose: a stray
-    # bold-with-separator in prose (e.g. `**Read + Insert**`) trips it, mis-flagging a
-    # correct block of a session that genuinely stopped without a sign-off.
+    # A TRUE false-positive candidate = a block where the FULL sign-off shape was
+    # plausibly present but a gate regex rejected it. Two shapes qualify:
+    #   1. header matched but fields didn't → field-regex miss candidate;
+    #   2. field labels present AND a header-LIKE bold line (`**…** — …`) in the
+    #      tail → header-regex miss candidate.
+    # Field words ALONE are not enough: a stop ending `- Next: …` with no header at
+    # all is genuine non-compliance (the 07fd0e09 class, reviewed 2026-06-11) and
+    # belongs in the block_rate trend, not a daily FP ALERT. (A bare header match is
+    # likewise too loose: stray bold-with-separator prose like `**Read + Insert**`.)
     fieldword = re.compile(r"\b(Done|Verified|Check|Next|Asks)\b\s*:", re.I)
+    # Line-anchored: a real header opens its own line; mid-sentence bolds like
+    # "My lean: **build the bridge** — it's…" must not qualify.
+    headerlike = re.compile(r"^\s*\*\*[^*\n]+\*\*\s*(?:—|--)\s*\S", re.M)
+    # Either way the MISSING half must look present to a looser regex — h=T alone
+    # is a stray prose bold (0a111d59: `**Action required…**` in a shield verdict),
+    # f-words alone are a fieldless prose mention.
     fp = []
     for b in blocks:
         tail = b.get("tail", "")
-        if fieldword.search(tail):
+        if b.get("header_match") and not b.get("fields_match") and fieldword.search(tail):
+            fp.append(b)
+        elif b.get("fields_match") and not b.get("header_match") and headerlike.search(tail):
             fp.append(b)
     block_rate = (len(blocks) / total) if total else 0.0
     # ALERT if any false-positive candidate (regex needs tuning) — the headline ask.
@@ -404,7 +423,35 @@ def meter_signoff(recs):
             "threshold": "0 FP-candidates", "detail": detail, "samples": samples}
 
 
-METERS = [meter_signoff]
+def meter_taxonomy(recs):
+    """Drift between tasks.json and the canonical taxonomy SoT (docs/process/taxonomy.yaml):
+    off-vocab domain/status or a project with no domain mapping. 0 = clean.
+
+    The taxonomy validator + its SoT are an OPTIONAL overlay (the vocab is
+    org/personal-specific; a portable consumer may not ship one). A missing file
+    must SKIP this meter, not crash the whole self-heal harness — so guard both the
+    validator script and the SoT, and fail soft on any load/scan error."""
+    import importlib.util
+    lint_path = os.path.join(REPO, "scripts", "taxonomy-lint.py")
+    sot_path = os.path.join(REPO, "docs/process", "taxonomy.yaml")
+    skip = {"name": "taxonomy-drift", "status": PASS, "score": 1,
+            "threshold": "0 off-vocab", "detail": "taxonomy SoT/validator absent — skipped", "samples": []}
+    if not (os.path.exists(lint_path) and os.path.exists(sot_path)):
+        return skip
+    try:
+        spec = importlib.util.spec_from_file_location("taxonomy_lint", lint_path)
+        tx = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tx)
+        findings = tx._scan_tasks()
+    except Exception as e:
+        return {**skip, "detail": f"taxonomy lint unavailable — skipped ({e})"}
+    status = ALERT if findings else PASS
+    return {"name": "taxonomy-drift", "status": status, "score": 0 if findings else 1,
+            "threshold": "0 off-vocab", "detail": f"{len(findings)} taxonomy drift finding(s) vs canonical vocab",
+            "samples": findings[:5]}
+
+
+METERS = [meter_signoff, meter_taxonomy]
 
 
 # ───────────────────────────────── main ──────────────────────────────────────

@@ -16,7 +16,11 @@ import shutil
 import sys
 from pathlib import Path
 
-SRC = Path.home() / "metis-os"
+# SRC defaults to the live metis-os tree, but is env-overridable so a publish can
+# read from a CLEAN, committed checkout (e.g. a `git worktree add origin/main`)
+# instead of a working tree that may carry another session's uncommitted WIP — the
+# reproducibility invariant is "same metis-os *committed* state -> same metis-core".
+SRC = Path(os.environ.get("METIS_PUBLISH_SRC") or (Path.home() / "metis-os"))
 DST = Path.home() / "metis-core"
 
 # ── whole directories copied as-is (portable, no personal content) ───────────
@@ -75,6 +79,8 @@ CORE_SCRIPTS = [
     # self-heal framework
     "self-heal.py", "self-heal.sh", "add-healthcheck.py", "test-self-heal.py",
     "ensure-self-heal-loaded.sh", "install-self-heal-agent.sh",
+    # sync Tier-3 merge resolver + governance tests
+    "ai-merge-resolver.py", "test-ai-merge-resolver.py", "test-governance-core.py",
     # bootstrap / setup
     "bootstrap-claude-memory.sh", "setup-worktrees.sh", "install-scripts.sh",
     # quality / audit / tests

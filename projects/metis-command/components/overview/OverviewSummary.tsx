@@ -54,8 +54,8 @@ export default function OverviewSummary() {
           {/* Live agent activity (#240 Phase 4) — cross-workspace heartbeat */}
           <AgentActivityCard />
 
-          {/* Alerts */}
-          <StatusCard title="Alerts" icon={<AlertTriangle size={12} className={SEV_TEXT[topAlertSeverity(data.alerts)]} />} severity={topAlertSeverity(data.alerts)}>
+          {/* Alerts → Ops (where services/bot/system live for follow-up) */}
+          <StatusCard title="Alerts" icon={<AlertTriangle size={12} className={SEV_TEXT[topAlertSeverity(data.alerts)]} />} severity={topAlertSeverity(data.alerts)} onClick={() => nav.goto('ops')} actionHint="Open Ops">
             {data.alerts?.length ? (
               <ul className="flex flex-col gap-1">
                 {data.alerts.slice(0, 5).map((a, i) => (
@@ -105,8 +105,10 @@ export default function OverviewSummary() {
             {!data.ratelimits?.claude && !data.ratelimits?.codex && <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no usage data</span>}
           </StatusCard>
 
-          {/* Active work → Work / Map */}
-          <StatusCard title="Active Work" icon={<ListTodo size={12} />} severity={data.priorities?.blocked_count ? 'warn' : 'ok'} onClick={() => nav.goto('work-graph')} actionHint="Open Work Map">
+          {/* Active work → Tasks board. The whole card navigates to the dedicated
+              Tasks view; rows are a read-only preview (a native button can't host
+              its own clickable children, so per-row deep-links live on the board). */}
+          <StatusCard title="Active Work" icon={<ListTodo size={12} />} severity={data.priorities?.blocked_count ? 'warn' : 'ok'} onClick={() => nav.goto('tasks')} actionHint="Open Tasks">
             <div className="flex gap-3 text-[15px] md:text-[12px]">
               <span className="text-slate-300">{data.priorities?.active_total ?? 0} active</span>
               <span className={data.priorities?.blocked_count ? 'text-amber-200' : 'text-[var(--muted)]'}>

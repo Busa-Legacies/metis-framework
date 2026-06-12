@@ -63,18 +63,24 @@ export default function AgentActivityCard() {
   const total = live.length + remoteLeases.length
   const severity = total > 0 ? 'ok' : 'warn'
 
+  // Plain card (NOT a StatusCard-button): rows need to be individually clickable,
+  // and a native <button> swallows clicks on its children. The summary line routes
+  // to Agents; each row deep-links to its task (or Agents when it has no taskId).
   return (
     <StatusCard
       title="Agent Activity"
       icon={<Activity size={12} className={total > 0 ? 'text-emerald-300' : 'text-[var(--muted)]'} />}
       severity={severity}
-      onClick={() => nav.goto('agents')}
-      actionHint="Open Agents"
     >
-      <div className="flex items-baseline gap-2">
+      <button
+        type="button"
+        onClick={() => nav.goto('agents')}
+        className="flex w-full items-baseline gap-2 rounded-lg px-1 py-0.5 text-left hover:bg-white/5"
+        title="open Agents"
+      >
         <span className="text-[24px] md:text-[20px] font-black tabular-nums text-slate-100">{total}</span>
         <span className="text-[12px] md:text-[11px] text-[var(--muted)]">working now · {live.length} here · {remoteLeases.length} remote</span>
-      </div>
+      </button>
 
       {total === 0 ? (
         <div className="mt-2 text-[12px] md:text-[11px] text-[var(--muted)]">
@@ -83,24 +89,38 @@ export default function AgentActivityCard() {
       ) : (
         <ul className="mt-2 flex flex-col gap-1">
           {live.slice(0, 5).map((a) => (
-            <li key={a.id} className="flex items-center gap-2 text-[12px] md:text-[11px]">
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotFor(a.kind)}`} />
-              <span className="shrink-0 font-semibold text-slate-200">{a.name}</span>
-              {a.taskId && <span className="shrink-0 font-mono text-[var(--muted)]">{a.taskId}</span>}
-              <span className={`truncate ${STATUS_CLS[a.status] ?? 'text-slate-400'}`}>{a.status}</span>
-              <div className="flex-1" />
-              <span className="shrink-0 text-[var(--muted)]">{ageLabel(a.lastOutputAt ?? a.createdAt, now)}</span>
+            <li key={a.id}>
+              <button
+                type="button"
+                onClick={() => (a.taskId ? nav.goto('tasks', { taskId: a.taskId }) : nav.goto('agents'))}
+                className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-[12px] md:text-[11px] hover:bg-white/5"
+                title={a.taskId ? 'open this task' : 'open Agents'}
+              >
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotFor(a.kind)}`} />
+                <span className="shrink-0 font-semibold text-slate-200">{a.name}</span>
+                {a.taskId && <span className="shrink-0 font-mono text-cyan-200/80">{a.taskId}</span>}
+                <span className={`truncate ${STATUS_CLS[a.status] ?? 'text-slate-400'}`}>{a.status}</span>
+                <div className="flex-1" />
+                <span className="shrink-0 text-[var(--muted)]">{ageLabel(a.lastOutputAt ?? a.createdAt, now)}</span>
+              </button>
             </li>
           ))}
           {remoteLeases.slice(0, Math.max(0, 6 - live.length)).map((l, i) => (
-            <li key={`lease-${l.taskId ?? i}`} className="flex items-center gap-2 text-[12px] md:text-[11px]">
-              <Radio size={11} className="shrink-0 text-cyan-300/70" />
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotFor(l.agent)}`} />
-              <span className="shrink-0 font-semibold text-slate-300">{l.agent ?? 'agent'}</span>
-              {l.taskId && <span className="shrink-0 font-mono text-[var(--muted)]">{l.taskId}</span>}
-              <span className="truncate text-[var(--muted)]">{l.title ?? 'checked out'}</span>
-              <div className="flex-1" />
-              {l.fenceToken != null && <span className="shrink-0 text-[var(--muted)]">·{l.fenceToken}</span>}
+            <li key={`lease-${l.taskId ?? i}`}>
+              <button
+                type="button"
+                onClick={() => (l.taskId ? nav.goto('tasks', { taskId: l.taskId as string }) : nav.goto('agents'))}
+                className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-[12px] md:text-[11px] hover:bg-white/5"
+                title={l.taskId ? 'open this task' : 'open Agents'}
+              >
+                <Radio size={11} className="shrink-0 text-cyan-300/70" />
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotFor(l.agent)}`} />
+                <span className="shrink-0 font-semibold text-slate-300">{l.agent ?? 'agent'}</span>
+                {l.taskId && <span className="shrink-0 font-mono text-cyan-200/80">{l.taskId}</span>}
+                <span className="truncate text-[var(--muted)]">{l.title ?? 'checked out'}</span>
+                <div className="flex-1" />
+                {l.fenceToken != null && <span className="shrink-0 text-[var(--muted)]">·{l.fenceToken}</span>}
+              </button>
             </li>
           ))}
         </ul>

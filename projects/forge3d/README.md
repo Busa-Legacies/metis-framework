@@ -53,8 +53,16 @@ scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad \
 
 # Just preview, skip the STL export
 scripts/forge3d-render.sh .../model.scad --no-stl
+
+# Split a too-big model: assembled preview + one STL per piece + a fit report.
+# The model must expose a `piece` var (-1 = assembled, 0..N-1 = a printable piece,
+# the lib/segment.scad convention). Exits non-zero if any piece exceeds the bed.
+scripts/forge3d-render.sh projects/forge3d/models/garden-lantern/roof-pieces.scad --pieces 3
+#   --piece-var NAME   if the model names its split variable something other than `piece`
 ```
-Renders go to `models/<name>/renders/`; the STL to `models/<name>/stl/`.
+Renders go to `models/<name>/renders/`; the STL to `models/<name>/stl/`. In split
+mode each piece is `stl/<name>-piece<i>.stl` with a `<name>-fit-report.txt` listing
+every piece's bbox against the 256³ bed.
 
 ## The print handoff (Bambu Studio)
 1. Open the exported STL in **Bambu Studio**, select the **X1C** profile.

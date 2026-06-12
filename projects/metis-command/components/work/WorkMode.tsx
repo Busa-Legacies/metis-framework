@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { ageLabel, goalProgressPct, metisApi, type MetisResult } from '@/lib/metis-api'
 import { useMetisAll } from '@/lib/use-metis-all'
+import { useControlCenterNav } from '@/lib/control-center-nav'
 import type { MetisInbox, MetisLease } from '@/lib/metis-api-types'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
 import { CardError, CardLoading, StatusCard, StatusChip } from '../overview/cards'
@@ -90,6 +91,7 @@ function attentionTotal(inbox: MetisResult<MetisInbox> | null): number | null {
 }
 
 export default function WorkMode({ professional = false, initialView }: { professional?: boolean; initialView?: string | null }) {
+  const nav = useControlCenterNav()
   const [view, setView] = useState<WorkView>(() => workViewFromLegacy(initialView))
   const { res, data, now, reload } = useMetisAll()
   const [inbox, setInbox] = useState<MetisResult<MetisInbox> | null>(null)
@@ -182,7 +184,13 @@ export default function WorkMode({ professional = false, initialView }: { profes
                     <Metric label="Needs" value={attentionTotal(inbox) ?? 0} tone={(attentionTotal(inbox) ?? 0) ? 'text-amber-100' : 'text-emerald-200'} />
                   </div>
 
-                  <div className="rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2 sm:px-3 sm:py-2.5">
+                  <button
+                    type="button"
+                    disabled={!topGoal}
+                    onClick={() => topGoal && nav.goto('tasks', { goalId: topGoal.id, goalLabel: `${topGoal.id} · ${topGoal.title}` })}
+                    className="w-full rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2 text-left transition-colors enabled:hover:border-cyan-300/30 enabled:hover:bg-cyan-300/[0.04] disabled:cursor-default sm:px-3 sm:py-2.5"
+                    title={topGoal ? 'open this goal’s tasks' : undefined}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-50 sm:text-[15px]">
                         {topGoal ? `${topGoal.id} · ${topGoal.title}` : 'No active goal selected'}
@@ -190,11 +198,11 @@ export default function WorkMode({ professional = false, initialView }: { profes
                       {topGoal && <StatusChip label={`${goalProgressPct(topGoal)}%`} severity="ok" />}
                     </div>
                     {topGoal?.marker && <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[var(--muted)] sm:text-[12px]">{topGoal.marker}</div>}
-                  </div>
+                  </button>
 
                   <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-                    <BriefList title="Next Up" rows={(priorities.next ?? []).slice(0, 3)} empty="queue clear" tone="cyan" />
-                    <BriefList title="Blocked" rows={(priorities.blocked ?? []).slice(0, 3)} empty="nothing blocked" tone="rose" />
+                    <BriefList title="Next Up" rows={(priorities.next ?? []).slice(0, 3)} empty="queue clear" tone="cyan" onSelect={(taskId) => nav.goto('tasks', { taskId })} />
+                    <BriefList title="Blocked" rows={(priorities.blocked ?? []).slice(0, 3)} empty="nothing blocked" tone="rose" onSelect={(taskId) => nav.goto('tasks', { taskId })} />
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 sm:hidden">
                     <button
@@ -224,7 +232,12 @@ export default function WorkMode({ professional = false, initialView }: { profes
                   {leases.length ? (
                     <ul className="flex flex-col gap-1.5">
                       {leases.slice(0, 6).map((lease) => (
-                        <li key={`${lease.session}-${lease.fenceToken}`} className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-[12px]">
+                        <li
+                          key={`${lease.session}-${lease.fenceToken}`}
+                          onClick={() => (lease.taskId ? nav.goto('tasks', { taskId: lease.taskId }) : nav.goto('agents'))}
+                          className="flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 text-[12px] hover:bg-white/5"
+                          title={lease.taskId ? 'open this task' : 'open Agents'}
+                        >
                           <Lock size={12} className="shrink-0 text-cyan-300" />
                           <span className="shrink-0 font-bold text-cyan-200">{lease.agent ?? 'agent'}</span>
                           <span className="min-w-0 flex-1 truncate text-slate-300">{lease.title ?? lease.taskId ?? lease.session}</span>
@@ -262,11 +275,12 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: st
   )
 }
 
-function BriefList({ title, rows, empty, tone }: {
+function BriefList({ title, rows, empty, tone, onSelect }: {
   title: string
   rows: { taskId: string; title: string; priority: string }[]
   empty: string
   tone: 'cyan' | 'rose'
+  onSelect: (taskId: string) => void
 }) {
   const dot = tone === 'rose' ? 'bg-rose-300' : 'bg-cyan-300'
   const id = tone === 'rose' ? 'text-rose-200' : 'text-cyan-200'
@@ -276,7 +290,12 @@ function BriefList({ title, rows, empty, tone }: {
       {rows.length ? (
         <ul className="flex flex-col gap-1">
           {rows.map((t) => (
-            <li key={t.taskId} className="flex items-center gap-2 rounded-lg px-1 py-1 text-[11px] hover:bg-white/5 sm:text-[12px]">
+            <li
+              key={t.taskId}
+              onClick={() => onSelect(t.taskId)}
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-[11px] hover:bg-white/5 sm:text-[12px]"
+              title="open this task"
+            >
               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${t.priority === 'P1' ? 'bg-amber-300' : dot}`} />
               <span className="min-w-0 flex-1 truncate text-slate-200">{t.title}</span>
               <span className={`shrink-0 text-[9px] font-bold ${id}`}>{t.taskId}</span>

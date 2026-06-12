@@ -83,10 +83,13 @@ function ProjectRow({ p, selected, onClick }: { p: MetisTaskSummary; selected: b
   )
 }
 
-function GovernedTaskRow({ task }: { task: MetisGoverndTask }) {
+function GovernedTaskRow({ task, onClick }: { task: MetisGoverndTask; onClick?: () => void }) {
   const p1 = task.priority === 'P1'
   return (
-    <li className="rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2">
+    <li
+      onClick={onClick}
+      className={`rounded-lg border border-[var(--line)] bg-black/20 px-2.5 py-2 ${onClick ? 'cursor-pointer hover:border-cyan-300/30 hover:bg-white/5' : ''}`}
+    >
       <div className="flex items-center gap-2 text-[13px] md:text-[11px]">
         <span className={`h-2 w-2 shrink-0 rounded-full ${stateDotCls(task.state)}`} title={task.state.replace(/_/g, ' ')} />
         <span className={`min-w-0 flex-1 truncate ${p1 ? 'font-semibold text-slate-50' : 'font-medium text-slate-200'}`}>{task.title}</span>
@@ -181,7 +184,7 @@ export default function WorkGraphMode() {
                     key={g.id}
                     g={g}
                     selected={selectedGoalId === g.id}
-                    onClick={() => { setSelectedGoalId(g.id); setSelectedProject(null) }}
+                    onClick={() => nav.goto('tasks', { goalId: g.id, goalLabel: `${g.id} · ${g.title}` })}
                   />
                 ))}
               </div>
@@ -194,7 +197,7 @@ export default function WorkGraphMode() {
           <StatusCard title="Next Up" icon={<ArrowUpRight size={12} />}>
             {p.next?.length ? (
               <ul className="flex flex-col gap-1.5">{p.next.slice(0, 10).map((t) => (
-                <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => { setSelectedGoalId(t.goals?.[0] ?? null); setSelectedProject(null) }} />
+                <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => nav.goto('tasks', { taskId: t.taskId })} />
               ))}</ul>
             ) : (
               <span className="text-[15px] md:text-[12px] text-emerald-200">queue clear</span>
@@ -205,7 +208,7 @@ export default function WorkGraphMode() {
           <StatusCard title="Blocked" icon={<Ban size={12} />} severity={p.blocked_count ? 'critical' : 'ok'}>
             {p.blocked?.length ? (
               <ul className="flex flex-col gap-1.5">{p.blocked.slice(0, 10).map((t) => (
-                <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => { setSelectedGoalId(t.goals?.[0] ?? null); setSelectedProject(null) }} />
+                <TaskRow key={t.taskId} t={t} owner={leaseByTask.get(t.taskId)} onClick={() => nav.goto('tasks', { taskId: t.taskId })} />
               ))}</ul>
             ) : (
               <span className="text-[15px] md:text-[12px] text-emerald-200">nothing blocked</span>
@@ -220,7 +223,12 @@ export default function WorkGraphMode() {
                   // Two-line row: four shrink-0 spans in one line overflowed the
                   // page edge on phones (Ant annotation 2026-06-10). Identity up
                   // top, fence/renewed metadata below — everything truncates.
-                  <li key={`${l.session}-${l.fenceToken}`} className="flex flex-col gap-0.5">
+                  <li
+                    key={`${l.session}-${l.fenceToken}`}
+                    onClick={l.taskId ? () => nav.goto('tasks', { taskId: l.taskId as string }) : undefined}
+                    className={`flex flex-col gap-0.5 ${l.taskId ? 'cursor-pointer rounded-lg px-1 hover:bg-white/5' : ''}`}
+                    title={l.taskId ? 'open this task' : undefined}
+                  >
                     <div className="flex min-w-0 items-center gap-2 text-[13px] md:text-[11px]">
                       <OwnerChip agent={l.agent} />
                       {l.taskId && <span className="min-w-0 shrink-[2] truncate text-cyan-200">{l.taskId}</span>}
@@ -263,7 +271,7 @@ export default function WorkGraphMode() {
                 {selectedGoal?.marker && <div className="text-[13px] md:text-[11px] text-[var(--muted)]">{selectedGoal.marker}</div>}
                 {detailTasks.length ? (
                   <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto pr-1">
-                    {detailTasks.map((task) => <GovernedTaskRow key={task.taskId} task={task} />)}
+                    {detailTasks.map((task) => <GovernedTaskRow key={task.taskId} task={task} onClick={() => nav.goto('tasks', { taskId: task.taskId })} />)}
                   </ul>
                 ) : (
                   <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no governed tasks found for this focus</span>
