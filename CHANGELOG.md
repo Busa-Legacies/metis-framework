@@ -6,6 +6,13 @@ names, script CLIs) may still shift between minor versions.
 
 ## [Unreleased]
 ### Added
+- `scripts/ai-merge-resolver.py` + `docs/process/sync-merge-boundary.md` — Tier-3
+  AI author-intent resolver for genuine CODE merge conflicts in the auto-sync
+  ladder. Resolves honoring both sides' intent, then proves it through four gates
+  (no-markers + blast-radius bound + independent intent-review + compile/tests)
+  before anything is staged; any failure defers to the deterministic fail-soft
+  abort, so it can only improve on it. `scripts/test-ai-merge-resolver.py` guards
+  the pure safety gates and is wired into `core-ci.yml`.
 - `scripts/test-governance-core.py` — dependency-free test suite for the two
   safety-critical cores: the forward-only task state DAG + done-gate
   (`update-tier1-state.py`) and Kleppmann fencing tokens + lease activeness

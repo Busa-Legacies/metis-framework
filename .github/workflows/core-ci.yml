@@ -26,6 +26,7 @@ jobs:
         run: |
           python scripts/test-self-heal.py
           python scripts/test-governance-core.py
+          python scripts/test-ai-merge-resolver.py
       - name: Parameterization guard (no personal values in core)
         run: |
           set -e
