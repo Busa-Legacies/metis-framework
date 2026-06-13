@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "description": "Declares what 'how we work' config is mirrored between Jay (<<MACHINE_1_ID>>, $HOME) and Jarry (<<MACHINE_2_ID>>, $HOME) so nothing drifts or gets lost between the two machines. Consumed by scripts/mirror-check.sh (read-only drift report, wired into the session-init hook) and scripts/mirror-apply.sh (idempotent heal). The repo is the single source of truth; live locations are symlinks into it or deep-merges of a canonical shared file. ~ expands per-machine; repo-relative paths resolve against REPO_ROOT. This covers BOTH cross-machine sync (the two Macs) and cross-provider adapters (Claude Code under ClaudeCode/.claude, Codex under .codex/) \u2014 the analogous cross-PROVIDER parity check is scripts/platform-parity-check.py, driven by docs/process/platform-registry.json.",
+    "description": "Declares what 'how we work' config is mirrored between <<MACHINE_1_ID>> (<<MACHINE_1_ID>>, $HOME) and <<MACHINE_2_ID>> (<<MACHINE_2_ID>>, $HOME) so nothing drifts or gets lost between the two machines. Consumed by scripts/mirror-check.sh (read-only drift report, wired into the session-init hook) and scripts/mirror-apply.sh (idempotent heal). The repo is the single source of truth; live locations are symlinks into it or deep-merges of a canonical shared file. ~ expands per-machine; repo-relative paths resolve against REPO_ROOT. This covers BOTH cross-machine sync (the two Macs) and cross-provider adapters (Claude Code under ClaudeCode/.claude, Codex under .codex/) \u2014 the analogous cross-PROVIDER parity check is scripts/platform-parity-check.py, driven by docs/process/platform-registry.json.",
     "symlinks": [
         {
             "link": "~/.claude/commands",
@@ -60,7 +60,7 @@
         {
             "link": "~/.codex/instructions.md",
             "target": "ClaudeCode/codex/instructions.md",
-            "note": "Codex CLI global context \u2014 machine-agnostic, shared across Jay and Jarry"
+            "note": "Codex CLI global context \u2014 machine-agnostic, shared across <<MACHINE_1_ID>> and <<MACHINE_2_ID>>"
         },
         {
             "link": "~/.codex/prompts",
@@ -138,6 +138,6 @@
         "tailscale": "<<MACHINE_1_TAILSCALE_IP>>",
         "ollamaPort": 11434,
         "gatewayPort": 18789,
-        "rule": "Jay is the SOLE local-model host (Ollama qwen3-coder:30b). Jarry (32GB) must NOT run a local 30B model; its openclaw lanes route to Jay's Ollama via models.providers.ollama.baseUrl in ~/.openclaw/openclaw.json (the gateway ignores OLLAMA_HOST env var entirely). mirror-check warns if Jarry's lanes point at a paid model or localhost instead of Jay."
+        "rule": "<<MACHINE_1_ID>> is the SOLE local-model host (Ollama qwen3-coder:30b). <<MACHINE_2_ID>> (32GB) must NOT run a local 30B model; its openclaw lanes route to <<MACHINE_1_ID>>'s Ollama via models.providers.ollama.baseUrl in ~/.openclaw/openclaw.json (the gateway ignores OLLAMA_HOST env var entirely). mirror-check warns if <<MACHINE_2_ID>>'s lanes point at a paid model or localhost instead of <<MACHINE_1_ID>>."
     }
 }

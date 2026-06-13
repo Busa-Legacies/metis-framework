@@ -30,7 +30,7 @@ scripts/git-lock.sh run sh -c "git commit -m '<desc>' -- <specific-paths> && scr
 `scripts/close-push.sh` (called above) handles the push. **Never `git pull --rebase`/`git stash` on a rejected push (#099)** — `close-push.sh` leaves the commit local+durable; the auto-sync daemon will merge and push it. Never stash or `git add -A` another session's tree.
 
 ## Step 3 — Audit open threads → produce ops list
-Read current `## Open threads` in `Jay/memory/working-context.md`. For each item decide:
+Read current `## Open threads` in `<<MACHINE_1_ID>>/memory/working-context.md`. For each item decide:
 - **Done** → `--remove KEY` op
 - **Still active/changed** → `--upsert 'KEY::new text'` op
 - **Unchanged** → leave it (no op)
@@ -59,7 +59,7 @@ Thread KEY is the `[...]` label. If exit 2 (over budget without dropping a concu
 Three outputs:
 - **Lessons learned** → route via `docs/process/correction-protocol.md`: if the lesson should change *behavior* → delta-edit the governing skill/CLAUDE.md and make the memory entry a ≤3-line breadcrumb. Durable non-behavioral lessons → `feedback_*` memory file (step 10); session-specific → Scribe summary (step 6)
 - **Suggested next steps** → highest-priority one → `## Next action`; rest → `task-queue.md` entries with Why/Plan/Main files per [task-writing-protocol.md](../../docs/process/task-writing-protocol.md)
-- **New to-dos** → `task-queue.md` + (if board-worthy) `Jay/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:antfox`
+- **New to-dos** → `task-queue.md` + (if board-worthy) `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:antfox`
 
 Also: **backstop sweep for bugs fixed before committing** — these leave no git trace and the roll-up can't surface them. Recall by hand and route: reusable gotcha → `feedback_*`; design-level → DR; one-off → commit/Scribe log; trivial → nothing.
 
@@ -78,7 +78,7 @@ Hard gate: never log a followup already owned or finished. Run `python3 scripts/
 ```bash
 scripts/send-handoff.sh '{"done":[...],"next":[...],"blockers":[...],"summary":"..."}'
 ```
-Fill `done`/`next`/`blockers` with **real content** — `[...]` is not acceptable. Script exits 0 even when Jay is unreachable — **always run this step**.
+Fill `done`/`next`/`blockers` with **real content** — `[...]` is not acceptable. Script exits 0 even when <<MACHINE_1_ID>> is unreachable — **always run this step**.
 
 ## Step 9 — Rename the session
 Run `/rename <short-descriptive-name>` matching the primary work done.
@@ -86,7 +86,7 @@ Run `/rename <short-descriptive-name>` matching the primary work done.
 ## Step 10 — Save to Claude Code memory
 *(Skip only if nothing durable and non-obvious surfaced.)*
 
-**Ownership:** Claude Code owns `ClaudeCode/memory/` writes, inline. Scribe owns only `Jay/memory/`, `working-context.md`, and daily logs — no overlap.
+**Ownership:** Claude Code owns `ClaudeCode/memory/` writes, inline. Scribe owns only `<<MACHINE_1_ID>>/memory/`, `working-context.md`, and daily logs — no overlap.
 
 Write to `ClaudeCode/memory/` using the frontmatter standard in `~/.claude/CLAUDE.md`. Filter test: **durable + cross-session + non-obvious + not already in code/git/commit message**. Update/extend an existing file rather than creating a near-duplicate. Refresh its `MEMORY.md` line.
 

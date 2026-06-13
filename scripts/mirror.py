@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror Jay/Jarry 'how we work' config per ClaudeCode/mirror-manifest.json.
+"""Mirror <<MACHINE_1_ID>>/<<MACHINE_2_ID>> 'how we work' config per ClaudeCode/mirror-manifest.json.
 
   mirror.py check            read-only drift report (exit 1 if drift). Wired into
                              the session-init hook so drift surfaces every session.
@@ -212,11 +212,11 @@ def check_project_memory(m) -> list:
 
 
 def check_model_host(m) -> list:
-    """Jarry-only soft check: lanes should route to Jay's Ollama, not a paid model/localhost."""
+    """<<MACHINE_2_ID>>-only soft check: lanes should route to <<MACHINE_1_ID>>'s Ollama, not a paid model/localhost."""
     out = []
     mh = m.get("modelHost", {})
     if USER == mh.get("user"):
-        return out  # this IS the model host (Jay) — nothing to route
+        return out  # this IS the model host (<<MACHINE_1_ID>>) — nothing to route
     ocfg = HOME / ".openclaw" / "openclaw.json"
     if not ocfg.exists():
         return out
@@ -230,7 +230,7 @@ def check_model_host(m) -> list:
         out.append(
             (
                 "WARN",
-                f"lanes {bad} not routed to Jay's Ollama (modelHost rule) — expected ollama/* via OLLAMA_HOST={mh.get('tailscale')}",
+                f"lanes {bad} not routed to <<MACHINE_1_ID>>'s Ollama (modelHost rule) — expected ollama/* via OLLAMA_HOST={mh.get('tailscale')}",
             )
         )
     return out
@@ -387,7 +387,7 @@ def main():
     args.quiet = getattr(args, "quiet", False)
 
     m = load_manifest()
-    machine = "Jay" if USER == "Ant" else ("Jarry" if USER == "abusa" else USER)
+    machine = "<<MACHINE_1_ID>>" if USER == "Ant" else ("<<MACHINE_2_ID>>" if USER == "abusa" else USER)
 
     if args.cmd == "check":
         issues = run_checks(m)

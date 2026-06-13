@@ -59,7 +59,7 @@ Pulled when the triggering activity begins. Each is ONE canonical doc/skill, pro
 |---|---|---|
 | Decision doctrine (full) | `docs/process/decision-doctrine.md` | rarely — kernel holds the 6 guardrails |
 | Session lifecycle | `skills/{start,checkpoint,end,next}` (already skills ✓) | start / checkpoint / close |
-| Agent routing + lanes | `docs/process/jay-lanes.md` | delegating to a lane |
+| Agent routing + lanes | `docs/process/hearth-lanes.md` | delegating to a lane |
 | Design guidelines | `docs/design-guidelines.md` | any UI/frontend work |
 | Memory standard | `docs/process/memory-standard.md` (extract) | writing a memory file |
 | Task lifecycle | `docs/process/task-pickup-and-lifecycle-standard.md` | claim / close a task |
@@ -101,7 +101,7 @@ mechanically enforced or genuinely judgment-shaped (you can't hook-block "should
 | Rate-limit / plan-mode nudges | mechanical (advisory) | `hook-prompt-guard.sh`, `hook-plan-nudge.sh` (UserPromptSubmit) |
 | Act-vs-ask decision doctrine | judgment | kernel names the 6 guardrails; full doctrine on demand |
 | Design guidelines | judgment | path-scoped `.claude/rules/design.md` (auto-loads on UI files) |
-| Lane routing | judgment | kernel Router → `jay-lanes.md` |
+| Lane routing | judgment | kernel Router → `hearth-lanes.md` |
 | **Redaction (money never logged)** | **mechanical** | `hook-redaction-guard.sh` (PreToolUse Edit\|Write — denies). Tightly scoped to personal-log / `#personal` memory writes, so code edits with `$` are untouched; high-confidence money patterns ($-amounts, k/m/bn, money words, comma-grouped thousands) → `deny` with a redact-and-retry reason. |
 
 Every protocol is now either mechanically enforced or genuinely judgment-shaped — no on-demand
@@ -125,7 +125,7 @@ Target: always-on ~14.5k → ~7k tokens.
 - ✅ Path-scoped design rule (`.claude/rules/design.md`) — UI guidelines off always-on.
 - ✅ Root `AGENTS.md` split → kernel + Router (14,727c → 5,854c, −60%); comms/heartbeat/Discord →
   `docs/process/assistant-comms.md` (gateway-only). Parity check green.
-- ✅ `Jay/AGENTS.md` trimmed to kernel + comms pointer (220→~45 lines); `Jarry/AGENTS.md` left as-is
+- ✅ `<<MACHINE_1_ID>>/AGENTS.md` trimmed to kernel + comms pointer (220→~45 lines); `<<MACHINE_2_ID>>/AGENTS.md` left as-is
   (already lean + genuinely machine-specific, no comms bloat).
 - ✅ `codex/instructions.md` doctrine collapsed — Codex also auto-loads the AGENTS.md kernel, so the
   duplicated act-vs-ask prose is now a kernel pointer (priority stack + sign-off block kept inline).
@@ -145,7 +145,7 @@ hook. Target: shave the ~2.3k injection to ~0.8k typical.
 
 **Phase 3 — Cross-provider parity + budget guard.**
 - ✅ **Context-budget regression guard** (`scripts/context-budget-check.py`): measures the always-on
-  instruction surface per provider (Claude Code / Codex / Jay gateway / shared identity), path-scoped
+  instruction surface per provider (Claude Code / Codex / <<MACHINE_1_ID>> gateway / shared identity), path-scoped
   `.claude/rules/` correctly excluded, and fails if any group exceeds its char ceiling (current size +
   ~12% headroom). Wired as check #11 in `scripts/close-integrity-check.sh` so silent regrowth fails the
   session-close gate — bumping a ceiling now requires a conscious commit. Negative-tested (trips on

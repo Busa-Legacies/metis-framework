@@ -18,7 +18,7 @@ CTX_PCT=${CTX_PCT:-0}
 warnings=()
 
 if [ "$RATE_5H_PCT" -ge 80 ] 2>/dev/null; then
-  warnings+=("5-hour rate limit is at ${RATE_5H_PCT}% — route generation to Jay's Ollama lanes (smith/scout/warden) to protect the cap")
+  warnings+=("5-hour rate limit is at ${RATE_5H_PCT}% — route generation to <<MACHINE_1_ID>>'s Ollama lanes (smith/scout/warden) to protect the cap")
 elif [ "$RATE_5H_PCT" -ge 70 ] 2>/dev/null; then
   warnings+=("5-hour rate limit is at ${RATE_5H_PCT}%")
 fi

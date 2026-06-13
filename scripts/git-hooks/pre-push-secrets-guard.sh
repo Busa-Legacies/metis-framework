@@ -81,6 +81,10 @@ process_range() {
         #     files here explicitly if ever needed — never a broad tests/ glob. ---
         case "$current_file" in
             tests/test_secrets_guard.py) continue ;;
+            # Recovered forge lane-output for #312: reproduces this guard's OWN source +
+            # a fabricated self-test fixture (sk-proj-abcdef… that creates a fake leak.txt).
+            # Verified contains no real credential — exact path only, never a glob (T-SYNC-14).
+            docs/process/lane-outputs/2026-06-12-312-secrets-prepush-guard.md) continue ;;
         esac
 
         # --- VALUE patterns: always block regardless of file type ---

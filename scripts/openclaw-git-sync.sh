@@ -7,9 +7,9 @@
 #   - never leave a conflicted/mid-merge tree behind for the next run to blindly
 #     `git add -A && commit` (that pushed corruption to every machine 2026-05-30 — T-SYNC-04)
 #   - never auto-commit a MASS DELETION from a partial/incomplete checkout. A sandbox
-#     that only sees some of the tree (e.g. Jarry's /workspace view) would make
+#     that only sees some of the tree (e.g. <<MACHINE_2_ID>>'s /workspace view) would make
 #     `git add -A` stage deletions of every absent tracked file and push the wipe to
-#     all machines. That wiped Jay/{memory,state,lanes,.gitignore} on 2026-05-30 22:21
+#     all machines. That wiped <<MACHINE_1_ID>>/{memory,state,lanes,.gitignore} on 2026-05-30 22:21
 #     (commit 7b6511f) — see ClaudeCode/memory/project_git_autosync.md T-SYNC-05.
 #
 # Deploy: this is the canonical version. On each machine, copy into place:
@@ -27,9 +27,9 @@ DELETE_LIMIT="${OPENCLAW_SYNC_DELETE_LIMIT:-5}"
 # Paths that auto-sync must NEVER delete — if staging marks any of these deleted, it is a
 # partial-tree fault, not an intentional removal. (Critical shared state + the guard config.)
 PROTECTED=(
-  "Jay/memory/working-context.md"
-  "Jay/state/OPEN_TASKS.md"
-  "Jay/.gitignore"
+  "<<MACHINE_1_ID>>/memory/working-context.md"
+  "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
+  "<<MACHINE_1_ID>>/.gitignore"
 )
 
 # --- #234 split-sync: source never auto-commits to main; state files still do ----
@@ -51,15 +51,15 @@ STATE_PATHSPECS=(
   'docs/process/lane-outputs'
   'docs/process/decisions'
   'docs/process/taxonomy.yaml'
-  'Jay/state'
-  'Jay/memory'
-  'Jay/.gitignore'
-  'Jarry/memory'
+  '<<MACHINE_1_ID>>/state'
+  '<<MACHINE_1_ID>>/memory'
+  '<<MACHINE_1_ID>>/.gitignore'
+  '<<MACHINE_2_ID>>/memory'
   'ClaudeCode/memory'
 )
 # Exclusion form of the allowlist (everything that is NOT state) — used to stage SOURCE
 # into a scratch index for the autosync/<machine> snapshot. Kept in lockstep with the list.
-SOURCE_EXCLUDES=( ':(exclude)Jay/lanes' )
+SOURCE_EXCLUDES=( ':(exclude)<<MACHINE_1_ID>>/lanes' )
 for _sp in "${STATE_PATHSPECS[@]}"; do SOURCE_EXCLUDES+=( ":(exclude)$_sp" ); done
 
 # Per-machine branch for the source durability snapshot. Override OPENCLAW_SYNC_MACHINE if
@@ -82,7 +82,7 @@ AUTOSYNC_BRANCH="autosync/$SYNC_MACHINE"
 # Stage ONLY the state pathspecs that currently exist (working tree or tracked).
 # Why: `git add -A -- <pathspec>` hard-errors (exit 128) the instant ANY positive
 # pathspec matches nothing — and stages NOTHING when it does. Several STATE dirs
-# legitimately don't exist on a given machine (Jarry/memory on Jay, an as-yet-uncreated
+# legitimately don't exist on a given machine (<<MACHINE_2_ID>>/memory on <<MACHINE_1_ID>>, an as-yet-uncreated
 # lane-outputs/audits dir). Without this filter one absent path would abort the whole
 # add and silently drop real state changes off `main` (caught by the SPLIT-3 test). The
 # exclude-form used for the source snapshot has no such trap, so it needs no filter.
@@ -116,7 +116,7 @@ mkdir -p "$LOCK_DIR"
 
 # --- failure alerting (edge-triggered, one Discord ping per incident) ----------
 # The whole point of this sync is keeping every machine on one HEAD. A silent run of
-# failed ticks is exactly what let Jay diverge 156/175 (T-SYNC-10) before anyone noticed.
+# failed ticks is exactly what let <<MACHINE_1_ID>> diverge 156/175 (T-SYNC-10) before anyone noticed.
 # Alert the moment a tick fails — but only on the healthy->failing EDGE, tracked by a
 # marker file, so a multi-tick outage pings Discord once, not every 5 minutes. A
 # "recovered" ping after the next clean sync clears the marker.
@@ -190,7 +190,7 @@ heal_index_lock() {
 # active-checkouts.json is high-churn shared state; without a custom resolver, two
 # machines bump fenceCounter/updatedAt concurrently and CONFLICT on every pull, and the
 # abort-on-conflict policy then diverges the repo unboundedly (T-SYNC-07, 2026-06-04:
-# Jay hit 156-ahead/175-behind, dashboard stuck on stale code). .gitattributes maps the
+# <<MACHINE_1_ID>> hit 156-ahead/175-behind, dashboard stuck on stale code). .gitattributes maps the
 # file to merge=leasestate; the driver COMMAND lives in per-repo git config (not
 # version-controlled), so register it here so every machine running the daemon self-heals.
 LEASE_DRIVER="$REPO/scripts/merge-lease-state.sh"
@@ -202,7 +202,7 @@ fi
 # --- self-register the task-state merge driver (idempotent) -------------------
 # tasks.json + task-counter.json are governed state both machines mutate every session;
 # without a resolver they conflict on the same task objects / counter and stall the daemon
-# (the #147 outage: Jay sat 35-ahead/46-behind for hours). Maps to merge=taskstate in
+# (the #147 outage: <<MACHINE_1_ID>> sat 35-ahead/46-behind for hours). Maps to merge=taskstate in
 # .gitattributes; resolves deterministically (union tasks by taskId keeping higher
 # revision; counter = max lastAssigned) so an allocated id is never re-issued.
 TASKSTATE_DRIVER="$REPO/scripts/merge-taskstate.py"
@@ -211,10 +211,21 @@ if [ -x "$TASKSTATE_DRIVER" ]; then
   git config merge.taskstate.driver "python3 $TASKSTATE_DRIVER %O %A %B %P" 2>/dev/null || true
 fi
 
+# --- self-register: ignore dirty submodule content (idempotent) ----------------
+# T-SYNC-15 (2026-06-13): <<MACHINE_1_ID>>/lanes is an orphaned gitlink (committed submodule
+# pointer, NO .gitmodules entry, no remote) holding ever-dirty lane working files.
+# The daemon already EXCLUDES <<MACHINE_1_ID>>/lanes from commits, but stash/pull still saw it as
+# "modified content" → every post-pull `git stash pop` conflicted on the submodule and
+# wedged the tick (.failing loop, ~10h outage). `submodule.<name>.ignore` is INEFFECTIVE
+# without a .gitmodules entry (can't resolve name→path); `diff.ignoreSubmodules=dirty`
+# is the reliable lever — ignores dirty submodule CONTENT but still tracks a real gitlink
+# pointer change. Local config (not committed) so the daemon self-registers it per machine.
+git config diff.ignoreSubmodules dirty 2>/dev/null || true
+
 # --- self-enable rerere so the daemon can replay known conflict resolutions -----
 # (#122) Without this, a RECURRING conflict on a high-churn shared file (the same
 # hunk shape every tick) aborts the pull forever — exactly what stranded ~15 local
-# commits on Jarry 2026-06-05 under churn from ~6 concurrent sessions. rerere records
+# commits on <<MACHINE_2_ID>> 2026-06-05 under churn from ~6 concurrent sessions. rerere records
 # each resolution once and replays it automatically; autoupdate STAGES the replayed
 # result so the merge has zero unmerged paths left and the daemon can complete it
 # (see the rerere-assisted recovery in the pull-failure branch below) instead of
@@ -266,7 +277,7 @@ if [ -n "$(git status --porcelain)" ]; then
     # #234: stage ONLY state files for main; source stays dirty (→ autosync/<machine>).
     git_add_state
   else
-    git add -A -- ':(exclude)Jay/lanes'   # legacy blanket-add (kill-switch path)
+    git add -A -- ':(exclude)<<MACHINE_1_ID>>/lanes'   # legacy blanket-add (kill-switch path)
   fi
 
   # --- guard 4: partial-tree wipe protection (T-SYNC-05) ----------------------
@@ -324,8 +335,8 @@ if [ -n "$(git status --porcelain)" ]; then
   fi
 fi
 
-# --- stash any files the commit step couldn't capture (e.g. Jay/lanes exclusion)
-# The commit above uses :(exclude)Jay/lanes, so modifications there are never
+# --- stash any files the commit step couldn't capture (e.g. <<MACHINE_1_ID>>/lanes exclusion)
+# The commit above uses :(exclude)<<MACHINE_1_ID>>/lanes, so modifications there are never
 # committed by the daemon.  A git pull on a dirty tree either fails ("would be
 # overwritten") or silently clobbers those files — both revert live edits.
 # Stashing before pull guarantees pull operates on a clean tree, and the pop
@@ -398,7 +409,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
       if [ "$OPENCLAW_SPLIT_LANES" = "1" ]; then
         git_add_state   # #234: complete the merge with state only
       else
-        git add -A -- ':(exclude)Jay/lanes'
+        git add -A -- ':(exclude)<<MACHINE_1_ID>>/lanes'
       fi
       # Never let a botched replay commit conflict markers (same gate as the local path).
       if git diff --cached -U0 | grep -qE '^\+(<<<<<<< |>>>>>>> )'; then

@@ -13,7 +13,7 @@ Read first — these are authoritative and this skill is their executor:
 - `docs/DOC-TAXONOMY.md` + `docs/DOC-STANDARDS.md` — how `docs/` content is classified and indexed
 
 ## Scope
-`$ARGUMENTS` names the surface to audit. Default to the highest-sprawl surface if omitted. Do **one surface per run**. Priority order: `docs/process/` → `scripts/` → root files → `docs/` → `ClaudeCode/` → `Jay/`,`Jarry/` → `projects/`.
+`$ARGUMENTS` names the surface to audit. Default to the highest-sprawl surface if omitted. Do **one surface per run**. Priority order: `docs/process/` → `scripts/` → root files → `docs/` → `ClaudeCode/` → `<<MACHINE_1_ID>>/`,`<<MACHINE_2_ID>>/` → `projects/`.
 
 ## Step 1 — Inventory the surface
 List every file in the target surface with a one-line read of its purpose (first heading / first line). For `docs/`, note its DOC-TAXONOMY type.
@@ -26,7 +26,7 @@ Assign exactly one disposition per file: **KEEP / RELOCATE / RETIRE / DEDUP / IN
 ## Step 3 — Link-aware gate (the safety core — never skip)
 For **every** RETIRE / RELOCATE / DEDUP candidate, find inbound references before touching it:
 ```bash
-grep -rn "candidate-file-name" docs/ ClaudeCode/ scripts/ *.md Jay/ Jarry/ 2>/dev/null
+grep -rn "candidate-file-name" docs/ ClaudeCode/ scripts/ *.md <<MACHINE_1_ID>>/ <<MACHINE_2_ID>>/ 2>/dev/null
 ```
 Classify each inbound reference by the disposition of the referencing file:
 - Referenced **only by other RETIRE/DEDUP candidates** → safe; the link dies with both ends.

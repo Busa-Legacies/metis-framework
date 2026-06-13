@@ -59,6 +59,13 @@ SCRUBS = [
     (re.compile(r"/Users/Ant"), "$HOME"),
     (re.compile(r"/Users/abusa"), "$HOME"),
     (re.compile(r":-1489674856579600455"), ""),
+    # Machine persona names → org-neutral id placeholders. The framework ships LANE
+    # role names (smith/scout/warden/...) as real vocabulary, but MACHINE names are
+    # org-specific topology → placeholders resolved from config/infrastructure.json.
+    # Both the rebranded (Hearth/Outpost) and legacy (Jay/Jarry) names are scrubbed so
+    # no host persona leaks regardless of source vintage. (#121 launch.)
+    (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)\b"), "<<MACHINE_1_ID>>"),
+    (re.compile(r"\b(?:Outpost|OUTPOST|Jarry|JARRY)\b"), "<<MACHINE_2_ID>>"),
     # Org-specific project slugs used as examples in derived skill docs — neutralize
     # so the public framework ships generic illustrations, not Ant's real projects.
     # (Source stays accurate in metis-os; this is the publish seam. #121 launch.)
@@ -69,7 +76,7 @@ SCRUBS = [
     (re.compile(r"\bnavore\b"), "example"),
     (re.compile(r"\bNavore\b"), "Example"),
 ]
-SCRUB_EXT = {".py", ".sh", ".json", ".md", ".ts", ".tsx", ".js", ".mjs", ".env", ".yml", ".yaml", ".template"}
+SCRUB_EXT = {".py", ".sh", ".json", ".md", ".ts", ".tsx", ".js", ".mjs", ".env", ".yml", ".yaml", ".template", ".html"}
 
 
 def derived_items():

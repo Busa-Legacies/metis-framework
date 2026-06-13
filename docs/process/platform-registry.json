@@ -17,7 +17,7 @@
         "state": [
             "docs/process/state/active-checkouts.json",
             "docs/process/state/tasks.json",
-            "Jay/state/OPEN_TASKS.md"
+            "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
         ],
         "memory": "ClaudeCode/memory",
         "docs": "docs"
@@ -34,7 +34,7 @@
     "packRouter": "AGENTS.md",
     "tier1Packs": [
         {"id": "assistant-comms", "doc": "docs/process/assistant-comms.md"},
-        {"id": "jay-lanes", "doc": "docs/process/jay-lanes.md"},
+        {"id": "hearth-lanes", "doc": "docs/process/hearth-lanes.md"},
         {"id": "decision-doctrine", "doc": "docs/process/decision-doctrine.md"},
         {"id": "design-guidelines", "doc": "docs/design-guidelines.md"},
         {"id": "task-lifecycle", "doc": "docs/process/task-pickup-and-lifecycle-standard.md"}
@@ -81,10 +81,10 @@
             "neutralEntrypoint": "AGENTS.md",
             "commandSurface": null,
             "agentPersonas": "ClaudeCode/agents",
-            "memory": "Jay/memory",
+            "memory": "<<MACHINE_1_ID>>/memory",
             "sessionIdEnv": "OPENCLAW_SESSION",
             "lifecycle": "dispatch",
-            "notes": "Local Ollama lanes invoked via scripts/dispatch. Executor role: receives sub-tasks, returns output; does not own session lifecycle, so no command surface is required. Jay is the sole Ollama host for qwen3-coder:30b; Jarry is secondary/on-demand and routes Ollama to Jay. Jarry currently runs OpenClaw sandbox mode off because Docker is unavailable there, so keep Jarry lanes proposal-only unless sandboxing is restored and verified."
+            "notes": "Local Ollama lanes invoked via scripts/dispatch. Executor role: receives sub-tasks, returns output; does not own session lifecycle, so no command surface is required. <<MACHINE_1_ID>> is the sole Ollama host for qwen3-coder:30b; <<MACHINE_2_ID>> is secondary/on-demand and routes Ollama to <<MACHINE_1_ID>>. <<MACHINE_2_ID>> currently runs OpenClaw sandbox mode off because Docker is unavailable there, so keep <<MACHINE_2_ID>> lanes proposal-only unless sandboxing is restored and verified."
         },
         {
             "id": "antigravity-cli",

@@ -15,7 +15,7 @@ Confirm this task isn't already owned or done:
 ```bash
 python3 scripts/free-work.py
 ```
-Also grep `docs/process/task-queue.md` + `Jay/state/OPEN_TASKS.md` for the label/area.
+Also grep `docs/process/task-queue.md` + `<<MACHINE_1_ID>>/state/OPEN_TASKS.md` for the label/area.
 
 - **CLAIMED / WIP** (active lease) → stop; tell the user another session owns it
 - **queued** → stop; point them at the existing ID instead of adding a duplicate
@@ -50,7 +50,7 @@ python3 scripts/render-tier1-state.py write
 Do NOT hand-write the `## Inbox` / `## Queued` blocks — `render-tier1-state.py` owns the governed section between `<!-- GOVERNED:START -->` / `<!-- GOVERNED:END -->` anchors.
 
 ## Step 5 — Mirror to the dashboard board
-`Jay/state/OPEN_TASKS.md` is the dashboard board — a projection, not a second source of truth. Append:
+`<<MACHINE_1_ID>>/state/OPEN_TASKS.md` is the dashboard board — a projection, not a second source of truth. Append:
 ```
 - [P?] [ ] **#NNN slug** — brief context note @agent:X @machine:Y
 ```
@@ -65,7 +65,7 @@ Slug:     slug
 Priority: P? · Owner: Y · State: queued
 Canonical: docs/process/state/tasks.json
 Projection: docs/process/task-queue.md (rendered)
-Board:     Jay/state/OPEN_TASKS.md
+Board:     <<MACHINE_1_ID>>/state/OPEN_TASKS.md
 ```
 
 Do NOT commit — the auto-sync daemon will pick it up, or the user can commit at their next /checkpoint.

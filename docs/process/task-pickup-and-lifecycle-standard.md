@@ -1,7 +1,7 @@
 # Task Pickup & Lifecycle Standard
 
 The **concrete, tool-grounded** standard for how an agent session (primarily Claude
-Code on Jay, but any peer) assesses the queue, picks up a task, works it, closes it
+Code on <<MACHINE_1_ID>>, but any peer) assesses the queue, picks up a task, works it, closes it
 out, and chooses the next one — without colliding with another active session.
 
 This is the operational layer. It *implements* the abstract loop in
@@ -29,7 +29,7 @@ Every phase below depends on knowing which sources you can trust:
 |---|---|---|
 | `docs/process/state/active-checkouts.json` (leases) | who holds what, fence tokens | **CANONICAL** |
 | `docs/process/state/tasks.json` (state/owner) | task lifecycle state | **CANONICAL** |
-| `Jay/state/OPEN_TASKS.md` | dashboard board | projection |
+| `<<MACHINE_1_ID>>/state/OPEN_TASKS.md` | dashboard board | projection |
 | `gh issue list` | cross-device task record | projection (when reachable) |
 
 If a projection disagrees with canonical, **canonical wins** — that disagreement is
@@ -115,7 +115,7 @@ this session's hard-won rules:
    reaped/stolen while asleep.
 3. **Renew before the lease expires** (`agent-work.py renew ... --fence-token N`) for
    multi-hour work; default lease is 4h.
-4. **Route generation to Jay's lanes when it qualifies** (see `~/.claude/CLAUDE.md`
+4. **Route generation to <<MACHINE_1_ID>>'s lanes when it qualifies** (see `~/.claude/CLAUDE.md`
    routing): scout for research-first, smith for code/draft, warden for review.
    Apply their output inline. Keep runtime/git/security work inline.
 5. **Verify is a phase, not an afterthought.** Before claiming done, actually run the
@@ -178,7 +178,7 @@ python3 scripts/agent-work.py claim "<label>" --agent claude    # claim-backed
 
 # 3. Work — present the fence on shared-state writes; verify; checkpoint under lock
 python3 scripts/agent-work.py fence --issue <n> --token <N>      # pre-write staleness check
-scripts/git-lock.sh run sh -c "git add <paths> Jay/memory/working-context.md \
+scripts/git-lock.sh run sh -c "git add <paths> <<MACHINE_1_ID>>/memory/working-context.md \
   && git commit -m 'checkpoint: <desc>' && git push"
 
 # 4. Close out (with evidence)
@@ -195,7 +195,7 @@ python3 scripts/free-work.py                                     # re-assess, ne
 - [`agent-operating-loop.md`](agent-operating-loop.md) — the abstract loop this implements.
 - [`task-state-contract.md`](task-state-contract.md) — the durable fields/states referenced throughout.
 - [`agent-checkout-protocol.md`](agent-checkout-protocol.md) — claim/checkout/fence mechanics.
-- [`jarry-task-lifecycle-protocol.md`](jarry-task-lifecycle-protocol.md) — the Jarry-side counterpart.
+- [`outpost-task-lifecycle-protocol.md`](outpost-task-lifecycle-protocol.md) — the <<MACHINE_2_ID>>-side counterpart.
 - `~/.claude/CLAUDE.md` — Session Start (free-work + claim), `/checkpoint`, `/end`, and lane routing.
 
 ## Success criteria

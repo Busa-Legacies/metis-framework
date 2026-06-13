@@ -1,7 +1,7 @@
 # Task Writing Protocol
 
 **Version:** 1.1 (2026-06-03)
-**Applies to:** Any task written to `docs/process/task-queue.md` or `Jay/state/OPEN_TASKS.md`
+**Applies to:** Any task written to `docs/process/task-queue.md` or `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`
 
 ---
 
@@ -119,7 +119,7 @@ These rules apply anywhere in the project: `Verify:` fields, `task-verify.sh` he
 `scripts/foo.sh` (or `"$REPO/scripts/foo.sh"`) — not `bash scripts/foo.sh`. The shebang determines the interpreter. Overriding it silently breaks scripts that use interpreter-specific syntax and produces cryptic errors (e.g. `A: unbound variable` from `${0:A:h}` run under bash).
 
 **Rule 2 — all project scripts use `#!/usr/bin/env bash` unless they strictly require zsh.**
-Bash is available on all project machines (Jay + Jarry); zsh is not guaranteed everywhere and makes scripts non-portable. If you write or edit a script: check the shebang. If it's `#!/bin/zsh` without a zsh-only reason, change it to `#!/usr/bin/env bash`.
+Bash is available on all project machines (<<MACHINE_1_ID>> + <<MACHINE_2_ID>>); zsh is not guaranteed everywhere and makes scripts non-portable. If you write or edit a script: check the shebang. If it's `#!/bin/zsh` without a zsh-only reason, change it to `#!/usr/bin/env bash`.
 
 **Rule 3 — update `task-domain.py` keywords when adding tasks in new categories.**
 `task-verify.sh` uses `task-domain.py` to pick the right heuristic check. If your task slug doesn't map to a section (`python3 scripts/task-domain.py "your-slug"` returns `unknown`), add its keywords to the `KEYWORD_TO_SECTION` dict before closing the task.

@@ -11,7 +11,7 @@ DO NOT trigger for: pure backend/logic changes, or a one-line copy edit with no 
 ## Pre-flight
 Resolve the target from `$ARGUMENTS`:
 - **file path** → read it (and any linked CSS) directly. Default when empty: `projects/dashboard/index.html` + its `static/` CSS.
-- **URL** → the live page for Tier 2 render. Dashboard runs on **Jay**: `http://<<MACHINE_1_TAILSCALE_IP>>:8080`.
+- **URL** → the live page for Tier 2 render. Dashboard runs on **<<MACHINE_1_ID>>**: `http://<<MACHINE_1_TAILSCALE_IP>>:8080`.
 
 Then read the rubric source of truth: `docs/design-guidelines.md` §11 (Implementation Checklist) and §10 (What to Avoid). Those sections are authoritative — if they change, this skill follows them.
 

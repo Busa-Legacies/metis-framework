@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Autonomous queue runner — dispatches Agent:smith/scout tasks from task-queue.md.
-Runs on antfox (Jay) via LaunchAgent every 30 min, 06:00-22:00 PT.
+Runs on antfox (<<MACHINE_1_ID>>) via LaunchAgent every 30 min, 06:00-22:00 PT.
 
 Design: docs/process/queue-runner-pattern.md + cron-checkpoint-runner.md
 """
@@ -26,7 +26,7 @@ TASK_QUEUE = REPO / "docs/process/task-queue.md"
 TASKS_JSON = REPO / "docs/process/state/tasks.json"
 LANE_OUTPUTS = REPO / "docs/process/lane-outputs"
 GIT_LOCK = REPO / "scripts/git-lock.sh"
-JAY_WORKSPACE = REPO / "Jay"
+JAY_WORKSPACE = REPO / "<<MACHINE_1_ID>>"
 
 # Canonical lane roles are a core convention (see CLAUDE.md agent routing).
 DISPATCHABLE_AGENTS = {"smith", "scout", "scribe"}

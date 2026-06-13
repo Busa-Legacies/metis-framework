@@ -17,7 +17,7 @@ from that?" and the natural recall path came up empty — even though the answer
 `git log` the whole time.
 
 A Decision Record fixes this by putting the *why* into a **RAG-indexed, recall-surfaced layer**
-(`docs/process/decisions/`, covered by the `shared` index → discoverable by Jay, Jarry, and
+(`docs/process/decisions/`, covered by the `shared` index → discoverable by <<MACHINE_1_ID>>, <<MACHINE_2_ID>>, and
 Claude Code), linked bidirectionally to the commits that are the *what*.
 
 ## What a DR is

@@ -2,7 +2,7 @@
 # ensure-self-heal-loaded.sh — make the daily self-heal LaunchAgent self-wire on EVERY
 # machine. Called from hook-session-init.sh (once per session). If the agent is already
 # loaded, does nothing and stays silent. If it's absent, installs it via the portable
-# installer — so Jarry (and any new machine) gets self-heal parity automatically the next
+# installer — so <<MACHINE_2_ID>> (and any new machine) gets self-heal parity automatically the next
 # time a session starts there, with no manual SSH step.
 #
 # Output contract: silent when healthy; one line when it just installed (or failed to).

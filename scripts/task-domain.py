@@ -22,7 +22,7 @@ import sys
 import pathlib
 
 ROOT = pathlib.Path(__file__).parent.parent
-OPEN_TASKS = ROOT / "Jay" / "state" / "OPEN_TASKS.md"
+OPEN_TASKS = ROOT / "<<MACHINE_1_ID>>" / "state" / "OPEN_TASKS.md"
 
 # High-level concern groupings — pivot is triggered by crossing these buckets.
 # These are illustrative defaults; a consuming org replaces the bucket->area and

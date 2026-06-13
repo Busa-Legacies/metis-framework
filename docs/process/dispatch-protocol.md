@@ -1,7 +1,7 @@
 # Dispatch Protocol
 
 > Status: **active** · Created 2026-06-06 · Derived from: agent workbench learnings
-> Related: [`lane-entity-standard.md`](./lane-entity-standard.md) · [`jay-lanes.md`](./jay-lanes.md)
+> Related: [`lane-entity-standard.md`](./lane-entity-standard.md) · [`hearth-lanes.md`](./hearth-lanes.md)
 
 ## Why this exists
 
@@ -182,6 +182,6 @@ gates still apply.
 
 - The engine ladder in `ClaudeCode/CLAUDE.md` — still the source of truth for which
   engines exist and their cost/capability trade-offs
-- The Jay-lanes routing table in `ClaudeCode/CLAUDE.md` — still how you pick the role
+- The <<MACHINE_1_ID>>-lanes routing table in `ClaudeCode/CLAUDE.md` — still how you pick the role
 - The `dispatch` script itself (`scripts/dispatch`) — this doc describes the protocol,
   not the implementation

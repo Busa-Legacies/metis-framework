@@ -41,7 +41,7 @@ PASS, ALERT = "PASS", "ALERT"
 # Escalation tiers (per agent-escalation-thresholds.md):
 #   auto  → fixed silently, no human, no record beyond the report
 #   agent → a session must act, but it is NOT an Ant decision → self-heal worklist
-#           (consumed by the next Jay session; never pinged to Ant)
+#           (consumed by the next <<MACHINE_1_ID>> session; never pinged to Ant)
 #   ant   → trips the escalation bar (money / irreversible-high-cost / external /
 #           secrets / destructive-ambiguous) → @Ant decide-and-present ping
 AUTO, AGENT, ANT = "auto", "agent", "ant"
@@ -144,12 +144,12 @@ def check_hook_wiring(apply):
 
 
 def check_mirror_drift(apply):
-    """Config drift Jay-vs-canonical. REPORT only — mirror apply is canonical→live and
+    """Config drift <<MACHINE_1_ID>>-vs-canonical. REPORT only — mirror apply is canonical→live and
     can regress newer live state (feedback_validate_heal_commands)."""
     rc, out = sh(["python3", os.path.join(REPO, "scripts", "mirror.py"), "check"])
     clean = (rc == 0 and "in sync" in out.lower())
     if clean:
-        return {"name": "mirror-drift", "status": OK, "detail": "Jay in sync with canonical", "actions": []}
+        return {"name": "mirror-drift", "status": OK, "detail": "<<MACHINE_1_ID>> in sync with canonical", "actions": []}
     return {"name": "mirror-drift", "status": NEEDS_HUMAN, "detail": "mirror drift detected",
             "actions": ["review: python3 scripts/mirror.py check  (apply only after confirming live isn't newer)"]}
 

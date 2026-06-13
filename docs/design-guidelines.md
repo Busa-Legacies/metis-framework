@@ -1,7 +1,7 @@
 # Design Guidelines — Metis OS
 
 **Scope:** All UI/frontend work across Metis OS — dashboards, workspace, web UIs, agent tools.  
-**Audience:** Claude (via CLAUDE.md auto-load), Jay, Jarry, any agent doing frontend work.  
+**Audience:** Claude (via CLAUDE.md auto-load), <<MACHINE_1_ID>>, <<MACHINE_2_ID>>, any agent doing frontend work.  
 **Authority:** These are opinionated rules, not suggestions. Follow them unless explicitly overridden.
 
 ---

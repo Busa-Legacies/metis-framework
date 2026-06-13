@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Shared maintenance-window helpers for Jay. Source this — no side effects.
+# Shared maintenance-window helpers for <<MACHINE_1_ID>>. Source this — no side effects.
 #
 #   source "$(dirname "$0")/lib/maintenance.sh"
 #
 # The marker file is the SINGLE SOURCE OF TRUTH that the rest of the system
-# reads to know Jay is in a planned-downtime window. Consumers:
+# reads to know <<MACHINE_1_ID>> is in a planned-downtime window. Consumers:
 #   - scripts/heartbeat.sh + scripts/tailscale-watchdog.sh  -> suppress alerts
 #   - dashboard /api/architecture (_maintenance)            -> show "maintenance"
-# so a scheduled restart never pages us with a false "Jay down" alarm.
+# so a scheduled restart never pages us with a false "<<MACHINE_1_ID>> down" alarm.
 
 # Resolve METIS_HOME via the canonical self-locating helper when present.
 _mw_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

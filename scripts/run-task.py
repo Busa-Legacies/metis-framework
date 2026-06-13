@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Registry-backed task runner — the execution core of #153 (run-on-Jay).
+"""Registry-backed task runner — the execution core of #153 (run-on-<<MACHINE_1_ID>>).
 
 Resolves a stable registry key (NOT a free-form command) from
 ``scripts/run-registry.yaml``, enforces its run-mode against the calling
 context, executes the vetted command, and returns a structured result. This is
-the one place that turns "a key from a Notion card" into "a process on Jay", so
+the one place that turns "a key from a Notion card" into "a process on <<MACHINE_1_ID>>", so
 it is also the security gate: callers pass a KEY, never a command string, and the
 registry is the allowlist (reviewed in git like any code).
 

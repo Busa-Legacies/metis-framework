@@ -3,7 +3,7 @@
 #
 # Why this exists (#101): the daemon is the backstop that pushes commits left
 # local by close-push.sh's "defer on rejected push" strategy (#099). On 2026-06-04
-# it was found fully UNLOADED on Jarry — gone from `launchctl list` entirely, not
+# it was found fully UNLOADED on <<MACHINE_2_ID>> — gone from `launchctl list` entirely, not
 # just exited — so every session's deferred commits stranded with no failure edge
 # for #074's alert to catch. KeepAlive does NOT fix this: it only restarts an
 # exited-but-loaded job, and on a StartInterval-300 sync-then-exit job it would

@@ -8,8 +8,8 @@ Purpose:
 - make "deliver" and "reconcile" two deliberate steps, never one destructive `git reset`/`git pull`
 - preserve the durable lessons from the #12 dispatch rollout and the #147 auto-sync recovery
 
-This is the protocol for the kind of delivery done in #12 (laying the dispatch config onto Jay)
-and #147 (catching Jay's diverged clone back up to origin) — both on a host running ~8 live
+This is the protocol for the kind of delivery done in #12 (laying the dispatch config onto <<MACHINE_1_ID>>)
+and #147 (catching <<MACHINE_1_ID>>'s diverged clone back up to origin) — both on a host running ~8 live
 Claude sessions plus an auto-sync daemon, where a full pull/merge/reset would have destroyed work.
 
 ## Core rule
@@ -21,7 +21,7 @@ Claude sessions plus an auto-sync daemon, where a full pull/merge/reset would ha
 ## When this protocol applies
 
 Use it whenever you are writing git-tracked state onto a clone you do **not** have exclusive control of:
-- a remote machine reached over SSH (e.g. Jay/antfox) that has live agent sessions
+- a remote machine reached over SSH (e.g. <<MACHINE_1_ID>>/antfox) that has live agent sessions
 - any clone where the auto-sync daemon is running and committing `[auto-sync]` snapshots
 - a clone that has diverged from origin and has **uncommitted local work** in the tree
 - delivering a fix/config that must land without interrupting whatever is mid-flight

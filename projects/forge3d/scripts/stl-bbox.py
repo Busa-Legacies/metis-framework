@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """stl-bbox.py — report an STL's bounding box and check it fits the X1C bed.
 
-Pure stdlib (no numpy) so it runs in any container or on Jay. Handles both
+Pure stdlib (no numpy) so it runs in any container or on <<MACHINE_1_ID>>. Handles both
 binary and ASCII STL. Exit code is non-zero if the part exceeds the build
 volume, so it doubles as a pre-slice gate in scripts/CI.
 

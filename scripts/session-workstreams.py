@@ -66,8 +66,8 @@ def load_buckets(machine: str | None) -> dict:
 
 
 def load_personal_threads() -> list[str]:
-    """Return open personal thread bullets from Jay/memory/personal-log.md. Fails gracefully."""
-    log_path = ROOT / "Jay" / "memory" / "personal-log.md"
+    """Return open personal thread bullets from <<MACHINE_1_ID>>/memory/personal-log.md. Fails gracefully."""
+    log_path = ROOT / "<<MACHINE_1_ID>>" / "memory" / "personal-log.md"
     try:
         text = log_path.read_text()
     except FileNotFoundError:
@@ -221,7 +221,7 @@ def render(lanes: dict, held: list, rec, machine: str, width: int,
 
     if personal_threads:
         L.append("")
-        L.append("━━ PERSONAL THREADS " + "━" * (width - 21) + " Jay/memory/personal-log.md")
+        L.append("━━ PERSONAL THREADS " + "━" * (width - 21) + " <<MACHINE_1_ID>>/memory/personal-log.md")
         for pt in personal_threads:
             snippet = (pt[:width - 7] + "…") if len(pt) > width - 6 else pt
             L.append(f"   · {snippet}")

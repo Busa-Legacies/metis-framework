@@ -11,7 +11,7 @@ OPEN_TASKS.md and task-queue.md drift apart over time: tasks get marked done in 
 ## Step 1 — Read both files
 ```bash
 cat ~/metis-os/docs/process/task-queue.md
-cat ~/metis-os/Jay/state/OPEN_TASKS.md
+cat ~/metis-os/<<MACHINE_1_ID>>/state/OPEN_TASKS.md
 ```
 
 ## Step 2 — Find done-in-queue, open-on-board

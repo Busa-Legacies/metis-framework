@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# send-handoff.sh — POST /end cross-session handoff to Jay's gateway.
+# send-handoff.sh — POST /end cross-session handoff to <<MACHINE_1_ID>>'s gateway.
 #
 # Usage (pass JSON via arg or stdin):
 #   scripts/send-handoff.sh '{"done":[...],"next":[...],"blockers":[...],"summary":"..."}'
 #   echo '...' | scripts/send-handoff.sh
 #
 # from:claude-code is injected automatically if absent.
-# Exits 0 always — Jay unreachable is non-blocking.
+# Exits 0 always — <<MACHINE_1_ID>> unreachable is non-blocking.
 
 . "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/lib/network.env"
 JAY_ENDPOINT="http://${JAY_IP}:8080/api/handoff"
@@ -24,8 +24,8 @@ print(json.dumps(d))
 if curl -sf --max-time 5 -X POST "$JAY_ENDPOINT" \
     -H "Content-Type: application/json" \
     -d "$payload" >/dev/null 2>&1; then
-    echo "handoff → Jay: sent"
+    echo "handoff → <<MACHINE_1_ID>>: sent"
 else
-    echo "handoff → Jay: unreachable at ${JAY_ENDPOINT} (non-blocking, continuing close)"
+    echo "handoff → <<MACHINE_1_ID>>: unreachable at ${JAY_ENDPOINT} (non-blocking, continuing close)"
 fi
 exit 0

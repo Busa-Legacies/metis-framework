@@ -91,7 +91,7 @@ link_file "$REPO_ROOT/ClaudeCode/memory" "$MEM_LINK"
 link_file "$REPO_ROOT/ClaudeCode/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
 # 2b. Slash-command / skill dir — repo-back the whole dir so /free-work, /end,
-#     /close survive a wipe and reach every machine (Jarry included).
+#     /close survive a wipe and reach every machine (<<MACHINE_2_ID>> included).
 link_file "$REPO_ROOT/ClaudeCode/commands" "$HOME/.claude/commands"
 
 # 2b2. Agent Skills directory — directory-format skills (SKILL.md + bundled reference files).
@@ -101,8 +101,8 @@ link_file "$REPO_ROOT/ClaudeCode/skills" "$HOME/.claude/skills"
 # 2c. Claude Code subagent personas — per-machine target (jay vs jarry identity headers differ).
 MACHINE_AGENTS_DIR=""
 case "$(id -un)" in
-  Ant)   MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/jay" ;;
-  abusa) MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/jarry" ;;
+  Ant)   MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/hearth" ;;
+  abusa) MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/outpost" ;;
 esac
 if [[ -n "$MACHINE_AGENTS_DIR" ]]; then
     link_file "$MACHINE_AGENTS_DIR" "$HOME/.claude/agents"
@@ -111,7 +111,7 @@ else
 fi
 
 # 2d. Codex CLI global context + command/skill surface — machine-agnostic,
-#     shared across Jay and Jarry. The sync script preserves hand-written Codex
+#     shared across <<MACHINE_1_ID>> and <<MACHINE_2_ID>>. The sync script preserves hand-written Codex
 #     prompt adapters and generates missing adapters from ClaudeCode/skills.
 if [[ -d "$HOME/.codex" ]]; then
     python3 "$REPO_ROOT/scripts/sync-codex-surface.py"

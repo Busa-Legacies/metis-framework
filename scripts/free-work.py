@@ -8,7 +8,7 @@ and without a human being asked each time.
 Sources (relative to repo root = parent of this script's dir):
   1. docs/process/state/active-checkouts.json  — leases (CANONICAL)
   2. docs/process/state/tasks.json             — governed task state (CANONICAL, sole FREE source)
-  3. Jay/state/OPEN_TASKS.md                   — dashboard board (PROJECTION, drift-check only)
+  3. <<MACHINE_1_ID>>/state/OPEN_TASKS.md                   — dashboard board (PROJECTION, drift-check only)
   4. `gh issue list` open issues               — GitHub (PROJECTION)
 
 Canonical sources win. As of the #098 task-system unification, tasks.json is the
@@ -40,8 +40,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKOUTS = REPO_ROOT / "docs/process/state/active-checkouts.json"
 TASKS = REPO_ROOT / "docs/process/state/tasks.json"
-OPEN_TASKS = REPO_ROOT / "Jay/state/OPEN_TASKS.md"
-WORKING_CONTEXT = REPO_ROOT / "Jay/memory/working-context.md"
+OPEN_TASKS = REPO_ROOT / "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
+WORKING_CONTEXT = REPO_ROOT / "<<MACHINE_1_ID>>/memory/working-context.md"
 
 # Project progress layer (#221).
 sys.path.insert(0, str(Path(__file__).resolve().parent))

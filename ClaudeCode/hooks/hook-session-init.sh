@@ -43,7 +43,7 @@ if [ ! -f "$metrics_file" ]; then
 fi
 
 : "${METIS_HOME:=$HOME/metis-os}"
-wc_file="$METIS_HOME/Jay/memory/working-context.md"
+wc_file="$METIS_HOME/<<MACHINE_1_ID>>/memory/working-context.md"
 [ -f "$wc_file" ] || exit 0
 
 # --- git-sync drift check (non-fatal; only surfaces output when it actually drifts) ---
@@ -63,14 +63,14 @@ if [ -x "$autosync_script" ]; then
 fi
 
 # --- self-heal agent parity: self-wire the daily self-heal LaunchAgent on every machine
-#     (installs on Jarry/new machines automatically; silent if already loaded) ---
+#     (installs on <<MACHINE_2_ID>>/new machines automatically; silent if already loaded) ---
 selfheal_agent_script="$METIS_HOME/scripts/ensure-self-heal-loaded.sh"
 if [ -x "$selfheal_agent_script" ]; then
   sh_agent_out=$("$selfheal_agent_script" 2>&1)
   [ -n "$sh_agent_out" ] && autosync_msg="${autosync_msg:+$autosync_msg$'\n'}$sh_agent_out"
 fi
 
-# --- mirror drift check (Jay↔Jarry "how we work" config; surfaces only on drift) ---
+# --- mirror drift check (<<MACHINE_1_ID>>↔<<MACHINE_2_ID>> "how we work" config; surfaces only on drift) ---
 mirror_msg=""
 mirror_script="$METIS_HOME/scripts/mirror.py"
 if [ -f "$mirror_script" ]; then
@@ -78,9 +78,9 @@ if [ -f "$mirror_script" ]; then
   [ $? -ne 0 ] && mirror_msg="$mirror_out"
 fi
 
-# --- Ollama routing check (surfaces only when baseUrl missing or unreachable on Jarry) ---
+# --- Ollama routing check (surfaces only when baseUrl missing or unreachable on <<MACHINE_2_ID>>) ---
 # Prevents silent lane failures after openclaw.json reset/upgrade.
-# Skipped on Jay (antfox/Ant) — it IS the Ollama host; localhost:11434 works without baseUrl.
+# Skipped on <<MACHINE_1_ID>> (antfox/Ant) — it IS the Ollama host; localhost:11434 works without baseUrl.
 ollama_msg=""
 _machine_hostname=$(hostname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
 if [ "$_machine_hostname" != "antfox" ] && [ "$USER" != "Ant" ]; then
@@ -94,9 +94,9 @@ try:
 except: pass
 " "$oc_json" 2>/dev/null)
     if [ -z "$ollama_base" ]; then
-      ollama_msg="models.providers.ollama.baseUrl missing from ~/.openclaw/openclaw.json — lanes will fall back to localhost:11434 (broken on Jarry). Fix: add baseUrl: http://<<MACHINE_1_TAILSCALE_IP>>:11434"
+      ollama_msg="models.providers.ollama.baseUrl missing from ~/.openclaw/openclaw.json — lanes will fall back to localhost:11434 (broken on <<MACHINE_2_ID>>). Fix: add baseUrl: http://<<MACHINE_1_TAILSCALE_IP>>:11434"
     elif ! curl -s --max-time 4 "${ollama_base}/api/tags" >/dev/null 2>&1; then
-      ollama_msg="Ollama unreachable at ${ollama_base} — lane calls will fail. Check Tailscale + Jay gateway."
+      ollama_msg="Ollama unreachable at ${ollama_base} — lane calls will fail. Check Tailscale + <<MACHINE_1_ID>> gateway."
     else
       # Pre-warm: load qwen3-coder:30b into VRAM in the background so the first lane
       # call this session doesn't pay the cold-start cost (30–170s model reload).
@@ -160,14 +160,14 @@ if [ -f "$free_work_script" ]; then
 fi
 
 # --- stray nested .git detector (#163) ---
-# Allowlist: Jay/lanes (registered submodule), .claude/worktrees (CC worktrees), and ANY
+# Allowlist: <<MACHINE_1_ID>>/lanes (registered submodule), .claude/worktrees (CC worktrees), and ANY
 # nested .git the outer repo gitignores (a deliberate separate repo like
 # projects/polymarket-bot — invisible to outer git ops, so not a stray). Self-maintaining.
 stray_git_msg=""
 if [ -d "$METIS_HOME/.git" ]; then
   stray_git_msg=$(cd "$METIS_HOME" && find . -name ".git" \
     -not -path "./.git" \
-    -not -path "./Jay/lanes/.git" \
+    -not -path "./<<MACHINE_1_ID>>/lanes/.git" \
     -not -path "./.claude/worktrees/*" \
     2>/dev/null | sed 's|^\./||' | sort | while IFS= read -r rel; do
       git check-ignore -q "$rel" 2>/dev/null || printf '%s,' "$rel"
@@ -233,7 +233,7 @@ if orientation != "1" and len(ctx) > 3000:
     if nl > 0:
         head = head[:nl]
     ctx = head + ("\n\n[…working-context trimmed for a task-focused session — "
-                  "read Jay/memory/working-context.md for the full scratchpad.]")
+                  "read <<MACHINE_1_ID>>/memory/working-context.md for the full scratchpad.]")
 _label = "working-context.md" + ("" if orientation == "1" else " head")
 msg = "SESSION ORIENTATION (" + _label + " — auto-injected at session start):\n\n" + ctx
 if live_status.strip():

@@ -26,7 +26,7 @@ check "orphaned bg-task reaper" "ok"
 [ -n "$reap_out" ] && echo "  reap: $reap_out"
 
 # 1. working-context.md line count
-wc_lines=$(wc -l < "$REPO/Jay/memory/working-context.md" 2>/dev/null || echo 999)
+wc_lines=$(wc -l < "$REPO/<<MACHINE_1_ID>>/memory/working-context.md" 2>/dev/null || echo 999)
 [ "$wc_lines" -le 35 ] \
   && check "working-context.md ≤35 lines (${wc_lines})" "ok" \
   || check "working-context.md ≤35 lines" "${wc_lines} lines"
@@ -68,7 +68,7 @@ PYEOF
 #    legitimate (#089 archiving moves terminal #NNN blocks out of the queue, and
 #    alloc-id can reserve ids before a task entry is written), so only flag when the
 #    highest id EXCEEDS the counter (a true regression) or when an id is duplicated.
-id_check=$(python3 - "$REPO/docs/process/task-naming-convention.md" "$REPO/docs/process/task-queue.md" "$REPO/docs/process/task-archive.md" "$REPO/Jay/state/OPEN_TASKS.md" <<'PYEOF'
+id_check=$(python3 - "$REPO/docs/process/task-naming-convention.md" "$REPO/docs/process/task-queue.md" "$REPO/docs/process/task-archive.md" "$REPO/<<MACHINE_1_ID>>/state/OPEN_TASKS.md" <<'PYEOF'
 import os, re, sys
 convention = open(sys.argv[1]).read()
 queue = open(sys.argv[2]).read()

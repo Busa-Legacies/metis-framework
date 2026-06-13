@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up standard git worktrees for parallel Claude/Jay sessions.
+# Set up standard git worktrees for parallel Claude/<<MACHINE_1_ID>> sessions.
 # Run once per machine. Worktrees are local — not committed to the repo.
 #
 # Creates:

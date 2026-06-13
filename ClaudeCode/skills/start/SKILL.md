@@ -15,7 +15,7 @@ cd ~/metis-os
 git status --short
 
 # Intentional commits since the last close (filter out auto-sync snapshots)
-last_sha=$(grep -h 'closed-at:' Jay/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}')
+last_sha=$(grep -h 'closed-at:' <<MACHINE_1_ID>>/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}')
 if [ -n "$last_sha" ]; then
   git log "${last_sha}..HEAD" --invert-grep --grep='\[auto-sync\]' --oneline
 else
@@ -45,7 +45,7 @@ Interpret three-column `(PID, Status, Label)` output:
 Flag `dashboard` and `ttyd` explicitly if PID is absent (they should be persistent).
 
 ## Step 4 — Working context
-Read `~/metis-os/Jay/memory/working-context.md` explicitly:
+Read `~/metis-os/<<MACHINE_1_ID>>/memory/working-context.md` explicitly:
 - **Active focus** — what last session was driving
 - **Open threads** — in-flight items, dispatched agents, residuals
 - **Blockers** — anything unresolved
@@ -102,7 +102,7 @@ cd ~/metis-os && python3 scripts/agent-work.py reconcile
 cd ~/metis-os && python3 scripts/notion-session-sweep.py
 ```
 Surfaces judgment cards Ant directed from his phone that need an agent this session:
-- **`judgment`** reason → card marked `Action=▶ Run on Jay` with no Run Key (not a script — needs your call/action). The poller defers these here.
+- **`judgment`** reason → card marked `Action=▶ Run on <<MACHINE_1_ID>>` with no Run Key (not a script — needs your call/action). The poller defers these here.
 - **`fold-it`** reason → `Status=Edited: fold it` → diff Ant's edits vs the repo canonical, fold voice deltas, set `Status=Done` ([[project_notion_command_center]]).
 
 Include any surfaced cards in the briefing as a **Control Center** section and treat them as high-priority pickups. Soft-fail: if the sweep errors (Notion down, token/share issue → `restricted_resource`/`object_not_found`), note "Control Center unreachable" and continue — never block session start. Reading per-card comments is the #219 feedback loop (gated on the comment-capability toggle).

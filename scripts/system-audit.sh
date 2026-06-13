@@ -10,8 +10,8 @@ set -euo pipefail
 # auto-file tasks — a human triages the report into task-queue.md. Auto-filing
 # is a v2 step once the signal is trusted.
 #
-# Portable by design: derives REPO from git and uses $HOME, so it runs on Jarry
-# or Jay unchanged. Jay is only the scheduled HOST; the audit TARGET is the
+# Portable by design: derives REPO from git and uses $HOME, so it runs on <<MACHINE_2_ID>>
+# or <<MACHINE_1_ID>> unchanged. <<MACHINE_1_ID>> is only the scheduled HOST; the audit TARGET is the
 # whole repo architecture.
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"

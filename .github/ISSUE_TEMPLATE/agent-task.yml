@@ -1,5 +1,5 @@
 name: Agent task
-about: Work item intended to be checked out by Claude, Codex, Jay, Jarry, or a lane agent.
+about: Work item intended to be checked out by Claude, Codex, <<MACHINE_1_ID>>, <<MACHINE_2_ID>>, or a lane agent.
 title: "[Agent Task] "
 labels: ["status:ready"]
 body:

@@ -8,7 +8,7 @@ description: "Fix a bug through a quality-controlled workflow — reproduce, fin
 TRIGGER when: something is broken/misbehaving, or a task is a bug fix.
 DO NOT trigger for: a feature/buildout (use /plan→/build), a trivial typo (just fix it), or a flaky-tooling artifact you haven't confirmed is a real defect.
 
-Bug-fixing is **inline Claude work** — it's the runtime-debugging exception to Jay-routing (needs live tool calls + session error context). You may dispatch a research sub-question to scout, but the debugging loop itself stays inline.
+Bug-fixing is **inline Claude work** — it's the runtime-debugging exception to <<MACHINE_1_ID>>-routing (needs live tool calls + session error context). You may dispatch a research sub-question to scout, but the debugging loop itself stays inline.
 
 ## Pre-flight
 If `$ARGUMENTS` is empty: `Usage: /fix <what's broken — symptom, error, or #NNN>`.

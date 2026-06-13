@@ -68,4 +68,4 @@ Show output under `**smith →**`.
 
 ## Notes
 - Run scout and smith **sequentially** — never in parallel (single Ollama model).
-- Large context: write a handoff file first: `cat <files> > ~/metis-os/Jay/HANDOFF-$(date +%Y%m%d).md` and reference the path in the message.
+- Large context: write a handoff file first: `cat <files> > ~/metis-os/<<MACHINE_1_ID>>/HANDOFF-$(date +%Y%m%d).md` and reference the path in the message.

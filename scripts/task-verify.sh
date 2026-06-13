@@ -234,7 +234,7 @@ case "$SECTION" in
     ;;
   "Trading Bot")
     BOT_DIR="$REPO/projects/trading-bot"
-    # 1. Bot code compiles — stdlib-only, runs on any machine (incl. Jarry, which
+    # 1. Bot code compiles — stdlib-only, runs on any machine (incl. <<MACHINE_2_ID>>, which
     #    does not install the bot's runtime deps). Catches syntax/import breakage,
     #    the actual failure mode of a code edit.
     heuristic_run "bot.py + src compile" python3 -m py_compile \
@@ -251,7 +251,7 @@ missing = [k for k in ('max_daily_drawdown', 'max_trade_loss', 'take_profit') if
 sys.exit('missing risk keys: ' + ', '.join(missing) if missing else 0)
 "
     else
-      # pyyaml absent (e.g. Jarry) — degrade to a presence check rather than a false FAIL.
+      # pyyaml absent (e.g. <<MACHINE_2_ID>>) — degrade to a presence check rather than a false FAIL.
       heuristic_run "risk config keys present (grep, pyyaml absent)" bash -c \
         "grep -q 'max_daily_drawdown' '$CFG' && grep -q 'max_trade_loss' '$CFG' && grep -q 'take_profit' '$CFG'"
     fi

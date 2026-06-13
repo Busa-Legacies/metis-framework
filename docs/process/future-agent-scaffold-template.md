@@ -1,7 +1,7 @@
 # Future Agent Scaffold Template
 
 Purpose:
-- define the default scaffold and inheritance pattern for Jay-like future peer agents in this repository
+- define the default scaffold and inheritance pattern for <<MACHINE_1_ID>>-like future peer agents in this repository
 - make new agent setup faster, cleaner, and more consistent with the shared doctrine stack
 - avoid reinventing startup, memory, ownership, lifecycle, evidence, and continuity rules for every new peer
 
@@ -44,12 +44,12 @@ A future agent should explicitly inherit the shared doctrine from:
 - `docs/process/task-state-contract.md`
 
 Depending on the role, it may also need to read or reference:
-- `docs/process/jarry-task-lifecycle-protocol.md`
-- `docs/process/jarry-execution-evidence-gate.md`
-- `docs/process/jarry-session-continuity-and-rollover.md`
-- `docs/process/jarry-timeout-and-blocked-state-policy.md`
-- `docs/process/jarry-memory-architecture-v2.md`
-- `docs/process/jarry-recall-protocol.md`
+- `docs/process/outpost-task-lifecycle-protocol.md`
+- `docs/process/outpost-execution-evidence-gate.md`
+- `docs/process/outpost-session-continuity-and-rollover.md`
+- `docs/process/outpost-timeout-and-blocked-state-policy.md`
+- `docs/process/outpost-memory-architecture-v2.md`
+- `docs/process/outpost-recall-protocol.md`
 
 Interpretation rule:
 - shared docs define the reusable operational semantics
@@ -165,10 +165,10 @@ Avoid creating a future agent that:
 ## Relationship to current examples
 
 Current practical references:
-- Jarry = direct-control / execution-manager / state-steward emphasis
-- Jay = execution-oriented peer-agent example inheriting shared doctrine explicitly
+- <<MACHINE_2_ID>> = direct-control / execution-manager / state-steward emphasis
+- <<MACHINE_1_ID>> = execution-oriented peer-agent example inheriting shared doctrine explicitly
 
-Use Jay as the first concrete peer reference, not as a rigid universal mold.
+Use <<MACHINE_1_ID>> as the first concrete peer reference, not as a rigid universal mold.
 
 ## Success criteria
 

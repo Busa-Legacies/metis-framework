@@ -38,7 +38,7 @@ Produce your deltas only (the op-based helper re-reads the live file under the l
 ```bash
 scripts/git-lock.sh run sh -c "python3 scripts/working-context-update.py \
   --remove '<finished-KEY>' --next '<1-line>' \
-  && git commit -m 'checkpoint: <desc>' -- <task-paths> Jay/memory/working-context.md \
+  && git commit -m 'checkpoint: <desc>' -- <task-paths> <<MACHINE_1_ID>>/memory/working-context.md \
   && scripts/close-push.sh"
 ```
 Commit with **explicit pathspecs on `git commit` itself** (`git commit -- <paths>` auto-stages and commits ONLY those paths) — a separate `git add <paths> && git commit` commits the *entire index*, which sweeps in whatever another session or the daemon had pre-staged (this exact failure put 40 of a sibling's staged file-moves under an unrelated commit message on 2026-06-06). Never `git add -A`. Leave unrelated working-tree changes untouched. Note: `git commit -- <paths>` does not include brand-new untracked files — `git add <new-file>` those first; they ride along only if also named in the commit pathspec.

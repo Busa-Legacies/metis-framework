@@ -3,11 +3,11 @@
 self-review.py — Cross-session self-analysis of Claude Code transcripts.
 
 Pipeline (each stage fails SOFT so the weekly LaunchAgent never hard-crashes):
-  0. PULL      — rsync Jarry's transcripts to a local mirror so coverage spans
-                 both machines (Jay + Jarry).
+  0. PULL      — rsync <<MACHINE_2_ID>>'s transcripts to a local mirror so coverage spans
+                 both machines (<<MACHINE_1_ID>> + <<MACHINE_2_ID>>).
   1. HEURISTIC — cheap regex/structural scan surfaces candidate friction moments
                  (corrections, tool-error chains, reverts, rate-limit cap-hits,
-                 Jay-routing misses), tagged by machine.
+                 <<MACHINE_1_ID>>-routing misses), tagged by machine.
   2. SCOUT     — free local lane classifies each candidate (real miss vs false
                  positive) and synthesizes recurring patterns + proposed fixes.
   3. SHIELD    — free local lane VERIFIES each proposed fix for accuracy /
@@ -17,7 +17,7 @@ Pipeline (each stage fails SOFT so the weekly LaunchAgent never hard-crashes):
                  (canonical tasks.json) and surface on the OPEN_TASKS board.
                  Idempotent: a recurring pattern bumps its existing task instead
                  of spawning a duplicate.
-  5. LEDGER    — durable record (Jay/state/self-review/ledger.json) of weekly
+  5. LEDGER    — durable record (<<MACHINE_1_ID>>/state/self-review/ledger.json) of weekly
                  signal counts + every fix's lifecycle, so EFFECTIVENESS is
                  checked over time: did the signal drop after a fix shipped?
 
@@ -44,9 +44,9 @@ LOCAL_TRANSCRIPTS = os.path.join(HOME, ".claude", "projects")
 JARRY_MIRROR = os.path.join(HOME, ".claude", "projects-jarry")
 JARRY_SSH = f"abusa@{JARRY_IP}"
 JARRY_KEY = os.path.join(HOME, ".ssh", "jarry_access")
-DIGEST_DIR = os.path.join(REPO, "Jay", "state", "self-review")
+DIGEST_DIR = os.path.join(REPO, "<<MACHINE_1_ID>>", "state", "self-review")
 LEDGER = os.path.join(DIGEST_DIR, "ledger.json")
-BOARD = os.path.join(REPO, "Jay", "state", "OPEN_TASKS.md")
+BOARD = os.path.join(REPO, "<<MACHINE_1_ID>>", "state", "OPEN_TASKS.md")
 GOV_CLI = os.path.join(REPO, "scripts", "update-tier1-state.py")
 MAX_CANDIDATES = 50
 MAX_PROMOTE = 3  # cap new governed tasks per run (avoid flooding)
@@ -59,7 +59,7 @@ SYSTEM_CONTEXT = (
     "Ant's system: Claude Code is an orchestrator that should ROUTE codegen/research "
     "to free local Ollama lanes (smith/scout/warden/echo) to save Claude quota; it has "
     "a session 'end' protocol, a governed tasks.json pipeline, LaunchAgent automations, "
-    "and dashboards. Two machines: Jay (antfox) and Jarry. Fixes are things like hooks, "
+    "and dashboards. Two machines: <<MACHINE_1_ID>> (antfox) and <<MACHINE_2_ID>>. Fixes are things like hooks, "
     "CLAUDE.md rules, LaunchAgents, or habit changes."
 )
 
@@ -246,7 +246,7 @@ def scan_transcript(path, machine):
                                 "category": "routing_miss",
                                 "ts": turn["ts"],
                                 "user": "(no user turn — structural)",
-                                "context": f"{tu['name']} {tu['input'].get('file_path', '')} — {n} lines inline, no Jay-lane call in session",
+                                "context": f"{tu['name']} {tu['input'].get('file_path', '')} — {n} lines inline, no <<MACHINE_1_ID>>-lane call in session",
                             }
                         )
         if turn["role"] == "user" and (
@@ -292,7 +292,7 @@ def scan_transcript(path, machine):
 
 # ---------------------------------------------------------------- stage 0: pull
 def pull_jarry():
-    """rsync Jarry's transcripts into a local mirror. Best-effort."""
+    """rsync <<MACHINE_2_ID>>'s transcripts into a local mirror. Best-effort."""
     try:
         os.makedirs(JARRY_MIRROR, exist_ok=True)
         r = subprocess.run(
@@ -314,10 +314,10 @@ def pull_jarry():
         )
         n = len(glob.glob(os.path.join(JARRY_MIRROR, "**", "*.jsonl"), recursive=True))
         if r.returncode != 0:
-            sys.stderr.write(f"[self-review] Jarry pull rc={r.returncode}: {r.stderr[:200]}\n")
+            sys.stderr.write(f"[self-review] <<MACHINE_2_ID>> pull rc={r.returncode}: {r.stderr[:200]}\n")
         return n
     except Exception as e:
-        sys.stderr.write(f"[self-review] Jarry pull failed ({e}); continuing Jay-only.\n")
+        sys.stderr.write(f"[self-review] <<MACHINE_2_ID>> pull failed ({e}); continuing <<MACHINE_1_ID>>-only.\n")
         return 0
 
 
@@ -338,7 +338,7 @@ def discover(days, latest):
 
 
 # ---------------------------------------------------------------- stage 2: scout
-SCOUT_PROMPT = """You are reviewing flagged moments from Claude Code agent sessions (the agent is "Jay", working for Ant). A cheap heuristic flagged these as POSSIBLE misses/friction. Separate real misses from false positives, then find recurring patterns.
+SCOUT_PROMPT = """You are reviewing flagged moments from Claude Code agent sessions (the agent is "<<MACHINE_1_ID>>", working for Ant). A cheap heuristic flagged these as POSSIBLE misses/friction. Separate real misses from false positives, then find recurring patterns.
 
 For EACH candidate: verdict = "real_miss" or "false_positive", a short category, a one-line lesson (empty if false_positive).
 Then synthesize the top 3-6 RECURRING patterns across the real misses, each with a concrete proposed fix (a hook, a rule, a habit). Be specific; skip generic advice.

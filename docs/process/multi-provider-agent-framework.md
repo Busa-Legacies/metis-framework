@@ -100,7 +100,7 @@ know nothing about which driver called them. That is what makes the surface swap
 
 ## 5. Parallel-safety: how multiple drivers share the repo
 
-Concurrent sessions — a Claude Code terminal, a Codex session, and a Jay lane — can all touch
+Concurrent sessions — a Claude Code terminal, a Codex session, and a <<MACHINE_1_ID>> lane — can all touch
 the repo at once. Three mechanisms keep them from colliding; **all are already provider-neutral
 and apply to every driver:**
 
@@ -144,7 +144,7 @@ is not Claude-private). All drivers:
 - **Write** durable, cross-session, non-obvious lessons there using the frontmatter standard in
   `ClaudeCode/CLAUDE.md` (`name`/`description`/`metadata.type`/`tags`/`updated`), and add the
   one-line index entry to `MEMORY.md`.
-- Keep raw daily logs in `Jay/memory/YYYY-MM-DD.md` (the Scribe-owned narrative layer).
+- Keep raw daily logs in `<<MACHINE_1_ID>>/memory/YYYY-MM-DD.md` (the Scribe-owned narrative layer).
 
 Adapters wire their native memory path to this dir (Codex: `~/.codex/memories` → symlink into
 `ClaudeCode/memory/`, declared in `mirror-manifest.json`). The physical rename of the dir to a
@@ -233,8 +233,8 @@ To bring up `<tool>` as a first-class driver:
 
 ## 11. Related docs
 - [`platform-registry.json`](./platform-registry.json) — machine-readable registry
-- [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md) — engine ladder + Jay-lane routing
+- [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md) — engine ladder + <<MACHINE_1_ID>>-lane routing
 - [`../../ClaudeCode/codex/instructions.md`](../../ClaudeCode/codex/instructions.md) — Codex entrypoint
-- [`./jay-lanes.md`](./jay-lanes.md) — the executor lanes (dispatch)
+- [`./hearth-lanes.md`](./hearth-lanes.md) — the executor lanes (dispatch)
 - [`../../ClaudeCode/mirror-manifest.json`](../../ClaudeCode/mirror-manifest.json) — two-machine sync contract
 - [`../../AGENTS.md`](../../AGENTS.md) — the neutral identity/workspace entrypoint every driver reads

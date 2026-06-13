@@ -7,7 +7,7 @@ Scribe composes the prose; Claude Code persists it. Never let Scribe write the f
 Find the range since the last close:
 ```bash
 # Get boundary SHA from the most recent daily log
-grep -h 'closed-at:' Jay/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}'
+grep -h 'closed-at:' <<MACHINE_1_ID>>/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}'
 ```
 
 If SHA found: range = `<sha>..HEAD`
@@ -42,7 +42,7 @@ Treat Scribe's return as *draft prose*, not a confirmed write. Add anything Scri
 
 ## (b) Claude Code writes the file
 
-Path: `Jay/memory/YYYY-MM-DD.md`
+Path: `<<MACHINE_1_ID>>/memory/YYYY-MM-DD.md`
 - Append if it exists (with `# Daily Log — YYYY-MM-DD` header already present)
 - Create with `# Daily Log — YYYY-MM-DD` header if it does not exist
 
@@ -51,7 +51,7 @@ Use Scribe's prose plus anything Scribe missed. **Cite the short SHA(s)** of the
 ## (c) Guard the roll-up gap, then mark boundary
 
 ```bash
-scripts/close-boundary-advance.sh Jay/memory/YYYY-MM-DD.md
+scripts/close-boundary-advance.sh <<MACHINE_1_ID>>/memory/YYYY-MM-DD.md
 ```
 
 This loops the gap-check + auto-attribution cycle until the range is fully covered, then **immediately** writes `closed-at: SHA` to the log. The tight check→write window (milliseconds) defeats the concurrent-commit race.
@@ -59,6 +59,6 @@ This loops the gap-check + auto-attribution cycle until the range is fully cover
 - Exit 0 → boundary written; continue
 - Exit 1 → >10 iterations (very unlikely); fall back to the manual path in the script's error message
 
-Then assert: `test -f Jay/memory/YYYY-MM-DD.md && grep -q "$(date +%Y-%m-%d)" Jay/memory/YYYY-MM-DD.md`
+Then assert: `test -f <<MACHINE_1_ID>>/memory/YYYY-MM-DD.md && grep -q "$(date +%Y-%m-%d)" <<MACHINE_1_ID>>/memory/YYYY-MM-DD.md`
 
 If the file doesn't exist or doesn't contain today's date: **STOP and surface the failure** — do not silently continue the close.

@@ -7,7 +7,7 @@ sync maps path-for-path). Run: python3 manifest.py build   (or `plan` for dry-ru
 
 Classification source: a full 5-region exploration of metis-os (2026-06-10).
 Principle: include only genuinely portable architecture; exclude anything tied to
-a specific machine (Jay/Jarry/Tailscale), personal integration (Discord/Notion/
+a specific machine (<<MACHINE_1_ID>>/<<MACHINE_2_ID>>/Tailscale), personal integration (Discord/Notion/
 MS365), personal project, or business IP. Ambiguous-but-personal → EXCLUDE from
 the seed (safer to add later than to leak).
 """
@@ -104,7 +104,7 @@ PARAM_SCRIPTS = [
 
 # Everything else in scripts/ is intentionally EXCLUDED from the seed:
 #   discord_*, notion_*, ms365-sync, setup-google-sa, google-workspace-doctor,
-#   jay-*, bootstrap-jay-lanes, heartbeat*, lease-heartbeat, tailscale-watchdog,
+#   jay-*, bootstrap-hearth-lanes, heartbeat*, lease-heartbeat, tailscale-watchdog,
 #   ttyd-shell, navore_stakeholder_report, copilot-*, restart-dashboard/workbench,
 #   weekly-ops-summary, run-insights, smoke-*, dispatch, jlane, lane-*, caddy/,
 #   jay/, metis-move*, metis-sudo*, jarry-*, ccc*, claude-tmux, claude-task,

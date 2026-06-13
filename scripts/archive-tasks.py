@@ -8,7 +8,7 @@ entries into a separate, never-pruned archive so the active view stays scannable
 What it does (a view/projection cleanup — NO task data is deleted):
   1. task-queue.md  — moves Inbox `#NNN` blocks whose fields line is terminal
      (status:done/complete/cancelled/rejected/archived) into docs/process/task-archive.md.
-     The GOVERNED section (Jarry/tasks.json territory) is never touched.
+     The GOVERNED section (<<MACHINE_2_ID>>/tasks.json territory) is never touched.
   2. OPEN_TASKS.md  — moves `[x]` board entries from the project sections into the
      existing `## Resolved` section. The auto-managed SELF-REVIEW block is left alone.
 
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "docs/process/task-queue.md"
 ARCHIVE = ROOT / "docs/process/task-archive.md"
-BOARD = ROOT / "Jay/state/OPEN_TASKS.md"
+BOARD = ROOT / "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
 
 # Non-terminal statuses stay in the active queue (per #089):
 #   open, in-progress, blocked, needs-review, monitoring, partially-fixed

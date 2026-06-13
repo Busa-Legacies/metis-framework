@@ -29,7 +29,7 @@ import time
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DEFAULT_FILE = ROOT / "Jay" / "memory" / "working-context.md"
+DEFAULT_FILE = ROOT / "<<MACHINE_1_ID>>" / "memory" / "working-context.md"
 LINE_BUDGET = 35
 
 PROV_RE = re.compile(r"\s*<!--\s*own:(\S+)\s+ts:(\d+)\s*-->\s*$")

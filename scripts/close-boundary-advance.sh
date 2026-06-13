@@ -14,7 +14,7 @@
 #   scripts/close-boundary-advance.sh <daily-log-path>
 #
 # Example:
-#   scripts/close-boundary-advance.sh Jay/memory/2026-06-06.md
+#   scripts/close-boundary-advance.sh <<MACHINE_1_ID>>/memory/2026-06-06.md
 #
 # Exit 0 = boundary written (closed-at: SHA appended to log).
 # Exit 1 = loop exceeded MAX_ITERS — prints what to do next.

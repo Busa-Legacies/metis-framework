@@ -92,7 +92,7 @@ but browser security blocks `?model=...` fetches from `file://` URLs.
 The model is designed in millimeters at 1:1 — no scaling needed on import.
 
 ## Tooling
-- **OpenSCAD** — `brew install openscad` (mac/Jay) or `apt install openscad`.
+- **OpenSCAD** — `brew install openscad` (mac/<<MACHINE_1_ID>>) or `apt install openscad`.
 - `xvfb-run` is used automatically for headless rendering when there's no display
   (cloud sessions); on a desktop it renders directly.
 - Optional: **ImageMagick** (`montage`) produces a 2×2 contact sheet per render.

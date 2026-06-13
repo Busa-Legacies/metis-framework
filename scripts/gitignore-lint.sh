@@ -46,7 +46,7 @@ done < <(find . -name ".gitignore" \
   -not -path "./.claude/worktrees/*" \
   -not -path "./.pytest_cache/*" \
   -not -path "./.ruff_cache/*" \
-  -not -path "./Jay/lanes/*" \
+  -not -path "./<<MACHINE_1_ID>>/lanes/*" \
   -not -path "./*/.venv/*" \
   2>/dev/null | sort)
 

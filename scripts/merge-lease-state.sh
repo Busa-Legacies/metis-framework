@@ -4,7 +4,7 @@
 # Why: two machines bump this file every ~5 min (updatedAt + fenceCounter). A normal
 # 3-way merge conflicts on those lines every tick, and the auto-sync daemon's
 # abort-on-conflict policy then never pushes — the repo diverges unboundedly
-# (T-SYNC-07, 2026-06-04: Jay reached 156-ahead/175-behind, dashboard stuck on old code).
+# (T-SYNC-07, 2026-06-04: <<MACHINE_1_ID>> reached 156-ahead/175-behind, dashboard stuck on old code).
 #
 # Rule: resolve by fenceCounter — a Kleppmann fencing token, monotonic, so the higher
 # value is the newer authority. Ties broken by updatedAt (newer ISO-8601 wins). This is

@@ -39,7 +39,7 @@ while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in
     docs/process/state/*|docs/process/task-queue.md|docs/process/projects.md| \
-    docs/process/live-status.md|Jay/state/*|Jay/memory/*|docs/process/lane-outputs/*|*.md)
+    docs/process/live-status.md|<<MACHINE_1_ID>>/state/*|<<MACHINE_1_ID>>/memory/*|docs/process/lane-outputs/*|*.md)
       continue ;;
   esac
   src+=("$f")

@@ -88,7 +88,7 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 - [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:antfox
 ```
 
-Section target: `## <area>` header in `Jay/state/OPEN_TASKS.md`. Create the section if none fits.
+Section target: `## <area>` header in `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`. Create the section if none fits.
 
 ## Goals and projects reference
 

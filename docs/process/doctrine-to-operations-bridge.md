@@ -4,7 +4,7 @@ Last updated: 2026-06-06
 
 Purpose:
 - define how the doctrine stack governs active operational surfaces
-- reduce drift between shared doctrine, Jarry-specific operating doctrine, governed state, and human-readable process surfaces
+- reduce drift between shared doctrine, <<MACHINE_2_ID>>-specific operating doctrine, governed state, and human-readable process surfaces
 - make it explicit which docs are authoritative for which operational behaviors
 
 This document is intentionally narrow.
@@ -36,15 +36,15 @@ The following docs are the main doctrinal sources for operational behavior.
 - `docs/process/agent-operating-loop.md`
 - `docs/process/task-state-contract.md`
 
-### Jarry-specific doctrine
-- `docs/process/jarry-operating-model.md`
-- `docs/process/jarry-anti-drift-contract.md`
-- `docs/process/jarry-execution-evidence-gate.md`
-- `docs/process/jarry-task-lifecycle-protocol.md`
-- `docs/process/jarry-session-continuity-and-rollover.md`
-- `docs/process/jarry-timeout-and-blocked-state-policy.md`
-- `docs/process/jarry-memory-architecture-v2.md`
-- `docs/process/jarry-recall-protocol.md`
+### <<MACHINE_2_ID>>-specific doctrine
+- `docs/process/outpost-operating-model.md`
+- `docs/process/outpost-anti-drift-contract.md`
+- `docs/process/outpost-execution-evidence-gate.md`
+- `docs/process/outpost-task-lifecycle-protocol.md`
+- `docs/process/outpost-session-continuity-and-rollover.md`
+- `docs/process/outpost-timeout-and-blocked-state-policy.md`
+- `docs/process/outpost-memory-architecture-v2.md`
+- `docs/process/outpost-recall-protocol.md`
 
 ### Supporting Tier 1 / governed-state specs
 - `docs/process/tier1-governed-state-model.md`
@@ -58,8 +58,8 @@ This bridge applies directly to:
 - `docs/process/state/live-focus.json`
 - `docs/process/task-queue.md`
 - `docs/process/live-status.md`
-- `Jay/AGENTS.md`
-- `Jay/SOUL.md`
+- `<<MACHINE_1_ID>>/AGENTS.md`
+- `<<MACHINE_1_ID>>/SOUL.md`
 
 It also informs, but does not fully control by itself:
 - `docs/process/orchestration-model.md`
@@ -156,7 +156,7 @@ When operational surfaces answer questions about current work, prior decisions, 
 
 ### 7. Peer-agent inheritance must preserve independence without doctrine drift
 
-Agent-local docs such as `Jay/AGENTS.md` and `Jay/SOUL.md` may differ in voice, emphasis, and lane ownership.
+Agent-local docs such as `<<MACHINE_1_ID>>/AGENTS.md` and `<<MACHINE_1_ID>>/SOUL.md` may differ in voice, emphasis, and lane ownership.
 
 But they should still preserve:
 - explicit ownership
@@ -194,7 +194,7 @@ When a task is interrupted, delegated, or waiting, ask:
 - or would they have to reconstruct from chat memory?
 
 ### Check E — Peer-agent compliance
-When reviewing `Jay/` or future peer-agent docs, ask:
+When reviewing `<<MACHINE_1_ID>>/` or future peer-agent docs, ask:
 - does the peer inherit doctrine without losing independence?
 - does the peer remain interoperable without collapsing into a merged identity?
 

@@ -42,7 +42,7 @@ A task is **autopilot-eligible** only if every answer is yes:
 1. **Self-contained** — it can be finished (or moved to a clean, honest checkpoint) without an answer from Ant.
 2. **No external publish** — it does not send anything outward that can't be unwound: no Discord/email/social posts, no PR *merges*, no ClickUp/Notion writes that others act on, no live-trading flips. (Drafting these for review is fine; *sending* is not.)
 3. **No human-gated input** — it isn't blocked on a secret, credential, API key, or an Ant-only decision (`@status:blocked`, "Ant-present", "needs Ant", or a `nextDecisionPoint` that is a question for Ant).
-4. **Machine-available** — it can actually run in the current environment. A fresh web/remote clone cannot touch Jay/Jarry LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:antfox` live-verify steps are **out of reach** from a remote clone — code can land, but mark it `needs_verification`, never `done`.
+4. **Machine-available** — it can actually run in the current environment. A fresh web/remote clone cannot touch <<MACHINE_1_ID>>/<<MACHINE_2_ID>> LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:antfox` live-verify steps are **out of reach** from a remote clone — code can land, but mark it `needs_verification`, never `done`.
 5. **Reversible** — the work lands on a feature branch as commits, not on `main` and not as a destructive operation.
 
 If a task fails the test, **skip it and record why** — do not improvise around the gate.
@@ -54,7 +54,7 @@ Picking the next autopilot task?
 │
 ├── Needs an Ant answer / secret / approval?      → SKIP (note it in the report)
 ├── Sends something outward irreversibly?          → SKIP (draft only, never send)
-├── Needs Jay/Jarry/Ollama/live dashboard/antfox?  → code only if possible →
+├── Needs <<MACHINE_1_ID>>/<<MACHINE_2_ID>>/Ollama/live dashboard/antfox?  → code only if possible →
 │                                                     land as needs_verification
 ├── Self-contained code or doc on a branch?         → DO IT
 └── Nothing eligible left?                           → stop early, report honestly
@@ -75,7 +75,7 @@ Picking the next autopilot task?
 
 ## Execution loop
 
-1. **Read state first** — `Jay/state/OPEN_TASKS.md`, `Jay/memory/working-context.md`, and the governed `docs/process/state/tasks.json`. Know what's in flight before adding to it.
+1. **Read state first** — `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`, `<<MACHINE_1_ID>>/memory/working-context.md`, and the governed `docs/process/state/tasks.json`. Know what's in flight before adding to it.
 2. **Build a shortlist** — run every candidate through the independence test. Prefer well-specified, verifiable tasks (clear `summary`, `mainFiles`, owner `either`) over vague ones.
 3. **Work in small, committed slices** — one logical change per commit, descriptive message, governed-state updated honestly (`update-tier1-state.py` → `render-tier1-state.py write`).
 4. **Verify what you can** — `py_compile`, `node --check`, unit tests, smoke scripts. Whatever the environment allows. Record what you *couldn't* verify and why.

@@ -58,4 +58,21 @@ else
   fi
 fi
 
+# --- daemon-stash accumulation check (T-SYNC-15 follow-on) ---------------------
+# In healthy operation the daemon pops its "auto-sync pre-pull stash" within the same
+# tick. A LINGERING one means a stash-pop conflict left it behind (orphaned-gitlink
+# wedge, same-file race, etc.) — and they pile up silently, holding uncommitted work
+# (5 accumulated by 2026-06-13, one holding a 515-line lane-output found nowhere else).
+# Surface at session start and route to the reconciler instead of a manual `git stash`.
+STASH_WARN="${OPENCLAW_STASH_WARN:-2}"
+daemon_stashes=$(git -C "$REPO" stash list 2>/dev/null | grep -c 'auto-sync pre-pull stash')
+if [ "${daemon_stashes:-0}" -ge "$STASH_WARN" ]; then
+  echo "STASH: $daemon_stashes orphaned daemon stashes accumulated (>= ${STASH_WARN}) — a stash-pop has been failing."
+  echo "  inventory: python3 '$REPO/scripts/reconcile-daemon-stashes.py'        (dry-run, safe)"
+  echo "  reconcile: python3 '$REPO/scripts/reconcile-daemon-stashes.py' --apply (archive→recover→clear)"
+  rc=1
+elif [ "${daemon_stashes:-0}" -ge 1 ]; then
+  echo "OK: $daemon_stashes daemon stash present (below warn threshold ${STASH_WARN}) — likely mid-tick"
+fi
+
 exit $rc

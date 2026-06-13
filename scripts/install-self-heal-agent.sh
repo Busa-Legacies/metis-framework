@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # install-self-heal-agent.sh — install/refresh the daily self-heal LaunchAgent for THIS
-# machine. Portable: derives $HOME + repo path at run time, so the same script wires Jay
-# and Jarry correctly (the committed plist hardcodes Jay's paths and must NOT be copied
-# verbatim to Jarry). Idempotent — safe to re-run; bootout then bootstrap.
+# machine. Portable: derives $HOME + repo path at run time, so the same script wires <<MACHINE_1_ID>>
+# and <<MACHINE_2_ID>> correctly (the committed plist hardcodes <<MACHINE_1_ID>>'s paths and must NOT be copied
+# verbatim to <<MACHINE_2_ID>>). Idempotent — safe to re-run; bootout then bootstrap.
 #
-# Usage: scripts/install-self-heal-agent.sh   (run on each machine; Jarry over SSH)
+# Usage: scripts/install-self-heal-agent.sh   (run on each machine; <<MACHINE_2_ID>> over SSH)
 
 LABEL="ant.self-heal"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

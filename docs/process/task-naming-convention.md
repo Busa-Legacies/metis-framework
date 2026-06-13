@@ -50,8 +50,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 ## ID Counter
 
-**Last assigned: #353**
-**Next available: #354**
+**Last assigned: #356**
+**Next available: #357**
 
 These two lines are a **human-readable mirror** — the canonical, race-safe counter lives in
 `docs/process/state/task-counter.json` and is allocated atomically by
@@ -63,9 +63,9 @@ even for cancelled tasks. (`alloc-id --peek` shows the next id without consuming
 
 **This convention applies to:**
 - `docs/process/task-queue.md` — inbox and free-form sections
-- `Jay/state/OPEN_TASKS.md` — board view entries
+- `<<MACHINE_1_ID>>/state/OPEN_TASKS.md` — board view entries
 
-**Exempt:** The `<!-- GOVERNED:START --> ... <!-- GOVERNED:END -->` section of task-queue.md is managed by Jarry + `docs/process/state/tasks.json` and uses its own ID scheme (`T02`, `T06`, etc.). Do not manually rename governed entries — they will adopt this convention as Jarry updates tasks.json.
+**Exempt:** The `<!-- GOVERNED:START --> ... <!-- GOVERNED:END -->` section of task-queue.md is managed by <<MACHINE_2_ID>> + `docs/process/state/tasks.json` and uses its own ID scheme (`T02`, `T06`, etc.). Do not manually rename governed entries — they will adopt this convention as <<MACHINE_2_ID>> updates tasks.json.
 
 **Done tasks** use the same `#NNN slug` format with `status:done` in the fields line. All tasks (open and done) were migrated 2026-06-01.
 

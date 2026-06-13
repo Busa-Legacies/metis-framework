@@ -27,7 +27,7 @@ operating repo, left untouched). Built from a full 5-region read of metis-os on
 - **Personal projects**: trading-bot, polymarket-bot, social-pipeline, dashboard, consulting-portfolio, writing.
 - **Navore business IP**: strategy/, ops/, distribution/, lfpp-grant/, producer-onboarding/ (project content, not architectural core — kept out of the seed).
 - **Personal integrations**: discord_*, notion-cc-*, ms365, google, jay-*, heartbeat, tailscale, ttyd, navore_stakeholder_report, copilot-* scripts.
-- **Personal infra/ops docs**: goals, projects, live-status, infrastructure-state, jay-lanes (specific wiring), research, reviews, fitbod, remote-cloud, specific PLAN-*.md.
+- **Personal infra/ops docs**: goals, projects, live-status, infrastructure-state, hearth-lanes (specific wiring), research, reviews, fitbod, remote-cloud, specific PLAN-*.md.
 - **Machine-specific**: launchagents, settings.local.json, ttyd plists, lane tooling (dispatch/jlane/lane-*).
 - **All credentials / real IDs** — never in the shared repo.
 
@@ -68,7 +68,7 @@ out before the seed is clean — this is the open work:
   as advisory (review requested, not a hard merge gate), OR make the repo public.
 
 ### Remaining polish (tracked, non-blocking)
-- Jay/Jarry appear as illustrative *examples* in ~70 protocol/skill docs (not code).
+- <<MACHINE_1_ID>>/<<MACHINE_2_ID>> appear as illustrative *examples* in ~70 protocol/skill docs (not code).
   Acceptable for a repo private to the owning org; genericize in a follow-up.
 - Bundled app frameworks (metis-command/dev-review) carry sample paths/dev-host
   lists in their own source; scrub on next touch.
