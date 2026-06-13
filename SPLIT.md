@@ -60,7 +60,7 @@ out before the seed is clean — this is the open work:
   settings.shared model, machine-identity, hook-session-init). Final scan: **0
   hardcoded IPs, 0 home paths, 0 real credentials** in core (navore/ holds Ant's
   own content by design).
-- **Repo: created** — `Busa-Legacies/metis-core`, **private**, seed pushed to `main`.
+- **Repo: created** — `Busa-Legacies/metis-framework`, **private**, seed pushed to `main`.
 - **CODEOWNERS** (`@anthonyabusa`) is in place, so PRs auto-request his review.
 - **Branch-protection ENFORCEMENT is blocked**: classic protection and rulesets
   both require GitHub Pro/Team for *private* repos. Options (Ant's call, involves

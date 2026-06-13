@@ -1,7 +1,7 @@
-# Metis Core — System Architecture
+# Metis Framework — System Architecture
 
 This file describes the operating architecture an organization adopts when it
-runs Metis Core. It is the **portable** layer: decision doctrine, agent routing,
+runs Metis Framework. It is the **portable** layer: decision doctrine, agent routing,
 session lifecycle, and memory conventions, with no personal or org-specific
 values baked in. A consuming org adds its own overlay (identity, projects,
 integrations, the filled-in `config/infrastructure.json`) on top — that overlay

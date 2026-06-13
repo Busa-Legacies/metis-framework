@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Metis Core. Format loosely follows Keep a Changelog;
+All notable changes to Metis Framework. Format loosely follows Keep a Changelog;
 versions are semver. Pre-1.0: the public contract (config schema, skill/protocol
 names, script CLIs) may still shift between minor versions.
 

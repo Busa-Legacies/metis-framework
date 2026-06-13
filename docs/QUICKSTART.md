@@ -1,10 +1,10 @@
-# Metis Core — QuickStart
+# Metis Framework — QuickStart
 
 Stand up the Metis framework inside your org's operating repo. By the end you'll
 have the core vendored, your topology declared in one config file, and the
 governed session lifecycle running. Budget ~15 minutes.
 
-> **Mental model.** Metis Core is the *portable spine* — protocols, skills,
+> **Mental model.** Metis Framework is the *portable spine* — protocols, skills,
 > hooks, task-governance machinery. Your repo is the *overlay* — identity,
 > projects, real integration IDs. Core is parameterized; the one file you fill in
 > is [`config/infrastructure.json`](../config/infrastructure.json). Nothing else
@@ -15,7 +15,7 @@ governed session lifecycle running. Budget ~15 minutes.
 - **git** with the `subtree` command (ships with git ≥ 1.7.11)
 - **Python 3.12+** (the governance scripts target 3.12; `python3 --version`)
 - **A git repo for your org** that will consume the core (the "operating repo")
-- Read access to `git@github.com:Busa-Legacies/metis-core.git`
+- Read access to `git@github.com:Busa-Legacies/metis-framework.git`
 - *(optional, multi-machine)* **Tailscale** if you run agents across >1 host
 
 ## 1 — Vendor the core via git subtree
@@ -24,7 +24,7 @@ From the root of your operating repo:
 
 ```bash
 git subtree add --prefix metis-core \
-  git@github.com:Busa-Legacies/metis-core.git main --squash
+  git@github.com:Busa-Legacies/metis-framework.git main --squash
 ```
 
 This drops the whole framework under `metis-core/` as ordinary tracked files (no
@@ -150,11 +150,11 @@ and [`docs/process/`](process/) for the full protocols.
 ```bash
 # Pull core updates into your operating repo
 git subtree pull --prefix metis-core \
-  git@github.com:Busa-Legacies/metis-core.git main --squash
+  git@github.com:Busa-Legacies/metis-framework.git main --squash
 
 # Contribute a core fix back upstream (opens against a branch; main is protected)
 git subtree push --prefix metis-core \
-  git@github.com:Busa-Legacies/metis-core.git <your-branch>
+  git@github.com:Busa-Legacies/metis-framework.git <your-branch>
 ```
 
 Keep your overlay (identity, projects, real IDs, credentials) **out** of

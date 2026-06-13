@@ -1,6 +1,6 @@
 # Productization roadmap
 
-Metis Core is incubated **private**, Busa-Legacies + Navore only. The intent is
+Metis Framework is incubated **private**, Busa-Legacies + Navore only. The intent is
 near-term productization. This doc records the path so Phase 2 is a *flip*, not a
 rebuild, and tracks the seams that must be clean before any external consumer.
 

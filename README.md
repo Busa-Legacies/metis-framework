@@ -1,4 +1,4 @@
-# Metis Core
+# Metis Framework
 
 > **Metis** (Greek): cunning, adaptive, practical intelligence — counsel internalized into judgment.
 
@@ -41,13 +41,13 @@ In your org's operating repo:
 
 ```bash
 # First time — add the core under a vendored path
-git subtree add --prefix metis-core git@github.com:Busa-Legacies/metis-core.git main --squash
+git subtree add --prefix metis-core git@github.com:Busa-Legacies/metis-framework.git main --squash
 
 # Pull updates later
-git subtree pull --prefix metis-core git@github.com:Busa-Legacies/metis-core.git main --squash
+git subtree pull --prefix metis-core git@github.com:Busa-Legacies/metis-framework.git main --squash
 
 # Contribute a fix back up to the core
-git subtree push --prefix metis-core git@github.com:Busa-Legacies/metis-core.git <branch>
+git subtree push --prefix metis-core git@github.com:Busa-Legacies/metis-framework.git <branch>
 ```
 
 Then fill in `metis-core/config/infrastructure.json` with your org's machines,
