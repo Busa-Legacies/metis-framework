@@ -1,0 +1,2 @@
+# False positive: prose "API for task CRUD..." matches generic-api-key heuristic (verified no secret, 2026-06-12)
+projects/metis-command/docs/agent-workbench-bridgemind-reference-20260430.md:generic-api-key:124

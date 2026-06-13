@@ -58,7 +58,7 @@ CORE_SCRIPTS = [
     # task governance + state
     "agent-work.py", "update-tier1-state.py", "render-tier1-state.py", "reconcile.py",
     "archive-done-tasks.py", "archive-tasks.py", "link-milestones.py",
-    "backfill-task-board-fields.py", "backfill-task-origins.py", "backfill-task-projects.py",
+    
     "migrate-nnn-to-governed.py", "priorities.py", "priorities-selftest.py",
     "coverage-lint.py", "context-budget-check.py", "run-task.py",
     "task-ready-blockers.py", "task-ready.sh", "task-verify.sh", "decide.py",

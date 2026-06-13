@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   // Allow Electron to load the dev server from either host (avoids HMR origin block).
   // Tailscale IPs allow remote browser access (mobile dashboard → Metis Command);
   // without them dev-mode origin protection blocks hydration and the page renders dead.
-  allowedDevOrigins: ['127.0.0.1', 'localhost', '0.0.0.0', '<<MACHINE_1_TAILSCALE_IP>>', 'antfox-macbook', 'antfox-macbook.local'],
+  allowedDevOrigins: ['127.0.0.1', 'localhost', '0.0.0.0', '<<MACHINE_1_TAILSCALE_IP>>', '<<MACHINE_1_HOSTNAME>>', '<<MACHINE_1_HOSTNAME>>.local'],
   // The floating dev-tools badge (<nextjs-portal>) sits exactly over the mobile
   // bottom tab bar's first tab and INTERCEPTS taps (real phones too, not just
   // Playwright). Pure dev chrome — drop it.

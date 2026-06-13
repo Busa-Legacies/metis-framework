@@ -52,6 +52,8 @@ OVERLAY_DIRS = {".github"}
 SCRUBS = [
     (re.compile(r"100\.82\.81\.93"), "<<MACHINE_1_TAILSCALE_IP>>"),
     (re.compile(r"100\.80\.166\.77"), "<<MACHINE_2_TAILSCALE_IP>>"),
+    (re.compile(r"antfox-macbook"), "<<MACHINE_1_HOSTNAME>>"),
+    (re.compile(r"anthonys-macbook-pro"), "<<MACHINE_2_HOSTNAME>>"),
     (re.compile(r"/Users/Ant/metis-os"), "${METIS_HOME}"),
     (re.compile(r"/Users/abusa/metis-os"), "${METIS_HOME}"),
     (re.compile(r"/Users/Ant"), "$HOME"),
