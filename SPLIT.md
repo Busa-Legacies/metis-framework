@@ -3,7 +3,7 @@
 How content was divided between **metis-core** (this repo: portable framework,
 synced between Busa-Legacies and Navore agents) and **metis-os** (the personal
 operating repo, left untouched). Built from a full 5-region read of metis-os on
-2026-06-10. The machine-readable manifest is `metis-core-build/manifest.py`.
+2026-06-10. The machine-readable manifest is `build/manifest.py`.
 
 ## In metis-core (CORE)
 
@@ -16,9 +16,8 @@ operating repo, left untouched). Built from a full 5-region read of metis-os on
 | **Config patterns** | `.gitattributes` (merge drivers), settings.shared.json, mirror-manifest.json, pyproject.toml, .prettierrc, .codex/hooks.json, .github/ | Reusable structure (templated where values are personal). |
 | **Architecture docs** | AGENTS.md, new CLAUDE.md, README.md | The system contract, personal overlay stripped. |
 | **Templates** | DR template + standard, plan template, agent-scaffold template, launchagent template | Reusable scaffolds. |
-| **Project frameworks** | dev-review, metis-command, agent-workbench, forge3d (lib + tooling only, not personal models) | Org-agnostic tooling; no personal data. |
+| **Project frameworks** | dev-review, agent-workbench, forge3d (lib + tooling only, not personal models) | Org-agnostic tooling; no personal data. |
 | **Design + decks** | design-guidelines.md, docs/design, decks/assets, decks/metis | Framework design system + intro deck. |
-| **Navore seed kit** | projects/navore/sandbox-agent-template + templates | The portable "Vora" agent scaffold, explicitly built for sharing. |
 | **Config seam** | `config/infrastructure.json` (new) | The single file an org fills in: machines, agents, model, domains, network. |
 
 ## In metis-os (PERSONAL, left untouched)
@@ -49,7 +48,7 @@ out before the seed is clean; this is the open work:
 | `ClaudeCode/hooks/hook-session-init.sh` | Tailscale IP, machine names | config-driven |
 | `ClaudeCode/bin/claude-machine-identity.sh` | machine roster (antfox/jarry/abusa) | read config `machines` |
 | skill SKILL.md examples (next/file/free-work/end) | antfox/jarry in example text | generhalize to `<machine>` |
-| metis-command / dev-review app source | dev-server allowed-host IPs, sample paths | template next.config host list |
+| dev-review app source | dev-server allowed-host IPs, sample paths | template next.config host list |
 | agent-workbench/data sample reports | `$HOME` sample paths | scrub sample data |
 
 ## Status · SEEDED 2026-06-11
@@ -62,13 +61,15 @@ out before the seed is clean; this is the open work:
   own content by design).
 - **Repo created**: `Busa-Legacies/metis-framework`, **private**, seed pushed to `main`.
 - **CODEOWNERS** (`@anthonyabusa`) is in place, so PRs auto-request his review.
-- **Branch-protection ENFORCEMENT is blocked**: classic protection and rulesets
-  both require GitHub Pro/Team for *private* repos. Options (Ant's call, involves
-  money or visibility): upgrade Busa-Legacies to GitHub Team, OR accept CODEOWNERS
-  as advisory (review requested, not a hard merge gate), OR make the repo public.
+- **Branch-protection enforcement** turns on at the public flip. Repo rulesets are
+  free for *public* repos on a free org but return 403 while private, so enforcement
+  cannot be set while the repo is private. [`build/setup-branch-protection.sh`](build/setup-branch-protection.sh)
+  creates the branch and tag rulesets (PR + code-owner review + CI check + no
+  force-push + linear history); run it once after flipping the repo public. Until
+  then CODEOWNERS keeps review advisory.
 
 ### Remaining polish (tracked, non-blocking)
 - <<MACHINE_1_ID>>/<<MACHINE_2_ID>> appear as illustrative *examples* in ~70 protocol/skill docs (not code).
   Acceptable for a repo private to the owning org; genericize in a follow-up.
-- Bundled app frameworks (metis-command/dev-review) carry sample paths/dev-host
+- Bundled app frameworks (dev-review) carry sample paths/dev-host
   lists in their own source; scrub on next touch.
