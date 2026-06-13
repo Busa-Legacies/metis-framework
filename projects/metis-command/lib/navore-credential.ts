@@ -1,10 +1,10 @@
 /**
- * Resolves the Navore Claude credential server-side, so the long-lived OAuth
+ * Resolves the Example Claude credential server-side, so the long-lived OAuth
  * token never has to live in the LaunchAgent plist or the repo. Precedence:
  *
  *   1. AW_CLAUDE_NAVORE_OAUTH_TOKEN env var (if the operator prefers env).
- *   2. A gitignored secret file: $AW_DATA_DIR/navore-claude-token
- *      (default ~/.openclaw/metis-command/navore-claude-token), chmod 600.
+ *   2. A gitignored secret file: $AW_DATA_DIR/example-claude-token
+ *      (default ~/.openclaw/metis-command/example-claude-token), chmod 600.
  *
  * The secret file is the recommended path — it's outside the repo, survives
  * `bootstrap` regenerating the plist, and rotates with a single `echo > file`.
@@ -24,9 +24,9 @@ function dataDir(): string {
   return expandHome(process.env.AW_DATA_DIR ?? path.join(os.homedir(), '.openclaw', 'metis-command'))
 }
 
-/** Path to the gitignored Navore token file. */
+/** Path to the gitignored Example token file. */
 export function navoreTokenPath(): string {
-  return path.join(dataDir(), 'navore-claude-token')
+  return path.join(dataDir(), 'example-claude-token')
 }
 
 function readSecretFile(p: string): string | undefined {
@@ -55,12 +55,12 @@ export function navoreTokenLooksValid(token: string | undefined): boolean {
   return !!token && /^sk-ant-oat/.test(token)
 }
 
-/** Long-lived Navore OAuth token (env first, then the secret file), sanitized. */
+/** Long-lived Example OAuth token (env first, then the secret file), sanitized. */
 export function navoreOAuthToken(): string | undefined {
   return sanitizeToken(process.env.AW_CLAUDE_NAVORE_OAUTH_TOKEN) || sanitizeToken(readSecretFile(navoreTokenPath()))
 }
 
-/** Optional Navore config-dir override (settings/history isolation). */
+/** Optional Example config-dir override (settings/history isolation). */
 export function navoreConfigDir(): string | undefined {
   return process.env.AW_CLAUDE_NAVORE_CONFIG_DIR?.trim() || undefined
 }

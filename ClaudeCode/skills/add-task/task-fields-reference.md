@@ -95,11 +95,11 @@ Section target: `## <area>` header in `Jay/state/OPEN_TASKS.md`. Create the sect
 Goals:
 - G1 — OpenClaw infrastructure reliability
 - G2 — Dashboard + personal integrations
-- G3 — Navore Market operations
+- G3 — Example Market operations
 - G4 — Financial systems (trading + finances)
 - G5 — Public presence (portfolio + social)
 
 Projects (add `project:slug` to any non-governed task entry in task-queue.md):
 - P01 `queue-runner` (G1) · P02 `agent-coordination` (G1) · P03 `lane-reliability` (G1) · P04 `sync-integrity` (G1)
-- P05 `dashboard-core` (G2) · P06 `navore-brief` (G3) · P07 `finances-panel` (G4) · P08 `trading-bot` (G4)
+- P05 `dashboard-core` (G2) · P06 `partner-brief` (G3) · P07 `finances-panel` (G4) · P08 `trading-bot` (G4)
 - P09 `portfolio-site` (G5) · P10 `portfolio-social` (G5)

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import { captureText } from './overlay-controller'
 
 /** One pinned review comment, anchored to an element in the page under review. */
 export interface Annotation {
@@ -15,8 +16,27 @@ export interface Annotation {
   ts: number
   status: 'open' | 'resolved' | 'orphaned' | 'changed'
   severity: 'note' | 'issue' | 'blocker'
+  /** Truncated textContent at pin time — catches content edits the tracked styles miss.
+   *  Optional: pre-#258 session files hydrate without it (style-only compare). */
+  text?: string
   /** Styles captured during the last verify pass — present when status is 'changed'. */
   verifiedStyles?: Record<string, string>
+  /** Text captured during the last verify pass — present when status is 'changed' and text differs. */
+  verifiedText?: string
+  /** Absolute path of the pin-time element crop (#256) — visual ground truth that
+   *  survives orphaning; cited in the agent prompt. Fail-soft: absent if capture failed. */
+  cropPath?: string
+  /** Session slug for serving the crop thumbnail via the sidecar. */
+  cropSlug?: string
+}
+
+/** How a verify pass was initiated — shown in the rail summary strip. */
+export type VerifyTrigger = 'auto' | 'manual' | 'load'
+
+export interface VerifyPass {
+  ts: number
+  trigger: VerifyTrigger
+  counts: { changed: number; open: number; orphaned: number; resolved: number }
 }
 
 interface ReviewState {
@@ -38,8 +58,21 @@ interface ReviewState {
   /** Disk path of the persisted session file (agent-readable artifact). */
   sessionPath: string | null
   hydrate: (url: string) => Promise<void>
-  /** Re-run selectors against the live iframe document, mark changed/unchanged. */
-  verifyAll: (doc: Document) => void
+  /** Re-run selectors against the live iframe document, mark changed/unchanged.
+   *  Returns the pass record (also stamped into lastVerify). */
+  verifyAll: (doc: Document, trigger?: VerifyTrigger) => VerifyPass
+  /** Most recent verify pass — drives the rail summary strip. */
+  lastVerify: VerifyPass | null
+  /** True between send-to-agent and detected run-complete (watcher armed). */
+  awaitingAgent: boolean
+  setAwaitingAgent: (on: boolean) => void
+  /** Monotonic nonce — bumping asks PreviewPane to reload the iframe (load re-verifies). */
+  verifyRequestId: number
+  requestVerify: () => void
+  /** When set, the next pick REBINDS this orphaned annotation instead of creating one (#257). */
+  repickId: string | null
+  /** Arms/disarms re-pick mode; arming also arms the element picker. */
+  setRepick: (id: string | null) => void
 }
 
 export const useReviewStore = create<ReviewState>((set) => ({
@@ -70,7 +103,14 @@ export const useReviewStore = create<ReviewState>((set) => ({
       set({ sessionPath: null, annotations: [] })
     }
   },
-  verifyAll: (doc) => {
+  lastVerify: null,
+  awaitingAgent: false,
+  setAwaitingAgent: (awaitingAgent) => set({ awaitingAgent }),
+  verifyRequestId: 0,
+  requestVerify: () => set((s) => ({ verifyRequestId: s.verifyRequestId + 1 })),
+  repickId: null,
+  setRepick: (repickId) => set({ repickId, picking: repickId !== null }),
+  verifyAll: (doc, trigger = 'manual') => {
     const { annotations } = useReviewStore.getState()
     const STYLE_KEYS = ['color', 'background-color', 'font-size', 'font-family', 'padding', 'margin', 'display', 'position'] as const
     annotations.forEach((a) => {
@@ -86,13 +126,24 @@ export const useReviewStore = create<ReviewState>((set) => ({
       if (!cs) return
       const current: Record<string, string> = {}
       for (const k of STYLE_KEYS) current[k] = cs.getPropertyValue(k)
-      const changed = (Object.keys(a.styles) as string[]).some((k) => a.styles[k] !== current[k]) ||
+      const stylesChanged = (Object.keys(a.styles) as string[]).some((k) => a.styles[k] !== current[k]) ||
         (Object.keys(current) as string[]).some((k) => current[k] !== (a.styles[k] ?? ''))
+      // Text compare only when the pin captured text (pre-#258 sessions didn't).
+      const currentText = captureText(el)
+      const textChanged = a.text !== undefined && currentText !== a.text
+      const changed = stylesChanged || textChanged
       useReviewStore.getState().updateAnnotation(a.id, {
         status: changed ? 'changed' : 'open',
         verifiedStyles: changed ? current : undefined,
+        verifiedText: textChanged ? currentText : undefined,
       })
     })
+    const after = useReviewStore.getState().annotations
+    const counts = { changed: 0, open: 0, orphaned: 0, resolved: 0 }
+    for (const a of after) counts[a.status] += 1
+    const pass: VerifyPass = { ts: Date.now(), trigger, counts }
+    set({ lastVerify: pass })
+    return pass
   },
 }))
 
@@ -126,6 +177,7 @@ export function annotationsToPrompt(anns: Annotation[], url: string, sessionPath
     return [
       `${i + 1}. [${a.severity}${a.status === 'changed' ? '/changed' : ''}] ${a.comment}`,
       `   selector: ${a.selector}`,
+      a.cropPath ? `   crop: ${a.cropPath}` : null,
       `   rect: ${Math.round(a.rect.x)},${Math.round(a.rect.y)} ${Math.round(a.rect.width)}x${Math.round(a.rect.height)}`,
       Object.keys(a.styles).length
         ? `   pinned-styles: ${Object.entries(a.styles).map(([k, v]) => `${k}=${v}`).join(' ')}`
@@ -140,7 +192,7 @@ export function annotationsToPrompt(anns: Annotation[], url: string, sessionPath
   return [
     header,
     ...lines,
-    'Fix each item. The selector pinpoints the exact element; rect/pinned-styles are capture-time ground truth.',
+    'Fix each item. The selector pinpoints the exact element; rect/pinned-styles are capture-time ground truth; crop (when present) is a pin-time screenshot of the element — read it for visual context.',
     sessionPath ? `Full payloads: ${sessionPath}` : null,
   ].filter(Boolean).join('\n')
 }

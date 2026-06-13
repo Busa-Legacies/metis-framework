@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Route, RefreshCw, ChevronRight, ChevronDown, ChevronLeft, X, AlertTriangle,
   CheckCircle2, Circle, Bot, Flag, Layers, ArrowUpRight,
@@ -8,7 +8,7 @@ import {
 import { metisApi, ageLabel, type MetisResult } from '@/lib/metis-api'
 import type {
   MetisLinesIndex, MetisLineSummary, MetisLineDetail, MetisLineMilestone,
-  MetisGoverndTask, MetisLineLease,
+  MetisGoverndTask, MetisLineLease, MetisDomainCoverage,
 } from '@/lib/metis-api-types'
 import { CardLoading, CardError } from '../overview/cards'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
@@ -50,6 +50,36 @@ function AgentChip({ lease }: { lease?: MetisLineLease }) {
       <span className={`h-1.5 w-1.5 rounded-full ${AGENT_DOT[lease.agent] ?? 'bg-slate-300'}`} />
       {lease.agent}{lease.fenceToken != null ? ` ·${lease.fenceToken}` : ''}
     </span>
+  )
+}
+
+function LadderChip({ label, title }: { label?: string | null; title?: string | null }) {
+  if (!label) return null
+  return (
+    <span
+      title={title ?? undefined}
+      className="max-w-full truncate rounded-md border border-cyan-300/20 bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-bold text-cyan-100"
+    >
+      {label}
+    </span>
+  )
+}
+
+function LadderTrail({ domain, domainLabel, campaign, campaignName, project }: {
+  domain?: string | null
+  domainLabel?: string | null
+  campaign?: string | null
+  campaignName?: string | null
+  project?: string | null
+}) {
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] text-[var(--muted)]">
+      <LadderChip label={domain} title={domainLabel} />
+      {campaign && <span className="text-slate-600">/</span>}
+      <LadderChip label={campaignName ? `${campaign} · ${campaignName}` : campaign} />
+      {project && <span className="text-slate-600">/</span>}
+      {project && <span className="min-w-0 truncate text-slate-300">{project}</span>}
+    </div>
   )
 }
 
@@ -223,6 +253,46 @@ function MilestoneCard({ ms, leases, expanded, onToggle, onTaskClick }: {
   )
 }
 
+// ── Domain coverage strip (#337) ─────────────────────────────────────────────
+// Shows neglect/activity signals across all life domains. No completion %.
+
+function DomainCoverageStrip({ coverage }: { coverage: MetisDomainCoverage }) {
+  if (!coverage.domains.length) return null
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5 px-1">
+      {coverage.domains.map((d) => {
+        const isNeglected = d.neglected
+        const isStale = d.stale_signal
+        const count = d.active_count + d.evergreen_count
+        const cls = isNeglected
+          ? 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+          : isStale
+            ? 'border-amber-400/20 bg-amber-400/5 text-amber-300/80'
+            : count > 0
+              ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100'
+              : 'border-white/10 bg-white/5 text-slate-400'
+        const icon = isNeglected ? '⚠' : isStale ? '~' : count > 0 ? '●' : '○'
+        const title = isNeglected
+          ? `${d.domain}: no active work — ${d.label}`
+          : `${d.domain}: ${d.active_count} active, ${d.evergreen_count} evergreen, ${d.paused_blocked_count} paused/blocked`
+        return (
+          <span
+            key={d.domain}
+            title={title}
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${cls}`}
+          >
+            <span className="text-[8px]">{icon}</span>
+            {d.domain}
+            {d.campaigns.length > 0 && (
+              <span className="opacity-60">{d.campaigns.join(',')}</span>
+            )}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Project picker card ───────────────────────────────────────────────────────
 
 function ProjectCard({ p, onOpen }: { p: MetisLineSummary; onOpen: () => void }) {
@@ -231,6 +301,12 @@ function ProjectCard({ p, onOpen }: { p: MetisLineSummary; onOpen: () => void })
       <Route size={16} className="shrink-0 text-cyan-300" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-semibold text-slate-100">{p.name}</div>
+        <LadderTrail
+          domain={p.domain}
+          domainLabel={p.domainLabel}
+          campaign={p.campaign ?? p.goal}
+          campaignName={p.campaignName}
+        />
         <div className="flex items-center gap-2 text-[11px] md:text-[10px] text-[var(--muted)]">
           <span>{p.priority}</span>
           <span>{p.openCount} open</span>
@@ -249,6 +325,7 @@ export default function LinesOfWorkMode() {
   const [index, setIndex] = useState<MetisResult<MetisLinesIndex> | null>(null)
   const [slug, setSlug] = useState<string | null>(null)
   const [detail, setDetail] = useState<MetisResult<MetisLineDetail> | null>(null)
+  const [coverage, setCoverage] = useState<MetisDomainCoverage | null>(null)
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => Date.now())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -257,8 +334,9 @@ export default function LinesOfWorkMode() {
 
   const loadIndex = useCallback(async () => {
     setLoading(true)
-    const r = await metisApi.lines()
+    const [r, cov] = await Promise.all([metisApi.lines(), metisApi.domainCoverage()])
     setIndex(r)
+    if (cov.ok) setCoverage(cov.data)
     setNow(Date.now())
     setLoading(false)
   }, [])
@@ -292,6 +370,15 @@ export default function LinesOfWorkMode() {
 
   const d = detail?.ok ? detail.data : null
   const leaseFor = (tid: string) => d?.leases[tid]
+  const groupedProjects = useMemo(() => {
+    const projects = index?.ok ? index.data.projects : []
+    const groups = new Map<string, MetisLineSummary[]>()
+    for (const project of projects) {
+      const key = project.domain ?? 'unmapped'
+      groups.set(key, [...(groups.get(key) ?? []), project])
+    }
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [index])
 
   return (
     <div data-testid="lines-mode" className="flex h-full w-full flex-col overflow-hidden">
@@ -324,12 +411,22 @@ export default function LinesOfWorkMode() {
           {index && !index.ok && <CardError message={index.error} onRetry={loadIndex} />}
           {loading && !index?.ok && <CardLoading label="Loading lines of work…" />}
           {index?.ok && (
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-2 md:p-3">
               <div className="mb-2 px-1 text-[12px] md:text-[11px] text-[var(--muted)]">
-                Pick a project to follow its line of work top to bottom.
+                Drill from life domain to campaign, project, milestone, task, owner, and evidence.
               </div>
-              <div className="flex flex-col gap-2">
-                {index.data.projects.map((p) => <ProjectCard key={p.slug} p={p} onOpen={() => open(p.slug)} />)}
+              {coverage && <DomainCoverageStrip coverage={coverage} />}
+              <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+                {groupedProjects.map(([domain, projects]) => (
+                  <section key={domain} className="min-w-0">
+                    <div className="mb-1 px-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                      {domain}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {projects.map((p) => <ProjectCard key={p.slug} p={p} onOpen={() => open(p.slug)} />)}
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
           )}
@@ -342,7 +439,7 @@ export default function LinesOfWorkMode() {
           {detail && !detail.ok && <CardError message={detail.error} onRetry={() => loadDetail(slug)} />}
           {loading && !d && <CardLoading label="Loading project line…" />}
           {d && (
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 overflow-y-auto p-2 md:p-3">
               {/* Project header */}
               <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
                 <div className="flex items-center gap-2">
@@ -351,7 +448,15 @@ export default function LinesOfWorkMode() {
                   <div className="flex-1" />
                   {d.project.progress != null && <Bar progress={d.project.progress} tone="emerald" />}
                 </div>
-                {d.project.goal && <div className="mt-1 text-[12px] md:text-[11px] text-[var(--muted)]">goal {d.project.goal}</div>}
+                <div className="mt-1">
+                  <LadderTrail
+                    domain={d.project.domain}
+                    domainLabel={d.project.domainLabel}
+                    campaign={d.project.campaign ?? d.project.goal}
+                    campaignName={d.project.campaignName}
+                    project={d.project.slug}
+                  />
+                </div>
                 {d.project.doneWhen && <div className="mt-1 text-[12px] md:text-[11px] text-slate-300"><span className="font-bold text-[var(--muted)]">Done when:</span> {d.project.doneWhen}</div>}
                 <div className="mt-1.5 flex items-center gap-3 text-[11px] md:text-[10px] text-[var(--muted)]">
                   <span>{d.project.openCount} open</span>

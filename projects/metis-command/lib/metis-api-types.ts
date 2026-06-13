@@ -139,6 +139,7 @@ export interface MetisPriorityItem {
 export interface MetisGoal {
   id: string
   title: string
+  domain?: string | null
   system: number
   weight: number
   marker: string
@@ -339,6 +340,10 @@ export interface MetisLineSummary {
   slug: string
   name: string
   goal: string | null
+  domain?: string | null
+  domainLabel?: string | null
+  campaign?: string | null
+  campaignName?: string | null
   priority: string
   status: string
   progress: number | null
@@ -375,6 +380,10 @@ export interface MetisLineDetail {
     slug: string
     name: string
     goal: string | null
+    domain?: string | null
+    domainLabel?: string | null
+    campaign?: string | null
+    campaignName?: string | null
     priority: string
     status: string
     doneWhen: string | null
@@ -386,6 +395,23 @@ export interface MetisLineDetail {
   milestones: MetisLineMilestone[]
   unassigned: MetisGoverndTask[]
   leases: Record<string, MetisLineLease>
+}
+
+// ── Domain coverage (/api/domain-coverage) ──────────────────────────────────
+
+export interface MetisDomainEntry {
+  domain: string
+  label: string
+  active_count: number
+  paused_blocked_count: number
+  evergreen_count: number
+  campaigns: string[]
+  neglected: boolean
+  stale_signal: boolean
+}
+
+export interface MetisDomainCoverage {
+  domains: MetisDomainEntry[]
 }
 
 // ── Operator inbox (/api/inbox) ───────────────────────────────────────────────

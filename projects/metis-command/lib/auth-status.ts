@@ -4,14 +4,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { readSettings } from './settings'
-import { navoreOAuthToken, navoreConfigDir, navoreTokenLooksValid } from './navore-credential'
+import { navoreOAuthToken, navoreConfigDir, navoreTokenLooksValid } from './example-credential'
 
 export interface AuthStatus {
   claude: { installed: boolean; signedIn: boolean }
   codex: { installed: boolean; signedIn: boolean }
   gemini: { installed: boolean; signedIn: boolean }
   openai: { hasKey: boolean }
-  /** Navore (professional workspace) Claude account — linked when a long-lived
+  /** Example (professional workspace) Claude account — linked when a long-lived
    *  token is set (macOS) or a credentials file exists in its config dir (Linux). */
   claudeNavore: { linked: boolean }
 }
@@ -64,11 +64,11 @@ export async function getAuthStatus(): Promise<AuthStatus> {
   const settings = readSettings()
   const hasKey = !!settings.openaiApiKey || !!process.env.OPENAI_API_KEY
 
-  // Navore Claude account: a valid-looking long-lived token (macOS-safe path, env
+  // Example Claude account: a valid-looking long-lived token (macOS-safe path, env
   // or secret file) or a credentials file in its isolated config dir (Linux).
   // Shape-check the token so a malformed paste reads as not-linked (amber) rather
   // than a green badge that fails at spawn time.
-  const navoreDir = navoreConfigDir() || path.join(home, '.claude-navore')
+  const navoreDir = navoreConfigDir() || path.join(home, '.claude-example')
   const navoreLinked =
     navoreTokenLooksValid(navoreOAuthToken()) ||
     fileExists(path.join(navoreDir, '.credentials.json'))

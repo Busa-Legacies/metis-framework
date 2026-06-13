@@ -33,6 +33,19 @@ _FILE_BLOCK = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 
+# Fallback contract (#340): the strict === FILE === markers are what we ASK for,
+# but a local model (qwen) routinely emits the natural "path line, then a fenced
+# code block" convention instead — exactly the #341 case where the content was
+# perfect but the framing differed. Accept it when no strict block is present: a
+# standalone relative-path line (ending in a file extension) immediately followed
+# by a ```lang fenced block whose contents are the full file body. The isolated
+# worktree + doneWhen check still gate every landing, so a mis-parse cannot land.
+_FENCED_FILE_BLOCK = re.compile(
+    r"^(?P<path>[A-Za-z0-9._/\-]+\.[A-Za-z0-9]+)[ \t]*\n"
+    r"```[A-Za-z0-9+\-]*[ \t]*\n(?P<body>.*?)\n```[ \t]*$",
+    re.MULTILINE | re.DOTALL,
+)
+
 
 class ApplyResult:
     """Captures every stage of apply_and_verify so the caller and tests can
@@ -65,6 +78,11 @@ def parse_artifact(text: str):
     blocks parse independently."""
     out = []
     for m in _FILE_BLOCK.finditer(text or ""):
+        out.append((m.group("path").strip(), m.group("body")))
+    if out:
+        return out
+    # No strict block — fall back to the natural path+fenced-code-block format.
+    for m in _FENCED_FILE_BLOCK.finditer(text or ""):
         out.append((m.group("path").strip(), m.group("body")))
     return out
 

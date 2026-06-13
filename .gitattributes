@@ -14,3 +14,8 @@ docs/process/task-queue.md merge=union
 docs/process/state/tasks.json merge=taskstate
 docs/process/state/task-counter.json merge=taskstate
 docs/process/state/tasks-archive.json merge=taskstate
+# file-claims.jsonl: proactive cross-session source-edit claims (#308). Both machines
+# APPEND claims; union keeps both sides so no live claim is dropped in a merge (the
+# leasestate driver would copy one side wholesale and lose the peer's claims). Expired
+# lines are filtered on read + swept by `file-claims.py prune`.
+docs/process/state/file-claims.jsonl merge=union

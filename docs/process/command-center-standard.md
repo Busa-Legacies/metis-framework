@@ -1,6 +1,6 @@
-# Command Center — Schema & Edge Standard
+# Control Center — Schema & Edge Standard
 
-The standard for the Notion **Command Center** DB: Tony's single pane of glass across all
+The standard for the Notion **Control Center** DB: Tony's single pane of glass across all
 life + work domains. This doc is the authority for its fields, taxonomy, edges, and
 field-logging rules. Vet here before any live-schema change.
 
@@ -12,8 +12,8 @@ field-logging rules. Vet here before any live-schema change.
 
 ## 1. Model — Aggregator (not replacement)
 
-Command Center is an **aggregating hub**, not a new system of record. Canonical task
-stores stay where they are; Command Center mirrors them into one calm surface:
+Control Center is an **aggregating hub**, not a new system of record. Canonical task
+stores stay where they are; Control Center mirrors them into one calm surface:
 
 | Source (canonical) | Holds | Mirrors via |
 |---|---|---|
@@ -22,7 +22,7 @@ stores stay where they are; Command Center mirrors them into one calm surface:
 | **projects/writing/drafts/** | drafts (body in page) | the fold-back loop (§6) |
 
 **Rule:** never gut the old Tasks DB — it runs Tony's life (14 views, templates,
-relations). Migration into Command Center is **opt-in**, never automatic.
+relations). Migration into Control Center is **opt-in**, never automatic.
 
 ---
 
@@ -57,7 +57,7 @@ answered "what is this about?"). One closed select now owns categorization:
 
 | Domain | Absorbs |
 |---|---|
-| **Navore** | Navore initiatives, startup orgs |
+| **Example** | Example initiatives, startup orgs |
 | **Career** | job-hunt (old Status 2 / Position), ROMBA, Deloitte orgs |
 | **Engineering** | metis-os / OpenClaw (mirrors tasks.json) |
 | **Writing** | drafts + pillars |
@@ -68,7 +68,7 @@ answered "what is this about?"). One closed select now owns categorization:
 **Collapse rules (old → new):**
 - old **DB Base** hub → a **Domain** if it's a life-area; a **Project** if it's an initiative.
 - old **Org/Group** → keep as an **Org relation** if a real entity; else drop to People.
-- old **Status 2 / Position** (job pipeline) → stays in the old Career DB; Command Center
+- old **Status 2 / Position** (job pipeline) → stays in the old Career DB; Control Center
   shows only the broad Status.
 
 Domains are adjustable as needs evolve — closed, but not frozen.

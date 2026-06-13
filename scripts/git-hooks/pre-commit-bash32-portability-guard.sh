@@ -35,7 +35,7 @@ report_issue() {
     local title="$2"
     local details="$3"
     echo "✗ COMMIT BLOCKED (#264): $title in staged bash script $path" >&2
-    printf '%s\n' "$details" >&2
+    printf '%b' "$details" >&2
     echo "" >&2
 }
 

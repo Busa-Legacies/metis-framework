@@ -53,7 +53,7 @@ memory spine, and one lifecycle — and the system can prove they're in sync.
 │  • Claude Code: ClaudeCode/skills/ · .claude/agents/ · hooks       │
 │  • Codex:       .codex/prompts/ · .codex/agents/ · instructions.md │
 │  • OpenClaw:    ClaudeCode/agents/{jay,jarry}/ · dispatch lanes     │
-│  • Metis Command: projects/metis-command/ — desktop cockpit         │
+│  • Metis Command: projects/metis-command/ — control center         │
 │  • <new tool>:  one adapter dir, declared in the registry          │
 ├─────────────────────────────────────────────────────────────────┤
 │ ENGINES  (interchangeable generation backends — the engine ladder) │

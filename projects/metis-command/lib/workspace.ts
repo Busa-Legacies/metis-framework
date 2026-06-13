@@ -4,7 +4,7 @@
  * operator contexts:
  *
  *   - `personal`      — Ant's life-management surface (finance, health, …).
- *   - `professional`  — the Navore Market workspace (ops, projects, comms).
+ *   - `professional`  — the Example Market workspace (ops, projects, comms).
  *
  * Pure + framework-free so it is unit-testable and importable from the React
  * provider, the shell, and the Settings toggle without a circular client dep.
@@ -21,7 +21,7 @@ export interface WorkspaceMeta {
   short: string
   /** One-line description of what this context surfaces. */
   blurb: string
-  /** Accent token for the workspace indicator (Control Center cyan vs Navore amber). */
+  /** Accent token for the workspace indicator (Control Center cyan vs Example amber). */
   accent: 'cyan' | 'amber'
 }
 
@@ -35,9 +35,9 @@ export const WORKSPACES: Record<Workspace, WorkspaceMeta> = {
   },
   professional: {
     id: 'professional',
-    label: 'Navore',
-    short: 'Navore',
-    blurb: 'Professional workspace — Navore Market ops, projects, milestones, comms.',
+    label: 'Example',
+    short: 'Example',
+    blurb: 'Professional workspace — Example Market ops, projects, milestones, comms.',
     accent: 'amber',
   },
 }

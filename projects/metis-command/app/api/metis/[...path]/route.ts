@@ -50,6 +50,7 @@ const POST_ALLOW = new Set([
   // Governed task mutations (#228/#240) — the Control Center DRIVES the canonical store.
   // Each routes server-side to a sanctioned, revision-aware/fencing CLI; no raw json.
   'tasks/governed/update',
+  'tasks/governed/transition',
   'tasks/governed/correct-state',
   'tasks/governed/claim',
   'tasks/governed/unclaim',

@@ -37,6 +37,7 @@ projects/forge3d/
 ├── scripts/
 │   ├── stl-bbox.py           # STL bounding-box + bed-fit check (pure stdlib)
 │   └── forge3d-selftest.py   # verify the toolchain + example end-to-end
+├── viewer.html               # browser STL viewer with orbit/zoom + bed-fit stats
 └── README.md
 ```
 STLs land in `models/<name>/stl/` and are **git-ignored** — they regenerate from
@@ -54,6 +55,11 @@ scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad \
 # Just preview, skip the STL export
 scripts/forge3d-render.sh .../model.scad --no-stl
 
+# Add a turntable fallback for chat/mobile review.
+# Writes renders/<name>-turntable/frame-000.png... plus a GIF when ffmpeg or
+# ImageMagick is installed.
+scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad --turntable
+
 # Split a too-big model: assembled preview + one STL per piece + a fit report.
 # The model must expose a `piece` var (-1 = assembled, 0..N-1 = a printable piece,
 # the lib/segment.scad convention). Exits non-zero if any piece exceeds the bed.
@@ -63,6 +69,20 @@ scripts/forge3d-render.sh projects/forge3d/models/garden-lantern/roof-pieces.sca
 Renders go to `models/<name>/renders/`; the STL to `models/<name>/stl/`. In split
 mode each piece is `stl/<name>-piece<i>.stl` with a `<name>-fit-report.txt` listing
 every piece's bbox against the 256³ bed.
+
+## Interactive STL viewer
+
+After rendering an STL, serve the Forge3D folder and open `viewer.html` with a
+repo-relative model path:
+
+```bash
+python3 -m http.server 8765 --directory projects/forge3d
+open 'http://127.0.0.1:8765/viewer.html?model=models/cable-clip/stl/cable-clip.stl'
+```
+
+The viewer supports orbit, zoom, pan, drag-and-drop, and local file selection.
+Opening `viewer.html` directly from Finder still works for local file selection,
+but browser security blocks `?model=...` fetches from `file://` URLs.
 
 ## The print handoff (Bambu Studio)
 1. Open the exported STL in **Bambu Studio**, select the **X1C** profile.
@@ -76,6 +96,7 @@ The model is designed in millimeters at 1:1 — no scaling needed on import.
 - `xvfb-run` is used automatically for headless rendering when there's no display
   (cloud sessions); on a desktop it renders directly.
 - Optional: **ImageMagick** (`montage`) produces a 2×2 contact sheet per render.
+- Optional: **ffmpeg** or **ImageMagick** encodes `--turntable` frames into GIFs.
 
 ## Verify
 ```bash

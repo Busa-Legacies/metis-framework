@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, RotateCw, Globe, Crosshair, RefreshCw, Eye } from 'lucide-react'
 import { useReviewStore } from '@/lib/review-store'
-import { createOverlayController, type OverlayController } from '@/lib/overlay-controller'
+import { ptyApi } from '@/lib/pty-client'
+import { createOverlayController, type OverlayController, type PickResult } from '@/lib/overlay-controller'
 
 function normalizeUrl(input: string): string {
   const t = input.trim()
@@ -31,7 +32,7 @@ export default function PreviewPane() {
   const annotations = useReviewStore((s) => s.annotations)
   const addAnnotation = useReviewStore((s) => s.addAnnotation)
   const [draft, setDraft] = useState(url)
-  const [pendingPick, setPendingPick] = useState<{ selector: string; rect: { x: number; y: number; width: number; height: number }; styles: Record<string, string> } | null>(null)
+  const [pendingPick, setPendingPick] = useState<PickResult | null>(null)
   const [comment, setComment] = useState('')
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const controllerRef = useRef<OverlayController | null>(null)
@@ -47,7 +48,15 @@ export default function PreviewPane() {
     try {
       const u = new URL(url)
       document.cookie = `dr-target=${u.origin}; path=/; SameSite=Lax`
-      setPreviewSrc(u.pathname === '/' ? `/__preview${u.search}` : `${u.pathname}${u.search}`)
+      // Carry the origin in the query so previewSrc CHANGES when the target
+      // changes — the iframe remounts via key={previewSrc}. Without it, a
+      // target whose first load redirected the iframe away (e.g. a root 307
+      // to another port) was unrecoverable: every later URL submit produced
+      // the same '/__preview' string and React never reloaded the frame.
+      const marker = `dr=${encodeURIComponent(u.origin)}`
+      setPreviewSrc(u.pathname === '/'
+        ? `/__preview${u.search ? `${u.search}&${marker}` : `?${marker}`}`
+        : `${u.pathname}${u.search}`)
     } catch {
       setPreviewSrc('')
     }
@@ -60,7 +69,25 @@ export default function PreviewPane() {
     controllerRef.current = null
     if (!node) return
     controllerRef.current = createOverlayController(node, {
-      onPick: (r) => { setPendingPick(r); useReviewStore.getState().setPicking(false) },
+      onPick: (r) => {
+        const { repickId, url: currentUrl } = useReviewStore.getState()
+        if (repickId) {
+          // Rebind (#257): a re-pick keeps the comment/severity (the review work)
+          // and refreshes the anchor data; verify residue from the dead anchor is
+          // cleared. Same annotation id ⇒ the crop file is overwritten in place.
+          useReviewStore.getState().updateAnnotation(repickId, {
+            selector: r.selector, rect: r.rect, styles: r.styles, text: r.text,
+            status: 'open', verifiedStyles: undefined, verifiedText: undefined,
+          })
+          ptyApi.captureCrop({ url: currentUrl, selector: r.selector, annotationId: repickId })
+            .then((res) => useReviewStore.getState().updateAnnotation(repickId, { cropPath: res.path, cropSlug: res.slug }))
+            .catch(() => {})
+          useReviewStore.getState().setRepick(null)
+          return
+        }
+        setPendingPick(r)
+        useReviewStore.getState().setPicking(false)
+      },
       onOrphan: (ids) => ids.forEach((id) => useReviewStore.getState().updateAnnotation(id, { status: 'orphaned' })),
     })
   }, [])
@@ -73,7 +100,12 @@ export default function PreviewPane() {
 
   function commitPick() {
     if (!pendingPick || !comment.trim()) return
-    addAnnotation({ ...pendingPick, comment: comment.trim(), url, severity: 'issue' })
+    const ann = addAnnotation({ ...pendingPick, comment: comment.trim(), url, severity: 'issue' })
+    // Pin-time element crop (#256) — fire-and-forget; a capture failure never
+    // blocks pinning, the annotation simply carries no crop.
+    ptyApi.captureCrop({ url, selector: ann.selector, annotationId: ann.id })
+      .then((r) => useReviewStore.getState().updateAnnotation(ann.id, { cropPath: r.path, cropSlug: r.slug }))
+      .catch(() => {})
     setPendingPick(null)
     setComment('')
   }
@@ -84,9 +116,28 @@ export default function PreviewPane() {
     try { f.src = f.src } catch {}
   }
 
-  function verify() {
+  function verify(trigger: 'auto' | 'manual' | 'load' = 'manual') {
     const doc = iframeRef.current?.contentDocument
-    if (doc) useReviewStore.getState().verifyAll(doc)
+    if (doc) useReviewStore.getState().verifyAll(doc, trigger)
+  }
+
+  // Round-trip verify (#258): a bumped verifyRequestId asks for reload-then-verify.
+  // The reload's onLoad handler runs the verify pass against the fresh document;
+  // 'load' would mislabel the trigger, so the request is remembered and consumed.
+  const verifyRequestId = useReviewStore((s) => s.verifyRequestId)
+  const pendingAutoVerify = useRef(false)
+  const lastVerifyRequest = useRef(0)
+  useEffect(() => {
+    if (verifyRequestId === lastVerifyRequest.current) return
+    lastVerifyRequest.current = verifyRequestId
+    pendingAutoVerify.current = true
+    reload()
+  }, [verifyRequestId])
+
+  function onIframeLoad() {
+    const trigger = pendingAutoVerify.current ? 'auto' : 'load'
+    pendingAutoVerify.current = false
+    verify(trigger)
   }
 
   return (
@@ -99,7 +150,7 @@ export default function PreviewPane() {
         <button onClick={() => iframeRef.current?.contentWindow?.history?.back()} className="rounded p-1 text-slate-400 hover:text-white" title="back"><ArrowLeft size={12} /></button>
         <button onClick={() => iframeRef.current?.contentWindow?.history?.forward()} className="rounded p-1 text-slate-400 hover:text-white" title="forward"><ArrowRight size={12} /></button>
         <button onClick={reload} className="rounded p-1 text-slate-400 hover:text-white" title="reload"><RotateCw size={12} /></button>
-        <button onClick={verify} className="rounded p-1 text-slate-400 hover:text-cyan-200" title="re-run selectors and check for style changes"><RefreshCw size={12} /></button>
+        <button onClick={() => verify('manual')} className="rounded p-1 text-slate-400 hover:text-cyan-200" title="re-run selectors and check for changes"><RefreshCw size={12} /></button>
         <form
           className="flex-1"
           onSubmit={(e) => { e.preventDefault(); const norm = normalizeUrl(draft); if (norm) setUrl(norm) }}
@@ -127,7 +178,7 @@ export default function PreviewPane() {
             src={previewSrc}
             className="absolute inset-0 h-full w-full bg-white"
             sandbox="allow-forms allow-popups allow-presentation allow-same-origin allow-scripts allow-modals"
-            onLoad={verify}
+            onLoad={onIframeLoad}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-slate-500">enter a URL above</div>

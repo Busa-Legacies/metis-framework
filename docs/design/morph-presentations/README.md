@@ -1,7 +1,7 @@
 # Morph Presentations — Teardown & Build Guide
 
 **Scope:** How to build PowerPoint "morph" presentations in the style of **hmpt** (the TikTok designer whose free templates Ant studied). Reverse-engineered from `reference/forest-hmpt.pptx`.
-**Audience:** Anyone on the team building a slick animated deck (pitch decks, Navore/OpenClaw decks, content).
+**Audience:** Anyone on the team building a slick animated deck (pitch decks, Example/OpenClaw decks, content).
 **Method:** Written from the actual `.pptx` XML — every number below is extracted from the source file, not guessed.
 
 ![hmpt FOREST title slide](reference/forest-title-slide.jpeg)
@@ -120,7 +120,7 @@ On every slide except the first, inside `<p:sld>`:
 ## 6. How to make it *ours* (not a clone)
 
 - **Swap the fonts.** Calibri is the one cheap tell. Use a display face with character (e.g. a strong geometric or editorial serif for the hero, a clean grotesk for body). Per `ClaudeCode/CLAUDE.md` design rules, for *product UI* we use mono — but decks can break that; pick per-deck.
-- **Re-skin the palette per project.** Keep the *structure* (cool field + one warm pop); change the hues. Navore could run a brand palette through the same cool→warm logic.
+- **Re-skin the palette per project.** Keep the *structure* (cool field + one warm pop); change the hues. Example could run a brand palette through the same cool→warm logic.
 - **Keep the mechanic, change the metaphor.** "FOREST / mountains" → could be "data layers", "product tiers", "roadmap horizon" — any subject that justifies stacked silhouettes and a travelling hero.
 
 ---
@@ -137,7 +137,7 @@ On every slide except the first, inside `<p:sld>`:
 
 ## 8. The web build (`demo/`) — morph without PowerPoint
 
-`demo/index.html` is the original single-file proof. It's since been productionized into a small multi-deck site with a shared engine at [`/decks/`](../../../decks/) (landing + **Navore** demo + **Métis framework** deck) — that's the one to host. The notes below apply to both.
+`demo/index.html` is the original single-file proof. It's since been productionized into a small multi-deck site with a shared engine at [`/decks/`](../../../decks/) (landing + **Example** demo + **Métis framework** deck) — that's the one to host. The notes below apply to both.
 
 `demo/index.html` is the first real deck, built as an **interactive website** instead of a `.pptx`. One link, works on mobile and desktop, no app to install — and the morph maps almost 1:1 to the web:
 

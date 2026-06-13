@@ -99,9 +99,9 @@ def _load_valid_domains():
         spec = yaml.safe_load(
             (pathlib.Path(__file__).resolve().parents[1] / "docs/process/taxonomy.yaml").read_text())
         vals = set((spec.get("domains") or {}).keys())
-        return vals or {"business", "brand", "finance", "health", "home", "learning"}
+        return vals or {"systems", "career", "finance", "health", "home", "craft", "presence", "joy"}
     except Exception:
-        return {"business", "brand", "finance", "health", "home", "learning"}
+        return {"systems", "career", "finance", "health", "home", "craft", "presence", "joy"}
 
 
 VALID_DOMAINS = _load_valid_domains()
@@ -138,6 +138,51 @@ def now_iso():
     from datetime import datetime
 
     return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+CHECKOUTS_PATH = ROOT / "docs/process/state/active-checkouts.json"
+# Lease statuses that are no longer live work — never re-stamp these (mirrors
+# agent-work.py TERMINAL so a released/expired/stolen lease is not revived).
+_LEASE_TERMINAL = {"done", "released", "blocked", "expired", "stolen", "abandoned"}
+
+
+def restamp_lease_on_transition(task_id, old_state, new_state, checkouts_path=None):
+    """#309 heartbeat-on-transition: when a task's state ACTUALLY changes, re-stamp
+    the owning live lease's lastRenewedAt so stale-lease logic (reconcile I5 grace)
+    never requeues actively-progressing work. Fires only on a real transition, and
+    records liveness via lastRenewedAt ONLY — it never rewrites the lease's state
+    backwards (the bug in the first forge attempt). Best-effort under an flock: a
+    missing or locked checkouts file must never block the governed task write that
+    already landed. Does not extend leaseExpiresAt — the lease's live/stale status
+    for I1/I2 is unchanged; only the I5 crash-recovery grace consumes lastRenewedAt."""
+    import re as _re
+    from datetime import datetime, timezone
+    if not old_state or old_state == new_state:
+        return
+    path = checkouts_path or CHECKOUTS_PATH
+    m = _re.search(r"\d+", task_id or "")
+    if not m or not path.exists():
+        return
+    num = m.group(0)
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    try:
+        import fcntl
+        with lock_path.open("w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                data = json.loads(path.read_text())
+                mine = [r for r in data.get("checkouts", [])
+                        if (str(r.get("issue")) == num or f"#{num}" in (r.get("title") or ""))
+                        and r.get("status") not in _LEASE_TERMINAL]
+                if mine:
+                    holder = max(mine, key=lambda r: int(r.get("fenceToken", 0) or 0))
+                    holder["lastRenewedAt"] = stamp
+                    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+    except Exception:
+        return  # heartbeat is best-effort; the task state write is authoritative
 
 
 def load_json(path: Path):
@@ -433,6 +478,7 @@ def update_task(args):
             break
     doc["updatedAt"] = new_task["updatedAt"]
     dump_json(TASKS_PATH, doc)
+    restamp_lease_on_transition(args.task_id, task.get("state"), new_task.get("state"))
     print(f"Updated task {args.task_id} -> revision {new_task['revision']}")
 
 
@@ -516,6 +562,7 @@ def correct_state(args):
             break
     doc["updatedAt"] = new_task["updatedAt"]
     dump_json(TASKS_PATH, doc)
+    restamp_lease_on_transition(args.task_id, old_state, args.to_state)
     print(f"Corrected task {args.task_id}: {old_state} -> {args.to_state} (revision {new_task['revision']})")
 
 

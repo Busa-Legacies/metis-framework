@@ -536,10 +536,18 @@ def plan_I5_fixes(checkouts: list, leases: list, tasks: list, now, strikes: dict
         if records:
             newest = max(records, key=lambda r: (int(r.get("fenceToken", 0) or 0),
                                                  str(r.get("leaseExpiresAt", ""))))
-            evidence_ts = _parse_ts(newest.get("endedAt")) or _parse_ts(newest.get("leaseExpiresAt"))
+            # #309 heartbeat: a task state transition re-stamps the lease's
+            # lastRenewedAt, so the newest sign of life is the LATEST of
+            # ended/expiry/last-renewed — an actively-transitioning task stays
+            # inside grace even past lease expiry, so I5 never requeues live work.
+            _life = [_parse_ts(newest.get("endedAt")),
+                     _parse_ts(newest.get("leaseExpiresAt")),
+                     _parse_ts(newest.get("lastRenewedAt"))]
+            _life = [ts for ts in _life if ts is not None]
+            evidence_ts = max(_life) if _life else None
             if evidence_ts is None or (now - evidence_ts) < dt.timedelta(minutes=I5_GRACE_MINUTES):
                 continue  # inside grace (or unreadable evidence — stay safe)
-            evidence = f"newest lease (fence={newest.get('fenceToken')}) ended {evidence_ts.isoformat()}"
+            evidence = f"newest lease (fence={newest.get('fenceToken')}) last alive {evidence_ts.isoformat()}"
         else:
             if not entry.get("seenAt"):
                 entry["seenAt"] = now.isoformat()

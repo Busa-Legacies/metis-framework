@@ -35,7 +35,7 @@ const LAYERS = [
     nodes: ['Metis Command', 'Claude Code CLI', 'Mobile Browser'],
     detail: 'Entry points for human interaction. Metis Command is the Electron + Next.js control center. Claude Code CLI drives autonomous work on Jarry. The mobile browser accesses the FastAPI dashboard on Jay.',
     components: [
-      { id: 'metis-command', label: 'Metis Command', desc: 'Electron + Next.js cockpit running on Jay (the always-on host). All modes feed from /api/all; reachable from any device over Tailscale.' },
+      { id: 'metis-command', label: 'Metis Command', desc: 'Electron + Next.js control center running on Jay (the always-on host). All modes feed from /api/all; reachable from any device over Tailscale.' },
       { id: 'claude-code', label: 'Claude Code CLI', desc: 'Orchestrator. Reads tasks, dispatches to Jay lanes, applies output, commits under git-lock. Running in tmux session on Jarry.' },
       { id: 'mobile', label: 'Mobile / Browser', desc: 'Tailscale-accessible dashboard at Jay :8000. Read-only view of bot status, tasks, portfolio.' },
     ],
@@ -103,11 +103,11 @@ const LAYERS = [
     border: C.ambBorder,
     y: 4,
     nodes: ['ClickUp', 'MS365', 'Notion', 'Discord', 'Kraken API'],
-    detail: 'External services connected to the dashboard /api/all data plane. ClickUp drives Navore Market task surfaces. MS365 syncs email+calendar via a headless token on Jay. Discord receives alert pushes.',
+    detail: 'External services connected to the dashboard /api/all data plane. ClickUp drives Example Market task surfaces. MS365 syncs email+calendar via a headless token on Jay. Discord receives alert pushes.',
     components: [
-      { id: 'clickup', label: 'ClickUp', desc: 'Navore Market workspace tasks. Synced via CLICKUP_TOKEN env on Jay dashboard. Navore professional overlay in Metis Command reads ops_tasks + ms365 slices.' },
+      { id: 'clickup', label: 'ClickUp', desc: 'Example Market workspace tasks. Synced via CLICKUP_TOKEN env on Jay dashboard. Example professional overlay in Metis Command reads ops_tasks + ms365 slices.' },
       { id: 'ms365', label: 'MS365 (Jay-only)', desc: 'Email + calendar cache on Jay via headless token. 15-min stale threshold. Metis Command shows count summaries; full content in the dashboard.' },
-      { id: 'notion', label: 'Notion', desc: 'Command Center unified work DB (ds 6a82d8f4). Blocking To-Dos page auto-synced daily. Writing fold-back loop triggers on Status=Edited. MCP server available.' },
+      { id: 'notion', label: 'Notion', desc: 'Control Center unified work DB (ds 6a82d8f4). Blocking To-Dos page auto-synced daily. Writing fold-back loop triggers on Status=Edited. MCP server available.' },
       { id: 'discord', label: 'Discord alerts', desc: 'Alerts push to Discord → phone (Jay is headless, never Jarry screen). Session lifecycle events, bot errors, and critical health alerts route here.' },
       { id: 'kraken', label: 'Kraken API', desc: 'Crypto trading bot. Alpha validation harness gates all strategies (DSR/PSR gate — no strategy has passed yet). #243 momentum-verify is the next open lever.' },
     ],
@@ -915,10 +915,10 @@ function ComponentView({
             <ActionLink label="metis-os on GitHub" sublabel="github.com/…" href="https://github.com" color={C.violet} />
           )}
           {component.id === 'clickup' && (
-            <ActionLink label="Open ClickUp" sublabel="Navore Market workspace" href="https://app.clickup.com" color={C.amber} />
+            <ActionLink label="Open ClickUp" sublabel="Example Market workspace" href="https://app.clickup.com" color={C.amber} />
           )}
           {component.id === 'notion' && (
-            <ActionLink label="Open Notion" sublabel="Command Center DB" href="https://notion.so" color={C.textDim} />
+            <ActionLink label="Open Notion" sublabel="Control Center DB" href="https://notion.so" color={C.textDim} />
           )}
           <ActionLink
             label="Open in terminal"

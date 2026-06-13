@@ -4,7 +4,7 @@ import type React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpRight, Bot, CheckCircle2, Eye, GitBranch, Inbox, LayoutList,
-  Lock, Target,
+  Lock, Route, Target,
 } from 'lucide-react'
 import { ageLabel, goalProgressPct, metisApi, type MetisResult } from '@/lib/metis-api'
 import { useMetisAll } from '@/lib/use-metis-all'
@@ -13,24 +13,27 @@ import type { MetisInbox, MetisLease } from '@/lib/metis-api-types'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
 import { CardError, CardLoading, StatusCard, StatusChip } from '../overview/cards'
 import InboxMode from '../inbox/InboxMode'
+import LinesOfWorkMode from '../workgraph/LinesOfWorkMode'
 import WorkGraphMode from '../workgraph/WorkGraphMode'
 import TaskBoardMode from '../tasks/TaskBoardMode'
 import ReviewMode from '../review/ReviewMode'
-import { NavoreTasks, NavoreWorkGraph } from '../navore/NavoreMode'
+import { NavoreTasks, NavoreWorkGraph } from '../example/NavoreMode'
 
-export type WorkView = 'home' | 'attention' | 'plan' | 'tasks' | 'review'
+export type WorkView = 'home' | 'attention' | 'plan' | 'lines' | 'tasks' | 'review'
 
 const WORK_VIEWS: { id: WorkView; label: string; icon: React.ReactNode }[] = [
   { id: 'home', label: 'Home', icon: <Target size={14} /> },
   { id: 'attention', label: 'Needs You', icon: <Inbox size={14} /> },
   { id: 'plan', label: 'Plan', icon: <GitBranch size={14} /> },
+  { id: 'lines', label: 'Lines', icon: <Route size={14} /> },
   { id: 'tasks', label: 'Tasks', icon: <LayoutList size={14} /> },
   { id: 'review', label: 'Review', icon: <Eye size={14} /> },
 ]
 
 function workViewFromLegacy(id?: string | null): WorkView {
   if (id === 'inbox') return 'attention'
-  if (id === 'work-graph' || id === 'lines') return 'plan'
+  if (id === 'work-graph') return 'plan'
+  if (id === 'lines') return 'lines'
   if (id === 'tasks') return 'tasks'
   if (id === 'review') return 'review'
   return 'home'
@@ -219,6 +222,13 @@ export default function WorkMode({ professional = false, initialView }: { profes
                     >
                       Tasks
                     </button>
+                    <button
+                      onClick={() => setView('lines')}
+                      aria-label="Open lines of work"
+                      className="col-span-2 rounded-lg border border-slate-500/40 bg-white/[0.04] px-2 py-1.5 text-[11px] font-bold text-slate-100"
+                    >
+                      Lines
+                    </button>
                   </div>
                 </div>
               </StatusCard>
@@ -257,6 +267,8 @@ export default function WorkMode({ professional = false, initialView }: { profes
         <InboxMode />
       ) : view === 'plan' ? (
         professional ? <NavoreWorkGraph /> : <WorkGraphMode />
+      ) : view === 'lines' ? (
+        <LinesOfWorkMode />
       ) : view === 'tasks' ? (
         professional ? <NavoreTasks /> : <TaskBoardMode />
       ) : (

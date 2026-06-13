@@ -152,6 +152,68 @@ def find_records(data: dict[str, Any], issue: int) -> list[dict[str, Any]]:
     return [r for r in data["checkouts"] if issue_of(r) == issue]
 
 
+# #331: mutual exclusion is keyed on the canonical taskId, not the literal claim
+# string. Claiming '#229' and 'intraday-deep-history-trades-backfill' used to mint
+# two live leases on the same task (reconcile FAIL I2, 2026-06-12) because the
+# uniqueness check compared raw titles. Same id pattern as reconcile.py.
+_TASK_ID_RE = re.compile(r"(?:#|\bissue[- ])0*(\d{2,})", re.IGNORECASE)
+
+
+def _tasks_list() -> list[dict[str, Any]]:
+    """Best-effort read of the governed task store, for claim-id resolution."""
+    try:
+        raw = json.loads((ROOT / "docs/process/state/tasks.json").read_text())
+        return raw.get("tasks", [])
+    except Exception:
+        return []
+
+
+def resolve_task_id(
+    label: str | None, tasks: list[dict[str, Any]] | None = None
+) -> str | None:
+    """Resolve a claim label to its canonical taskId (e.g. '#331').
+
+    Id-form labels ('#229 ...', 'issue-229') resolve directly (canonicalized to
+    the store's spelling when the task exists, zero-padded otherwise). Bare
+    labels resolve by exact title match against tasks.json. Returns None for
+    ad-hoc labels with no id and no governed match — those keep the legacy
+    exact-label dedup.
+    """
+    if not label:
+        return None
+    if tasks is None:
+        tasks = _tasks_list()
+    m = _TASK_ID_RE.search(label)
+    if m:
+        n = int(m.group(1))
+        for t in tasks:
+            tm = re.fullmatch(r"#0*(\d+)", t.get("taskId") or "")
+            if tm and int(tm.group(1)) == n:
+                return t["taskId"]
+        return f"#{n:03d}"
+    norm = label.strip().lower()
+    for t in tasks:
+        if (t.get("title") or "").strip().lower() == norm:
+            return t.get("taskId")
+    return None
+
+
+def lease_task_id(
+    rec: dict[str, Any], tasks: list[dict[str, Any]] | None = None
+) -> str | None:
+    """Canonical taskId a lease record holds.
+
+    Prefers the stored taskId field (written by claim/claim-next/checkout since
+    #331); falls back to the issue number, then to resolving the title — so
+    pre-#331 records participate in the uniqueness check too.
+    """
+    if rec.get("taskId"):
+        return resolve_task_id(str(rec["taskId"]), tasks)
+    if rec.get("issue") is not None:
+        return resolve_task_id(f"#{rec['issue']}", tasks)
+    return resolve_task_id(rec.get("title") or "", tasks)
+
+
 def current_branch() -> str:
     return git("branch", "--show-current").stdout.strip()
 
@@ -224,10 +286,24 @@ def cmd_checkout(args: argparse.Namespace) -> None:
 
     with locked_state(args.state) as data:
         actives = [r for r in find_records(data, args.issue) if active(r, now)]
+        # #331: a label-based claim resolving to this task is the same lease —
+        # include it so checkout can't mint a second live lease on the task.
+        tasks = _tasks_list()
+        issue_tid = resolve_task_id(f"#{args.issue}", tasks)
+        seen_ids = {id(r) for r in actives}
+        if issue_tid is not None:
+            actives += [
+                r
+                for r in data["checkouts"]
+                if id(r) not in seen_ids
+                and active(r, now)
+                and lease_task_id(r, tasks) == issue_tid
+            ]
         if actives and not args.steal:
             r = actives[-1]
+            held = r.get("branch") or r.get("title") or r.get("claimId")
             raise SystemExit(
-                f"issue #{args.issue} already checked out by {r.get('agent')} until {r.get('leaseExpiresAt')} on {r.get('branch')}"
+                f"issue #{args.issue} already checked out by {r.get('agent')} until {r.get('leaseExpiresAt')} on {held}"
             )
         if actives and args.steal:
             for r in actives:
@@ -241,6 +317,7 @@ def cmd_checkout(args: argparse.Namespace) -> None:
         )  # a steal mints a strictly-higher token than the lease it supersedes
         rec = {
             "issue": args.issue,
+            "taskId": issue_tid,
             "title": title,
             "agent": args.agent,
             "session": args.session,
@@ -563,16 +640,24 @@ def cmd_claim(args: argparse.Namespace) -> None:
     now = utcnow()
     expires = now + dt.timedelta(hours=args.hours)
     label_l = args.label.lower()
+    # #331: resolve to the canonical taskId BEFORE taking the lock and key the
+    # uniqueness check on it — '#229' and the task's bare title are the same claim.
+    tasks = _tasks_list()
+    task_id = resolve_task_id(args.label, tasks)
 
     with locked_state(args.state) as data:
         for r in data["checkouts"]:
-            if (
-                active(r, now)
-                and r.get("issue") is None
-                and (r.get("title") or "").lower() == label_l
-            ):
+            if not active(r, now):
+                continue
+            same_label = (
+                r.get("issue") is None and (r.get("title") or "").lower() == label_l
+            )
+            same_task = task_id is not None and lease_task_id(r, tasks) == task_id
+            if same_label or same_task:
+                held = r.get("title") or f"#{r.get('issue')}"
+                what = f"'{args.label}'" if same_label else f"task {task_id} ('{held}')"
                 raise SystemExit(
-                    f"'{args.label}' already claimed by {r.get('agent')} "
+                    f"{what} already claimed by {r.get('agent')} "
                     f"until {r.get('leaseExpiresAt')}\n"
                     f"claim-id: {r.get('claimId', '?')}"
                 )
@@ -581,6 +666,7 @@ def cmd_claim(args: argparse.Namespace) -> None:
         rec = {
             "issue": None,
             "claimId": claim_id,
+            "taskId": task_id,
             "title": args.label,
             "agent": args.agent,
             "session": args.session,
@@ -694,6 +780,48 @@ def _load_free_work():
     return mod
 
 
+def _lane_registry() -> dict[str, list[str]]:
+    """Parse `lane.sh --registry` — the SINGLE SOURCE for the terminal goal-lane ->
+    projects boundary (#325). Returns {} if the script is missing/unrunnable so lane
+    filtering degrades to the global list instead of blocking a claim."""
+    reg: dict[str, list[str]] = {}
+    try:
+        out = subprocess.run(
+            ["/bin/bash", str(ROOT / "scripts" / "lane.sh"), "--registry"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout
+        for line in out.splitlines():
+            name, _, projs = line.partition("\t")
+            if name.strip():
+                reg[name.strip()] = projs.split()
+    except Exception:
+        pass
+    return reg
+
+
+def _resolve_lane_filter(args: argparse.Namespace, explicit_project: str | None) -> tuple[set[str] | None, str | None]:
+    """Lane -> project-set filter for claim-next (#325). Precedence: an explicit
+    --project wins outright; then --lane; then the METIS_LANE env a goal-lane
+    terminal exports. hub (empty project list) means no filter. Returns
+    (project_set | None, lane_name | None)."""
+    if explicit_project:
+        return None, None
+    explicit_lane = getattr(args, "lane", None)
+    lane = explicit_lane or os.environ.get("METIS_LANE")
+    if not lane:
+        return None, None
+    projs = _lane_registry().get(lane)
+    if projs is None:
+        # Unknown lane: hard error only when the user typed it; a stale/foreign
+        # METIS_LANE env should not block claiming.
+        if explicit_lane:
+            raise SystemExit(f"unknown lane '{lane}' — see: scripts/lane.sh --registry")
+        return None, None
+    if not projs:  # hub
+        return None, lane
+    return set(projs), lane
+
+
 def cmd_claim_next(args: argparse.Namespace) -> None:
     """Atomically pick the highest-priority FREE task for this machine and claim it.
 
@@ -710,14 +838,16 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
     fw = _load_free_work()
     machine = fw.detect_machine(getattr(args, "machine", None))
 
-    # Resolve project filter: explicit flag > live presence > None (global).
+    # Resolve project filter: explicit flag > lane (--lane/METIS_LANE) > live
+    # presence > None (global).
     project_filter = getattr(args, "project", None)
+    lane_set, lane_name = _resolve_lane_filter(args, project_filter)
 
     # Dry-run: read-only. Deliberately NOT under locked_state — that contextmanager
     # rewrites updatedAt on exit, and a preview must not mutate the state file.
     if args.dry_run:
         # For dry-run, check presence from the live state without locking.
-        if not project_filter:
+        if not project_filter and not lane_name:
             try:
                 raw = load_json(args.state)
                 now_p = utcnow()
@@ -734,6 +864,12 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
                 print(f"no free work in project '{project_filter}' for {machine}")
                 return
             print(f"claim-next would pick (top {min(5, len(free))} in '{project_filter}' for {machine}):")
+        elif lane_set:
+            free = [it for it in free if it.get("project") in lane_set]
+            if not free:
+                print(f"no free work in lane '{lane_name}' for {machine}")
+                return
+            print(f"claim-next would pick (top {min(5, len(free))} in lane '{lane_name}' for {machine}):")
         else:
             if not free:
                 print(f"no free work for {machine}")
@@ -752,8 +888,9 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
         live = fw.filter_live_leases(data["checkouts"])
 
         # Resolve project filter under the lock (presence may have changed since dry-run).
+        # Lane filter outranks presence: a goal-lane terminal stays in its lane.
         pf = project_filter
-        if not pf and args.session and args.session != "manual":
+        if not pf and not lane_set and args.session and args.session != "manual":
             live_p = _live_presence(data, now)
             mine_p = [p for p in live_p if p.get("session") == args.session]
             if mine_p:
@@ -780,18 +917,28 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
         # gh issues are skipped ([]) since they never appear in the FREE bucket.
         # working_context_active() adds the soft-WIP filter (#097) so claim-next won't
         # auto-claim a task another session annotated as live without a formal lease.
+        tasks_list = fw.load_tasks()
         agg = fw.aggregate(
-            live, fw.load_tasks(), fw.parse_open_tasks(), [], machine,
+            live, tasks_list, fw.parse_open_tasks(), [], machine,
             fw.working_context_active(),
         )
         claimed_labels = {
             (r.get("title") or "").lower() for r in data["checkouts"] if active(r, now)
         }
+        # #331: also dedup on resolved taskId so a candidate isn't claimable while a
+        # differently-spelled lease (id-string vs bare title vs issue) holds the task.
+        claimed_ids = {
+            lease_task_id(r, tasks_list)
+            for r in data["checkouts"]
+            if active(r, now)
+        } - {None}
 
-        # Apply project filter if set (--project or presence-derived).
+        # Apply project filter if set (--project or presence-derived), else lane filter.
         candidates = agg["free"]
         if pf:
             candidates = [c for c in candidates if c.get("project") == pf]
+        elif lane_set:
+            candidates = [c for c in candidates if c.get("project") in lane_set]
 
         # Pick the highest-priority free task that passes the ready check.
         # task-ready.sh: exit 0=ready, 1=blocked/not-ready, 2=maybe-done.
@@ -801,6 +948,11 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
         picked = None
         for candidate in candidates:
             if (candidate.get("label") or "").lower() in claimed_labels:
+                continue
+            cand_tid = resolve_task_id(
+                candidate.get("id") or candidate.get("label") or "", tasks_list
+            )
+            if cand_tid is not None and cand_tid in claimed_ids:
                 continue
             if not _skip_ready:
                 try:
@@ -824,6 +976,8 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
         if picked is None:
             if pf:
                 print(f"no free work in project '{pf}' for {machine}")
+            elif lane_set:
+                print(f"no free work in lane '{lane_name}' for {machine}")
             else:
                 print(f"no free work for {machine}")
             return
@@ -834,6 +988,9 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
             {
                 "issue": None,
                 "claimId": claim_id,
+                "taskId": resolve_task_id(
+                    picked.get("id") or picked.get("label") or "", tasks_list
+                ),
                 "title": picked["label"],
                 "agent": args.agent,
                 "session": args.session,
@@ -1394,6 +1551,9 @@ def build_parser() -> argparse.ArgumentParser:
     cn.add_argument("--machine", help="override detected machine (antfox/abusa)")
     cn.add_argument("--project", metavar="SLUG",
                     help="restrict candidates to this project (default: presence-derived or global)")
+    cn.add_argument("--lane", metavar="LANE",
+                    help="restrict to a terminal goal-lane's projects (g1-workforce..g6-life; "
+                         "default: $METIS_LANE when set by lane.sh; hub = no filter)")
     cn.add_argument(
         "--dry-run", action="store_true", help="show top candidates, claim nothing"
     )

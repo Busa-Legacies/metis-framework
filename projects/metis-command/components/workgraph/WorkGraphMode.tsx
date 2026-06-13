@@ -55,6 +55,11 @@ function GoalCard({ g, selected, onClick }: { g: MetisGoal; selected: boolean; o
         <span className="truncate text-slate-400">{g.title}</span>
         <span className="ml-auto shrink-0 font-bold text-emerald-200">{pct}%</span>
       </div>
+      {g.domain && (
+        <span className="w-fit rounded-md border border-cyan-300/20 bg-cyan-300/10 px-1.5 py-0.5 text-[10px] font-bold text-cyan-100">
+          {g.domain}
+        </span>
+      )}
       {g.marker && <div className="truncate text-[13px] md:text-[10px] text-[var(--muted)]">{g.marker}</div>}
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
         <div className={`h-full rounded-full ${SEV_BAR.ok}`} style={{ width: `${pct}%` }} />
@@ -175,8 +180,8 @@ export default function WorkGraphMode() {
         <CardLoading label="loading work graph…" />
       ) : (
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 lg:grid-cols-2">
-          {/* Goals / milestones */}
-          <StatusCard title="Goals · Milestones" icon={<Target size={12} />}>
+          {/* Campaigns / milestones */}
+          <StatusCard title="Campaigns · Milestones" icon={<Target size={12} />}>
             {p.goals?.length ? (
               <div className="flex flex-col gap-2">
                 {p.goals.map((g) => (
@@ -184,12 +189,12 @@ export default function WorkGraphMode() {
                     key={g.id}
                     g={g}
                     selected={selectedGoalId === g.id}
-                    onClick={() => nav.goto('tasks', { goalId: g.id, goalLabel: `${g.id} · ${g.title}` })}
+                    onClick={() => { setSelectedGoalId(g.id); setSelectedProject(null) }}
                   />
                 ))}
               </div>
             ) : (
-              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no goals tracked</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no campaigns tracked</span>
             )}
           </StatusCard>
 
@@ -216,7 +221,7 @@ export default function WorkGraphMode() {
           </StatusCard>
 
           {/* Active leases — who owns active work right now */}
-          <StatusCard title="Active Leases" icon={<Lock size={12} />}>
+          <StatusCard title="Active Work Lanes" icon={<Lock size={12} />}>
             {leases.length ? (
               <ul className="flex flex-col gap-1.5">
                 {leases.map((l) => (
@@ -242,7 +247,7 @@ export default function WorkGraphMode() {
                 ))}
               </ul>
             ) : (
-              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no active leases</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no background lanes active</span>
             )}
           </StatusCard>
 
@@ -277,14 +282,16 @@ export default function WorkGraphMode() {
                   <span className="text-[15px] md:text-[12px] text-[var(--muted)]">no governed tasks found for this focus</span>
                 )}
                 <button
-                  onClick={() => nav.goto('tasks')}
+                  onClick={() => selectedGoal
+                    ? nav.goto('tasks', { goalId: selectedGoal.id, goalLabel: `${selectedGoal.id} · ${selectedGoal.title}` })
+                    : nav.goto('tasks')}
                   className="mt-1 flex items-center justify-center gap-1 rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-2 py-1.5 text-[13px] md:text-[11px] font-bold text-cyan-100 hover:bg-cyan-300/20"
                 >
                   open in Tasks
                 </button>
               </div>
             ) : (
-              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">click a goal, project, or task row to focus its work</span>
+              <span className="text-[15px] md:text-[12px] text-[var(--muted)]">click a campaign, project, or task row to focus its work</span>
             )}
           </StatusCard>
         </div>

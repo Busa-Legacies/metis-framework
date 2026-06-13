@@ -119,18 +119,39 @@ task-queue.md). Do not invent file paths — only cite files you actually read.
 PROMPT
 
 TEMP_OUTPUT=$(mktemp)
+HEARTBEAT_FILE="${HEARTBEAT_FILE:-/tmp/system-audit-last-run}"
 
-if ! run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
+AUDIT_EXIT=0
+run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
   "$CLAUDE_BIN" -p "$AUDIT_PROMPT" \
-  --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task'; then
-  echo "[ERROR] claude audit command failed or timed out; attempting to use partial output"
+  --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
+  || AUDIT_EXIT=$?
+
+if [ "$AUDIT_EXIT" -eq 124 ]; then
+  echo "[WARN] Audit timed out after ${CLAUDE_TIMEOUT_SECONDS}s — retrying with --max-turns 10"
+  discord_post "⏱️ System audit timed out — retrying with reduced scope (max-turns 10)"
+  RETRY_EXIT=0
+  run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
+    "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --max-turns 10 \
+    --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
+    || RETRY_EXIT=$?
+  if [ "$RETRY_EXIT" -ne 0 ]; then
+    echo "[ERROR] Retry also failed (exit $RETRY_EXIT) — writing degraded report"
+    printf '# System Audit — DEGRADED\n\nAudit failed after retry (original timeout %ss, retry exit %s).\nManual review required. Check %s\n' \
+      "$CLAUDE_TIMEOUT_SECONDS" "$RETRY_EXIT" "$LOG" > "$TEMP_OUTPUT"
+    discord_post "🚨 System audit FAILED after retry ($DATE) — degraded report written. P1:? P2:? P3:? — check $LOG"
+  fi
+elif [ "$AUDIT_EXIT" -ne 0 ]; then
+  echo "[ERROR] claude audit exited $AUDIT_EXIT; attempting to use partial output"
 fi
+
+# Heartbeat: watchdog (#296) monitors this file
+date > "$HEARTBEAT_FILE"
 
 if [ ! -s "$TEMP_OUTPUT" ]; then
   echo "=== FAILED: empty audit output ==="
-  discord_post "⚠️ System audit failed — empty output. Check $LOG"
-  rm -f "$TEMP_OUTPUT"
-  exit 1
+  printf '# System Audit — FAILED\n\nEmpty output (exit %s). Check %s\n' "$AUDIT_EXIT" "$LOG" > "$TEMP_OUTPUT"
+  discord_post "⚠️ System audit empty output ($DATE) — check $LOG"
 fi
 
 # --- Persist the report (script owns the write; claude only returns prose) ---

@@ -52,6 +52,14 @@ Read `~/metis-os/Jay/memory/working-context.md` explicitly:
 - **Next action** — the single highest-value forward step from last close
 
 ## Step 5 — Project board + task queue
+
+**Lane scope first (#325):** if `$METIS_LANE` is set (session launched via `lane <name>`,
+see `docs/process/claude-session-persistence.md`), this session belongs to that campaign lane.
+Open the briefing with the lane name, scope the board to the lane's projects, and prefer
+lane-scoped claiming for the rest of the session — `claim-next` already applies the
+`$METIS_LANE` filter automatically. `hub` (or unset) = unscoped, use the global board.
+Working outside the lane is a deliberate pivot — surface it as such, never silent.
+
 ```bash
 cd ~/metis-os && python3 scripts/free-work.py
 ```
@@ -89,7 +97,7 @@ cd ~/metis-os && python3 scripts/agent-work.py reconcile
 - **WARN lines only** → routine projection lag; note the count in `Drift:` line
 - Script unavailable → note "reconcile unavailable"; fall back to free-work's DRIFT bucket
 
-## Step 5d — Notion Command Center sweep (Lane 2, #218)
+## Step 5d — Notion Control Center sweep (Lane 2, #218)
 ```bash
 cd ~/metis-os && python3 scripts/notion-session-sweep.py
 ```
@@ -97,7 +105,7 @@ Surfaces judgment cards Ant directed from his phone that need an agent this sess
 - **`judgment`** reason → card marked `Action=▶ Run on Jay` with no Run Key (not a script — needs your call/action). The poller defers these here.
 - **`fold-it`** reason → `Status=Edited: fold it` → diff Ant's edits vs the repo canonical, fold voice deltas, set `Status=Done` ([[project_notion_command_center]]).
 
-Include any surfaced cards in the briefing as a **Command Center** section and treat them as high-priority pickups. Soft-fail: if the sweep errors (Notion down, token/share issue → `restricted_resource`/`object_not_found`), note "Command Center unreachable" and continue — never block session start. Reading per-card comments is the #219 feedback loop (gated on the comment-capability toggle).
+Include any surfaced cards in the briefing as a **Control Center** section and treat them as high-priority pickups. Soft-fail: if the sweep errors (Notion down, token/share issue → `restricted_resource`/`object_not_found`), note "Control Center unreachable" and continue — never block session start. Reading per-card comments is the #219 feedback loop (gated on the comment-capability toggle).
 
 ## Step 6 — Dispatched/pending agent work
 Scan `## Open threads` for items marked `[Scout/Forge dispatched]` or `awaiting`. Note any with results ready to review and apply.

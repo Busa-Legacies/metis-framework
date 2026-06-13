@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""System-wide priorities — the decision matrix that ranks active work against goals.
+"""System-wide priorities — the decision matrix that ranks active work against campaigns.
 
 Connects the two halves that were sitting disconnected:
-  - docs/process/goals.json  (G1-G5, weights, area->goal mapping)
+  - docs/process/goals.json  (G1-G6 campaigns, weights, project/area->campaign mapping)
   - docs/process/state/tasks.json  (governed task state)
 
-It maps each active task to a goal (explicit `goalIds`, else by `area`), scores it
-on a transparent matrix (goal weight × urgency × readiness), and ranks the result
-per priority-system. Orphans (no goal) are surfaced for triage. Fully derived from
+It maps each active task to a campaign (explicit `goalIds`, else by `project`,
+else by legacy `area`), scores it on a transparent matrix (campaign weight × urgency ×
+readiness), and ranks the result
+per priority-system. Orphans (no campaign) are surfaced for triage. Fully derived from
 governed state — no manual upkeep.
 
     python3 scripts/priorities.py matrix         # the full ranked decision matrix
     python3 scripts/priorities.py next -n 8       # top actionable work, system-wide
     python3 scripts/priorities.py next --system 1 # within one priority system
-    python3 scripts/priorities.py goals           # goal coverage / load
-    python3 scripts/priorities.py orphans         # active tasks mapping to no goal
+    python3 scripts/priorities.py goals           # campaign coverage / load
+    python3 scripts/priorities.py orphans         # active tasks mapping to no campaign
 """
 import argparse
 import json
@@ -46,21 +47,26 @@ def goals_by_id(goals: list) -> dict:
     return {g["id"]: g for g in goals}
 
 
-def _area_to_goals(goals: list) -> dict:
+def _field_to_goals(goals: list, field: str) -> dict:
     out: dict = {}
     for g in goals:
-        for area in g.get("areas", []):
-            out.setdefault(area, []).append(g["id"])
+        for value in g.get(field, []):
+            out.setdefault(value, []).append(g["id"])
     return out
 
 
 def map_task_goals(task: dict, goals: list) -> list:
-    """Goal ids a task serves: explicit task['goalIds'] wins, else map by area."""
+    """Campaign ids a task serves: explicit task['goalIds'] wins, then project, then legacy area."""
     explicit = task.get("goalIds")
     if explicit:
         valid = {g["id"] for g in goals}
         return [g for g in explicit if g in valid]
-    return _area_to_goals(goals).get(task.get("area") or "", [])
+    project = task.get("project")
+    if project:
+        mapped = _field_to_goals(goals, "projects").get(project, [])
+        if mapped:
+            return mapped
+    return _field_to_goals(goals, "areas").get(task.get("area") or "", [])
 
 
 def _readiness(task: dict) -> float:
@@ -100,7 +106,7 @@ def active_tasks(tasks: list) -> list:
 
 def rank(tasks: list, goals: list) -> dict:
     """Ranked decision matrix: scored active tasks split by priority-system, plus
-    the orphan list (active tasks that map to no goal)."""
+    the orphan list (active tasks that map to no campaign)."""
     scored = [score_task(t, goals) for t in active_tasks(tasks)]
     ranked = sorted((s for s in scored if not s["orphan"]),
                     key=lambda s: (s["score"], URGENCY.get((s["priority"] or "").upper(), 0)),
@@ -122,6 +128,7 @@ def goal_coverage(tasks: list, goals: list) -> list:
         d = [t for t in done if g["id"] in map_task_goals(t, goals)]
         rows.append({
             "id": g["id"], "title": g["title"], "system": g["system"],
+            "domain": g.get("domain"),
             "weight": g["weight"], "marker": g.get("marker", ""),
             "active": len(a),
             "in_progress": sum(1 for t in a if (t.get("state") or "") == "in_progress"),
@@ -196,7 +203,7 @@ def cmd_goals(args):
 def cmd_orphans(args):
     goals, tasks = load_goals(), load_tasks()
     orphans = rank(tasks, goals)["orphans"]
-    print(f"══ ORPHANS — {len(orphans)} active task(s) with no goal (drop, defer, or assign goalIds) ══")
+    print(f"══ ORPHANS — {len(orphans)} active task(s) with no campaign (drop, defer, or assign goalIds) ══")
     for s in sorted(orphans, key=lambda s: URGENCY.get((s["priority"] or "").upper(), 0), reverse=True):
         print(f"  {s['priority'] or '--':<3} {s['state'] or '':<16} {s['area'] or 'None':<22} "
               f"{s['taskId'] or '':<6} {(s['title'] or '')[:50]}")

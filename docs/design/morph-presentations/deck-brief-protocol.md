@@ -26,7 +26,7 @@ Keep bodies to **≤ ~30 words**. One focal point per slide.
 
 ## 2. Brand research (when a brand already exists)
 
-**Be intentional: study the real brand before choosing a single color.** Don't guess what the current Navore deck did as a placeholder — that's exactly the gap this step closes.
+**Be intentional: study the real brand before choosing a single color.** Don't guess what the current Example deck did as a placeholder — that's exactly the gap this step closes.
 
 Checklist:
 - [ ] **View the official site.** Use `scripts/review.sh https://brand.com /tmp/brand.png` to screenshot it once the domain is reachable. (Note: the web sandbox's TLS proxy only allows infra hosts — npm/github/google-storage — so most external brand sites 403 from here. Until a domain is allowlisted, fall back to search/press coverage, the brand's social images, or a hex sampled by hand.)
@@ -65,7 +65,7 @@ Quality bar:
 
 ## 5. Worked example — the two decks here
 
-| | Métis | Navore |
+| | Métis | Example |
 |---|---|---|
 | Brand source | our house system (`design-guidelines.md`) | navoremarket.com + press (palette interpretive — confirm hex) |
 | Motif | indigo data-horizon, orb = the system | harvest sun rising over SD farmland |
@@ -73,4 +73,4 @@ Quality bar:
 | Nav taxonomy | orchestrator · lanes · memory · surfaces | farms · shop · mission · impact |
 | Voice | precise, technical, confident | warm, community, fresh |
 
-*New deck? Copy this protocol's brief, fill it in, then `cp -r decks/navore decks/<new>` and reskin.*
+*New deck? Copy this protocol's brief, fill it in, then `cp -r decks/example decks/<new>` and reskin.*

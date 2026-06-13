@@ -46,7 +46,7 @@ LANE_ORDER = [
     "Automation",
     "Self-Review",
     "Dashboard",
-    "Navore Market",
+    "Example Market",
     "Personal Site",
     "Remote Access",
     "unknown",

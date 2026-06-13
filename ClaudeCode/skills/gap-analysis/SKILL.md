@@ -50,7 +50,7 @@ Emit one table:
 | # | Slug (proposed)             | Goal | Priority | Origin | Agent-runnable? |
 |---|-----------------------------|------|----------|--------|-----------------|
 | 1 | queue-runner-v1             | G1   | P1       | gap/goals.md | yes |
-| 2 | navore-lfpp-grant-tracker   | G3   | P2       | gap/navore/strategy/README.md | yes |
+| 2 | example-grant-tracker   | G3   | P2       | gap/example/strategy/README.md | yes |
 ...
 ```
 
@@ -82,7 +82,7 @@ Present the diff to Ant (don't silently rewrite unless Ant says go).
 ```
 ✓ gap-analysis — banked
 - Minted: #NNN <slug>, #NNN <slug>, ...
-- Covered goals: G1 (queue-runner), G3 (navore-lfpp)
+- Covered goals: G1 (queue-runner), G3 (example-grant)
 - Tracked gaps remaining: N (see strategy docs)
 - Next: claim #NNN <highest-priority minted task>
 ```

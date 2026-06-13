@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { sanitizeToken, navoreTokenLooksValid } from '../lib/navore-credential'
+import { sanitizeToken, navoreTokenLooksValid } from '../lib/example-credential'
 
-describe('navore-credential token sanitization', () => {
+describe('example-credential token sanitization', () => {
   it('strips internal whitespace from a wrapped paste', () => {
     // A terminal-wrapped token: a space/newline landed mid-string.
     assert.equal(sanitizeToken('sk-ant-oat01-AAAA BBBB'), 'sk-ant-oat01-AAAABBBB')

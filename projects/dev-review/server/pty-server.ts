@@ -18,6 +18,8 @@ import { validateWorkspaceCwd } from '../lib/workspace-boundary.ts'
 import { coerceEffortLevel, effortFlagsForKind, type EffortLevel } from '../lib/effort-level.ts'
 import { RUNTIME_GUARDRAILS, trimOutputLine as trimRuntimeOutputLine, trimPersistedOutputLines as trimRuntimePersistedOutputLines } from '../lib/runtime-guardrails.ts'
 import { appendEvidence, hasRequiredEvidenceForDone, listEvidence, type EvidenceKind } from '../lib/evidence-ledger.ts'
+import { captureCrop, verifySelectors, cropFileFor, slugFor } from './preview-capture.ts'
+import { loadOrMintToken, httpAuthorized, wsAuthorized, WS_PROTOCOL_PLAIN, TOKEN_FILE_NAME, TOKEN_HEADER } from './sidecar-auth.ts'
 import { discoverMemoryDir, listMemoryNotes, searchMemoryNotes, type MemoryNote } from '../lib/workbench-memory.ts'
 
 function execGit(cwd: string, args: string[], timeoutMs = 1500): Promise<string> {
@@ -441,6 +443,8 @@ interface PersistedAgentOutput {
 const PORT = Number(process.env.AW_PTY_PORT ?? 3761)
 const HOST = process.env.AW_PTY_HOST ?? '127.0.0.1'
 const DATA_DIR = expandHome(process.env.AW_DATA_DIR ?? path.join(os.homedir(), '.openclaw', 'dev-review'))
+// #259 trust gate: every HTTP route and the WS upgrade require this token (default-deny).
+const SIDECAR_TOKEN = loadOrMintToken(DATA_DIR)
 const LOG_DIR = path.join(DATA_DIR, 'logs')
 const STATE_FILE = path.join(DATA_DIR, 'state.json')
 const RING_BYTES = Number(process.env.AW_RING_BYTES ?? 128 * 1024)
@@ -1019,7 +1023,7 @@ function send(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, {
     'content-type': 'application/json',
     'access-control-allow-origin': '*',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-headers': `content-type, ${TOKEN_HEADER}, authorization`,
     'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   })
   res.end(JSON.stringify(body))
@@ -1084,6 +1088,13 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
     const p = url.pathname
     if (process.env.AW_HTTP_LOG !== '0') console.log(`[pty-http] ${req.method} ${p}`)
+
+    // #259 trust gate: default-deny, no allowlist (incl. /health). OPTIONS stays
+    // open above — CORS preflights cannot carry custom headers, and a preflight
+    // discloses nothing.
+    if (!httpAuthorized(req.headers, SIDECAR_TOKEN)) {
+      return send(res, 401, { error: `unauthorized: missing or invalid ${TOKEN_HEADER}` })
+    }
 
     if (p === '/health') {
       reconcileAgentHealth()
@@ -1733,6 +1744,40 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // ---- headless preview capture/verify (#256/#258) ----
+    if (p === '/preview/crop' && req.method === 'POST') {
+      const body = await readJson(req)
+      if (typeof body.url !== 'string' || typeof body.selector !== 'string' || typeof body.annotationId !== 'string') {
+        return send(res, 400, { error: 'url, selector, annotationId required' })
+      }
+      try {
+        const { path: file } = await captureCrop({ url: body.url, selector: body.selector, annotationId: body.annotationId })
+        return send(res, 200, { path: file, slug: slugFor(body.url) })
+      } catch (e) {
+        return send(res, 422, { error: e instanceof Error ? e.message : 'capture failed' })
+      }
+    }
+    if (p === '/preview/verify' && req.method === 'POST') {
+      const body = await readJson(req)
+      if (typeof body.url !== 'string' || !Array.isArray(body.checks)) {
+        return send(res, 400, { error: 'url and checks[] required' })
+      }
+      try {
+        const results = await verifySelectors({ url: body.url, checks: body.checks })
+        return send(res, 200, { results })
+      } catch (e) {
+        return send(res, 422, { error: e instanceof Error ? e.message : 'verify failed' })
+      }
+    }
+    const cropMatch = p.match(/^\/preview\/crops\/([^/]+)\/([^/]+)$/)
+    if (cropMatch && req.method === 'GET') {
+      const file = cropFileFor(cropMatch[1], cropMatch[2])
+      if (!file) return send(res, 404, { error: 'crop not found' })
+      res.writeHead(200, { 'content-type': 'image/png', 'access-control-allow-origin': '*' })
+      fs.createReadStream(file).pipe(res)
+      return
+    }
+
     const agentMatch = p.match(/^\/agents\/([^/]+)(?:\/(input|scrollback))?$/)
     if (agentMatch) {
       const id = agentMatch[1]
@@ -1781,9 +1826,21 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-const wss = new WebSocketServer({ noServer: true })
+const wss = new WebSocketServer({
+  noServer: true,
+  // Browser clients offer ['drt', 'drt.<token>']; select the plain protocol so
+  // the token is never echoed back in the handshake response.
+  handleProtocols: (protocols) => (protocols.has(WS_PROTOCOL_PLAIN) ? WS_PROTOCOL_PLAIN : false),
+})
 
 server.on('upgrade', (req, socket, head) => {
+  // #259 trust gate: same default-deny as HTTP. Browser WS can't set headers,
+  // so the token rides the offered subprotocols (never the URL).
+  if (!wsAuthorized(req.headers, SIDECAR_TOKEN)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n')
+    socket.destroy()
+    return
+  }
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
   const m = url.pathname.match(/^\/ws\/([^/]+)$/)
   if (!m) { socket.destroy(); return }
@@ -1813,6 +1870,9 @@ server.on('upgrade', (req, socket, head) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[pty-server] listening on http://${HOST}:${PORT}`)
+  // Log where the token lives, never the token itself.
+  const source = process.env.DEV_REVIEW_SIDECAR_TOKEN ? 'env DEV_REVIEW_SIDECAR_TOKEN' : path.join(DATA_DIR, TOKEN_FILE_NAME)
+  console.log(`[pty-server] trust gate active (#259) — token from ${source}`)
 })
 
 function shutdown() {

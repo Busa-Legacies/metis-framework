@@ -11,6 +11,13 @@ export interface PickResult {
   selector: string
   rect: { x: number; y: number; width: number; height: number }
   styles: Record<string, string>
+  /** Truncated textContent at pick time — content baseline for the verify loop (#258). */
+  text: string
+}
+
+/** Truncated, whitespace-normalized textContent — the pin-time content baseline. */
+export function captureText(el: Element): string {
+  return (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120)
 }
 
 export interface PinInput {
@@ -159,7 +166,7 @@ export function createOverlayController(
     const computed = win ? win.getComputedStyle(target) : null
     const styles: Record<string, string> = {}
     if (computed) for (const k of STYLE_KEYS) styles[k] = computed.getPropertyValue(k)
-    opts.onPick({ selector: buildSelector(doc, target), rect: pageRect(doc, target), styles })
+    opts.onPick({ selector: buildSelector(doc, target), rect: pageRect(doc, target), styles, text: captureText(target) })
     setPickingState(false)
   }
 
@@ -202,6 +209,8 @@ export function createOverlayController(
     const orphaned: string[] = []
     for (const pin of currentPins) {
       if (pin.status === 'orphaned') continue
+      // A pin that left orphaned state (re-picked, #257) is eligible to orphan again.
+      reportedOrphans.delete(pin.id)
       let count = 0
       try { count = doc.querySelectorAll(pin.selector).length } catch { count = 0 }
       if (count !== 1 && !reportedOrphans.has(pin.id)) {

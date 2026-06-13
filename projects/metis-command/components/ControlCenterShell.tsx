@@ -12,8 +12,8 @@ import OpsMode from './ops/OpsMode'
 import PersonalMode from './personal/PersonalMode'
 import SettingsMode from './settings/SettingsMode'
 import AnnotateWidget from './annotate/AnnotateWidget'
-import NavoreMode, { NavoreOverview } from './navore/NavoreMode'
-import { NavoreScopeBanner } from './navore/navore-ui'
+import NavoreMode, { NavoreOverview } from './example/NavoreMode'
+import { NavoreScopeBanner } from './example/example-ui'
 import { CONTROL_CENTER_MODES, DEFAULT_MODE, normalizeTopLevelMode, type ControlCenterMode, type ModeId } from '@/lib/control-center-modes'
 import { ControlCenterNavProvider, type NavParams } from '@/lib/control-center-nav'
 import { WorkspaceProvider, useWorkspace } from '@/lib/workspace-context'
@@ -29,9 +29,9 @@ const STATUS_DOT: Record<ControlCenterMode['status'], string> = {
 
 /**
  * Metis Control Center shell (M1). Owns the viewport and top-level mode nav, and
- * re-scopes the whole Control Center between the Personal and Professional (Navore)
+ * re-scopes the whole Control Center between the Personal and Professional (Example)
  * workspaces (PLAN §9.1). The workspace toggle is in Settings; here every mode
- * reads the context and the domain slot swaps Personal ↔ Navore.
+ * reads the context and the domain slot swaps Personal ↔ Example.
  */
 export default function ControlCenterShell() {
   return (
@@ -136,7 +136,7 @@ function ControlCenterInner() {
                 <WorkMode professional={pro} initialView={mode} />
               ) : m.id === 'usage' ? (
                 pro ? (
-                  <BannerWrap note="Professional context · Navore usage attribution arrives with the Navore Claude account link.">
+                  <BannerWrap note="Professional context · Example usage attribution arrives with the Example Claude account link.">
                     <UsageMode />
                   </BannerWrap>
                 ) : (
@@ -192,7 +192,7 @@ function ControlCenterInner() {
   )
 }
 
-/** Wraps a shared-infra mode with the Navore scope banner (keeps the child's
+/** Wraps a shared-infra mode with the Example scope banner (keeps the child's
  *  full-height layout: banner + flex-1 min-h-0 container). */
 function BannerWrap({ note, children }: { note?: string; children: React.ReactNode }) {
   return (

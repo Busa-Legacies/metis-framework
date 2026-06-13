@@ -120,7 +120,7 @@ class MiniGatewayClient {
             // Gateway validates client ids against its known protocol enum.
             // Use backend client semantics server-side; chat.send still marks the message as webchat.
             id: 'gateway-client',
-            displayName: 'Metis Command Center',
+            displayName: 'Metis Control Center',
             version: '0.1.0',
             platform: process.platform,
             mode: 'backend',
@@ -222,7 +222,7 @@ export async function runOpenClawGatewayChat(opts: {
 
     const sendResult = await client.request('chat.send', {
       // Do not default to `main`: that session can carry Telegram/WebChat delivery context.
-      // Command Center needs its own stable surface session while still using the same Metis Brain runtime.
+      // Control Center needs its own stable surface session while still using the same Metis Brain runtime.
       sessionKey: opts.sessionKey || process.env.AW_OPENCLAW_SESSION_KEY || 'workbench',
       message: opts.message,
       metadata: opts.metadata,

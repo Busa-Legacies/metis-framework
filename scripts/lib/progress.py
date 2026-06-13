@@ -114,3 +114,84 @@ def bar(frac: float | None, width: int = 10) -> str:
         return "—" * width
     filled = int(round(frac * width))
     return "█" * filled + "░" * (width - filled)
+
+
+def domain_coverage(projects: list[dict], taxonomy: dict) -> list[dict]:
+    """Per-domain coverage summary for neglect/activity signals.
+
+    Returns one entry per domain in taxonomy (sorted: active first, neglected last):
+    {domain, label, active_count, paused_blocked_count, evergreen_count,
+     campaigns (sorted list), stale_signal, neglected}
+
+    'neglected' = zero active/paused/blocked/evergreen projects in this domain.
+    'stale_signal' = all active projects are stale (>14d) and none are fresh.
+    Never emits completion percentages — domains have no end state.
+    """
+    domains_vocab = taxonomy.get("domains") or {}
+    project_domain_map = taxonomy.get("project_domain") or {}
+    campaigns_map = taxonomy.get("campaigns") or {}
+    today = date.today()
+
+    by_domain: dict[str, dict] = {
+        d: {
+            "domain": d, "label": desc,
+            "active_count": 0, "paused_blocked_count": 0, "evergreen_count": 0,
+            "_campaigns": set(), "_has_stale": False, "_has_fresh": False,
+        }
+        for d, desc in domains_vocab.items()
+    }
+
+    for p in projects:
+        slug = p.get("slug", "")
+        goal = p.get("goal")
+        status = p.get("status", "active")
+        if status == "done":
+            continue
+        domain = project_domain_map.get(slug) or (campaigns_map.get(goal) or {}).get("domain")
+        if not domain or domain not in by_domain:
+            continue
+        d = by_domain[domain]
+        if goal:
+            d["_campaigns"].add(goal)
+        if p.get("evergreen"):
+            d["evergreen_count"] += 1
+        elif status == "active":
+            d["active_count"] += 1
+            if days_since_movement(p, today) > 14:
+                d["_has_stale"] = True
+            else:
+                d["_has_fresh"] = True
+        elif status in ("paused", "blocked"):
+            d["paused_blocked_count"] += 1
+
+    out = []
+    for d in by_domain.values():
+        entry = {
+            "domain": d["domain"],
+            "label": d["label"],
+            "active_count": d["active_count"],
+            "paused_blocked_count": d["paused_blocked_count"],
+            "evergreen_count": d["evergreen_count"],
+            "campaigns": sorted(d["_campaigns"]),
+            "neglected": (
+                d["active_count"] == 0 and
+                d["evergreen_count"] == 0 and
+                d["paused_blocked_count"] == 0
+            ),
+            "stale_signal": (
+                d["_has_stale"] and not d["_has_fresh"] and d["active_count"] > 0
+            ),
+        }
+        out.append(entry)
+
+    def _sort_key(e: dict) -> tuple:
+        if e["neglected"]:
+            return (3, e["domain"])
+        if e["stale_signal"]:
+            return (2, e["domain"])
+        if e["active_count"] > 0:
+            return (0, e["domain"])
+        return (1, e["domain"])  # evergreen-only or paused-only
+
+    out.sort(key=_sort_key)
+    return out

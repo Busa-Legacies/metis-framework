@@ -98,7 +98,7 @@ Run this before every public release:
 
 ### 1. Secrets audit
 - [ ] `grep -r "sk-" . --include="*.py" --include="*.js"` — no API keys in source
-- [ ] `grep -r "@gmail\|@navore\|anthonyabusa" . --include="*.py"` — no personal emails hardcoded
+- [ ] `grep -r "@gmail\|@example\|anthonyabusa" . --include="*.py"` — no personal emails hardcoded
 - [ ] `.env` and `*-tokens.json` in `.gitignore`
 - [ ] All sheet IDs / webhook URLs moved to env vars
 

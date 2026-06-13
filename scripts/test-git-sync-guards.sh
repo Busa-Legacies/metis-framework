@@ -312,6 +312,33 @@ else
 fi
 
 # ================================================================================
+echo "=== T-SYNC-14 (#308): cross-session file-claim warns before a same-file edit diverges ==="
+make_sandbox
+FC="$SCRIPT_DIR/file-claims.py"
+FCGUARD="$SCRIPT_DIR/git-hooks/pre-commit-fileclaim-guard.sh"
+printf 'export const A = 1\n' > src1.ts; git add src1.ts; git commit -qm seed-src
+# Machine A (antfox, session sessA) claims src1.ts
+METIS_HOME="$PWD" python3 "$FC" claim src1.ts --machine antfox --session sessA --agent claude --quiet
+# Machine B (jarry, session sessB) stages an edit to the SAME file and runs the guard
+printf 'export const A = 2\n' > src1.ts; git add src1.ts
+out=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=jarry bash "$FCGUARD" 2>&1); rc=$?
+r=0
+printf '%s' "$out" | grep -q "FILE-CLAIM WARNING" || r=1   # warned
+printf '%s' "$out" | grep -q "src1.ts" || r=1              # named the file
+printf '%s' "$out" | grep -q "antfox" || r=1              # named the peer machine
+[ "$rc" -eq 0 ] || r=1                                     # advisory: never blocks the commit
+check "cross-session same-file edit warns pre-merge (T-SYNC-14)" "$r"
+# the guard claimed src1.ts for sessB too (union keeps both -> A is warned next)
+METIS_HOME="$PWD" python3 "$FC" list 2>/dev/null | grep -q sessB && r=0 || r=1
+check "T-SYNC-14 committing session also records its own claim" "$r"
+# no false positive: an unclaimed file draws no warning
+git reset -q 2>/dev/null
+printf 'export const B = 1\n' > src2.ts; git add src2.ts
+out2=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=jarry bash "$FCGUARD" 2>&1)
+printf '%s' "$out2" | grep -q "FILE-CLAIM WARNING" && r=1 || r=0
+check "T-SYNC-14 no false warning on an unclaimed file" "$r"
+teardown
+
 echo ""
 echo "================ $PASS passed, $FAIL failed ================"
 [ "$FAIL" -eq 0 ] && { green "ALL GUARDS OK — safe to deploy"; exit 0; } || { red "GUARD REGRESSION — do NOT deploy"; exit 1; }

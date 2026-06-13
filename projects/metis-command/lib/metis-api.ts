@@ -1,4 +1,4 @@
-import type { MetisAll, MetisRateLimits, MetisLeasesResponse, MetisGoverned, MetisGoverndTask, MetisInbox, MetisLinesIndex, MetisLineDetail, MetisFileContent, MetisTaskRoutePlan } from './metis-api-types'
+import type { MetisAll, MetisRateLimits, MetisLeasesResponse, MetisGoverned, MetisGoverndTask, MetisInbox, MetisLinesIndex, MetisLineDetail, MetisFileContent, MetisTaskRoutePlan, MetisDomainCoverage } from './metis-api-types'
 
 /**
  * Typed client for the dashboard data plane, consumed by the Control Center
@@ -95,6 +95,9 @@ export const metisApi = {
    */
   taskUpdate: (taskId: string, expectedRevision: number, patch: Record<string, unknown>) =>
     postGoverned('tasks/governed/update', { taskId, expectedRevision, patch }),
+  /** Legal workflow transition, including multi-hop paths such as execution -> verify. */
+  taskTransition: (taskId: string, toState: string, actor = 'control-center') =>
+    postGoverned('tasks/governed/transition', { taskId, toState, actor }),
   /** Audited state correction (e.g. mark done) — carries a required reason. */
   taskCorrectState: (taskId: string, expectedRevision: number, toState: string, reason: string) =>
     postGoverned('tasks/governed/correct-state', { taskId, expectedRevision, toState, reason }),
@@ -135,6 +138,7 @@ export const metisApi = {
    */
   lines: () => getJson<MetisLinesIndex>('lines'),
   lineDetail: (slug: string) => getJson<MetisLineDetail>(`lines/${slug}`),
+  domainCoverage: () => getJson<MetisDomainCoverage>('domain-coverage'),
 
   /**
    * Read a repo file for inline review (#240): the inbox links a plan/spec/design

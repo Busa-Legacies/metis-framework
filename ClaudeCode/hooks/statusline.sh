@@ -106,9 +106,14 @@ guard_part=""
 guard_out=$(~/.local/bin/file-guard.sh status 2>/dev/null)
 [ -n "$guard_out" ] && guard_part="$guard_out"
 
+# ── Goal lane (#325 — exported by scripts/lane.sh panes; display-only) ────────
+lane_part=""
+[ -n "${METIS_LANE:-}" ] && lane_part="⊦ ${METIS_LANE}"
+
 # ── Assemble segments ─────────────────────────────────────────────────────────
 SEP="  |  "
 segments=()
+[ -n "$lane_part"    ] && segments+=("$lane_part")
 [ -n "$session_part" ] && segments+=("$session_part")
 [ -n "$dir"          ] && segments+=("$dir")
 [ -n "$git_part"     ] && segments+=("$git_part")

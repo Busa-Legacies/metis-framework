@@ -9,13 +9,13 @@ import {
   selectNavoreRepos,
   navoreCounts,
   navoreOpenWork,
-} from '@/lib/navore-data'
+} from '@/lib/example-data'
 import { StatusCard, CardLoading, CardError } from '../overview/cards'
 import { useControlCenterNav } from '@/lib/control-center-nav'
-import { NavoreTaskList, NavoreModeHeader } from './navore-ui'
+import { NavoreTaskList, NavoreModeHeader } from './example-ui'
 
 /**
- * Navore — the professional workspace (PLAN §9.4 project view). Occupies the
+ * Example — the professional workspace (PLAN §9.4 project view). Occupies the
  * domain nav slot (replacing Personal) when the Control Center is in the professional
  * context, and supplies the per-mode professional variants (Overview / Work
  * Graph / Tasks) below. Read-only; all data is the local /api/all clickup +
@@ -32,7 +32,7 @@ function CountChip({ label, n, icon }: { label: string; n: number; icon: React.R
   )
 }
 
-/** ClickUp connect/error guard shared by every Navore surface. */
+/** ClickUp connect/error guard shared by every Example surface. */
 function useNavore() {
   const all = useMetisAll()
   const cu = selectClickup(all.data)
@@ -44,13 +44,13 @@ function ClickupErrorNote({ error }: { error: string }) {
     <StatusCard title="ClickUp" icon={<ListChecks size={12} />} severity="warn">
       <span className="text-[13px] md:text-[11px] text-amber-200">{error}</span>
       <span className="text-[12px] md:text-[10px] text-[var(--muted)]">
-        Set CLICKUP_TOKEN in the dashboard .env to surface Navore Market tasks.
+        Set CLICKUP_TOKEN in the dashboard .env to surface Example Market tasks.
       </span>
     </StatusCard>
   )
 }
 
-// ── Domain home: the full Navore workspace ───────────────────────────────────
+// ── Domain home: the full Example workspace ───────────────────────────────────
 
 export default function NavoreMode() {
   const { res, data, loading, now, hardReload, cu } = useNavore()
@@ -59,9 +59,9 @@ export default function NavoreMode() {
   const repos = selectNavoreRepos(data)
 
   return (
-    <div data-testid="navore-mode" className="flex h-full w-full flex-col overflow-hidden">
+    <div data-testid="example-mode" className="flex h-full w-full flex-col overflow-hidden">
       <NavoreModeHeader
-        title="Navore Workspace"
+        title="Example Workspace"
         ageText={res ? (res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data') : undefined}
         loading={loading}
         onRefresh={hardReload}
@@ -70,7 +70,7 @@ export default function NavoreMode() {
       {res && !res.ok ? (
         <CardError message={`${res.error} — start the backend on Jay with: bash scripts/restart-dashboard.sh`} onRetry={hardReload} />
       ) : !data ? (
-        <CardLoading label="loading Navore workspace…" />
+        <CardLoading label="loading Example workspace…" />
       ) : (
         <div className="flex-1 overflow-y-auto p-4 md:p-3">
           {/* Counts strip */}
@@ -101,7 +101,7 @@ export default function NavoreMode() {
                 <NavoreTaskList tasks={cu.milestones} empty="No milestones" />
               </StatusCard>
 
-              {/* MS365 (Navore Teams/Outlook) */}
+              {/* MS365 (Example Teams/Outlook) */}
               <StatusCard title="Comms · MS365" icon={<Mail size={12} />} severity={ms.error ? 'warn' : 'ok'}>
                 {ms.error ? (
                   <span className="text-[13px] md:text-[11px] text-amber-200">{ms.error}</span>
@@ -116,8 +116,8 @@ export default function NavoreMode() {
                 )}
               </StatusCard>
 
-              {/* Navore GitHub */}
-              <StatusCard title="GitHub · Navore" icon={<GitCommitHorizontal size={12} />}>
+              {/* Example GitHub */}
+              <StatusCard title="GitHub · Example" icon={<GitCommitHorizontal size={12} />}>
                 {repos.length ? (
                   <div className="flex flex-col gap-1 text-[13px] md:text-[11px] text-[var(--muted)]">
                     {repos.map((r) => (
@@ -136,7 +136,7 @@ export default function NavoreMode() {
                     ))}
                   </div>
                 ) : (
-                  <span className="text-[13px] md:text-[11px] text-[var(--muted)]">no Navore repo data</span>
+                  <span className="text-[13px] md:text-[11px] text-[var(--muted)]">no Example repo data</span>
                 )}
               </StatusCard>
             </div>
@@ -156,7 +156,7 @@ export function NavoreOverview() {
   const ms = selectMs365(data)
 
   return (
-    <div data-testid="navore-overview" className="flex h-full w-full flex-col overflow-hidden">
+    <div data-testid="example-overview" className="flex h-full w-full flex-col overflow-hidden">
       <NavoreModeHeader
         title="Overview"
         ageText={res ? (res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data') : undefined}
@@ -166,10 +166,10 @@ export function NavoreOverview() {
       {res && !res.ok ? (
         <CardError message={`${res.error} — start the backend on Jay with: bash scripts/restart-dashboard.sh`} onRetry={hardReload} />
       ) : !data ? (
-        <CardLoading label="loading Navore overview…" />
+        <CardLoading label="loading Example overview…" />
       ) : (
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:gap-3 md:p-3 sm:grid-cols-2 xl:grid-cols-3">
-          <StatusCard title="Open Work" icon={<ListChecks size={12} />} severity={navoreOpenWork(cu) ? 'warn' : 'ok'} onClick={() => nav.goto('tasks')} actionHint="Open Navore Tasks">
+          <StatusCard title="Open Work" icon={<ListChecks size={12} />} severity={navoreOpenWork(cu) ? 'warn' : 'ok'} onClick={() => nav.goto('tasks')} actionHint="Open Example Tasks">
             <span className="text-[17px] font-black text-slate-100">{navoreOpenWork(cu)}</span>
             <span className="text-[13px] md:text-[11px] text-[var(--muted)]">
               {counts.ops} ops · {counts.dev} dev · {counts.projects} projects · {counts.milestones} milestones
@@ -206,7 +206,7 @@ export function NavoreWorkGraph() {
   const { res, data, loading, now, hardReload, cu } = useNavore()
 
   return (
-    <div data-testid="navore-work-graph" className="flex h-full w-full flex-col overflow-hidden">
+    <div data-testid="example-work-graph" className="flex h-full w-full flex-col overflow-hidden">
       <NavoreModeHeader
         title="Work Graph"
         ageText={res ? (res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data') : undefined}
@@ -216,7 +216,7 @@ export function NavoreWorkGraph() {
       {res && !res.ok ? (
         <CardError message={`${res.error} — start the backend on Jay with: bash scripts/restart-dashboard.sh`} onRetry={hardReload} />
       ) : !data ? (
-        <CardLoading label="loading Navore work graph…" />
+        <CardLoading label="loading Example work graph…" />
       ) : cu.error ? (
         <div className="p-4"><ClickupErrorNote error={cu.error} /></div>
       ) : (
@@ -239,7 +239,7 @@ export function NavoreTasks() {
   const { res, data, loading, now, hardReload, cu } = useNavore()
 
   return (
-    <div data-testid="navore-tasks" className="flex h-full w-full flex-col overflow-hidden">
+    <div data-testid="example-tasks" className="flex h-full w-full flex-col overflow-hidden">
       <NavoreModeHeader
         title="Tasks"
         ageText={res ? (res.ok ? `data ${ageLabel(data?.ts, now)}` : 'no data') : undefined}
@@ -249,7 +249,7 @@ export function NavoreTasks() {
       {res && !res.ok ? (
         <CardError message={`${res.error} — start the backend on Jay with: bash scripts/restart-dashboard.sh`} onRetry={hardReload} />
       ) : !data ? (
-        <CardLoading label="loading Navore tasks…" />
+        <CardLoading label="loading Example tasks…" />
       ) : cu.error ? (
         <div className="p-4"><ClickupErrorNote error={cu.error} /></div>
       ) : (

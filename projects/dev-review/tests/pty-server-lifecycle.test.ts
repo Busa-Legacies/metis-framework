@@ -46,6 +46,7 @@ function startPtyServer(port: number, dataDir: string) {
       AW_KILL_GRACE_MS: '100',
       AW_HEALTH_CHECK_MS: '100',
       AW_EVIDENCE_LEDGER_DIR: path.join(dataDir, 'evidence-ledger'),
+      DEV_REVIEW_SIDECAR_TOKEN: TEST_TOKEN,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -67,14 +68,21 @@ async function stopPtyServer(proc: ChildProcess) {
   })
 }
 
+// #259 trust gate: the test server runs with a fixed token; helpers attach it.
+const TEST_TOKEN = 'test-sidecar-token-259'
+
+function withToken(init?: RequestInit): RequestInit {
+  return { ...init, headers: { ...((init?.headers as Record<string, string> | undefined) ?? {}), 'x-dev-review-token': TEST_TOKEN } }
+}
+
 async function api<T>(port: number, pathPart: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`http://127.0.0.1:${port}${pathPart}`, init)
+  const res = await fetch(`http://127.0.0.1:${port}${pathPart}`, withToken(init))
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
   return res.json() as Promise<T>
 }
 
 async function apiRaw(port: number, pathPart: string, init?: RequestInit): Promise<Response> {
-  return fetch(`http://127.0.0.1:${port}${pathPart}`, init)
+  return fetch(`http://127.0.0.1:${port}${pathPart}`, withToken(init))
 }
 
 function isPidAlive(pid?: number) {

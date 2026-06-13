@@ -163,9 +163,9 @@ def build(plan_only=False):
     for f in ["projects/forge3d/lib", "projects/forge3d/scripts",
               "projects/forge3d/README.md"]:
         items.append(("any", f))
-    # navore portable seed kit + templates only
-    for f in ["projects/navore/sandbox-agent-template", "projects/navore/templates"]:
-        items.append(("any", f))
+    # navore: NOT published. Business IP stays private; the agent-scaffold seed kit
+    # was relocated to the Navore-Ops repo (2026-06-13, #121 launch). The generic
+    # pattern is documented in docs/process/future-agent-scaffold-template.md.
 
     if plan_only:
         for _, rel in items:

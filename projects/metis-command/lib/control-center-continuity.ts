@@ -15,38 +15,19 @@ interface ReportStore {
 const MAX_REPORTS_PER_WORKSPACE = 50
 
 function stateDir(): string {
-  // AW_COCKPIT_STATE_DIR kept as a fallback so an environment still exporting the
-  // pre-rename var keeps resolving to the same state dir (no silent data reset).
-  return (
-    process.env.AW_CONTROL_CENTER_STATE_DIR ||
-    process.env.AW_COCKPIT_STATE_DIR ||
-    path.join(process.cwd(), 'data')
-  )
+  return process.env.AW_CONTROL_CENTER_STATE_DIR || path.join(process.cwd(), 'data')
 }
 
-// One-time migration: the persistence files were renamed cockpit-*.json →
-// control-center-*.json. If only the legacy file exists, move it into place so
-// existing acks/reports survive the rename instead of being orphaned.
-function resolveStateFile(name: string, legacyName: string): string {
-  const dir = stateDir()
-  const next = path.join(dir, name)
-  const legacy = path.join(dir, legacyName)
-  try {
-    if (!fs.existsSync(next) && fs.existsSync(legacy)) {
-      fs.renameSync(legacy, next)
-    }
-  } catch {
-    /* best-effort migration — fall through to the new path either way */
-  }
-  return next
+function stateFile(name: string): string {
+  return path.join(stateDir(), name)
 }
 
 function ackFile(): string {
-  return resolveStateFile('control-center-acks.json', 'cockpit-acks.json')
+  return stateFile('control-center-acks.json')
 }
 
 function reportFile(): string {
-  return resolveStateFile('control-center-reports.json', 'cockpit-reports.json')
+  return stateFile('control-center-reports.json')
 }
 
 function readJson<T>(file: string, fallback: T): T {

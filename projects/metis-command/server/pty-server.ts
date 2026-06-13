@@ -16,7 +16,7 @@ import type { IPty } from 'node-pty'
 import { isBroadcastKind, selectBroadcastTargets } from '../lib/tool-routing.ts'
 import { validateWorkspaceCwd } from '../lib/workspace-boundary.ts'
 import { claudeAccountEnv, type ClaudeAccount } from '../lib/claude-account.ts'
-import { navoreOAuthToken, navoreConfigDir } from '../lib/navore-credential.ts'
+import { navoreOAuthToken, navoreConfigDir } from '../lib/example-credential.ts'
 import { coerceEffortLevel, effortFlagsForKind, type EffortLevel } from '../lib/effort-level.ts'
 import { RUNTIME_GUARDRAILS, trimOutputLine as trimRuntimeOutputLine, trimPersistedOutputLines as trimRuntimePersistedOutputLines } from '../lib/runtime-guardrails.ts'
 import { appendEvidence, hasRequiredEvidenceForDone, listEvidence, type EvidenceKind } from '../lib/evidence-ledger.ts'
@@ -445,6 +445,7 @@ const HOST = process.env.AW_PTY_HOST ?? '127.0.0.1'
 const DATA_DIR = expandHome(process.env.AW_DATA_DIR ?? path.join(os.homedir(), '.openclaw', 'metis-command'))
 const LOG_DIR = path.join(DATA_DIR, 'logs')
 const STATE_FILE = path.join(DATA_DIR, 'state.json')
+const METIS_API_URL = process.env.AW_METIS_API_URL ?? process.env.METIS_API_URL ?? 'http://127.0.0.1:8080'
 const RING_BYTES = Number(process.env.AW_RING_BYTES ?? 128 * 1024)
 // Keep PTY output persistence bounded. Spinner-heavy CLIs can emit huge
 // carriage-return-only lines; persisting those into state.json on every
@@ -658,6 +659,11 @@ function appendPersistedOutput(agent: RuntimeAgent, text: string) {
   scheduleStateSave()
 }
 
+function appendAgentSystemOutput(agent: RuntimeAgent, text: string) {
+  appendRing(agent, Buffer.from(text, 'utf8'))
+  appendPersistedOutput(agent, text)
+}
+
 function readPersistedScrollback(id: string, wantLines: number) {
   const rec = state.outputTails?.[id]
   if (!rec) return null
@@ -719,7 +725,7 @@ function spawnAgent(input: {
   taskId?: string
   initialPrompt?: string // injected as --append-system-prompt for claude (e.g. reviewer task brief)
   effortLevel?: EffortLevel
-  account?: ClaudeAccount // which Claude login to run under (default | navore)
+  account?: ClaudeAccount // which Claude login to run under (default | example)
 }): AgentMeta {
   const ws = state.workspaces.find((w) => w.id === input.workspaceId)
   if (!ws) throw new Error(`workspace not found: ${input.workspaceId}`)
@@ -805,7 +811,7 @@ function spawnAgent(input: {
     ...(input.env ?? {}),
     TERM: 'xterm-256color',
   }
-  // Per-account Claude credentials — Navore (professional workspace) runs under a
+  // Per-account Claude credentials — Example (professional workspace) runs under a
   // separate Claude login. Server-controlled (the token lives in the workbench's
   // own env, never the client request), so this is applied AFTER input.env and
   // wins. Default account = no overrides → the machine's own ~/.claude.
@@ -815,11 +821,11 @@ function spawnAgent(input: {
     navoreConfigDir: navoreConfigDir(),
     navoreOAuthToken: navTok,
   }))
-  // When running Claude under the Navore subscription token, strip any ambient
+  // When running Claude under the Example subscription token, strip any ambient
   // ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN — both outrank CLAUDE_CODE_OAUTH_TOKEN
   // in the CLI's auth precedence and would silently run the agent on the wrong
-  // (API-billed) account instead of the Navore subscription.
-  if (input.account === 'navore' && input.kind === 'claude' && navTok) {
+  // (API-billed) account instead of the Example subscription.
+  if (input.account === 'example' && input.kind === 'claude' && navTok) {
     delete env.ANTHROPIC_API_KEY
     delete env.ANTHROPIC_AUTH_TOKEN
   }
@@ -935,6 +941,32 @@ function markAgentExited(agent: RuntimeAgent, exitCode?: number, signal?: number
   }
   try { agent.logStream.end() } catch {}
   agent.cleanedUp = true
+  void transitionExitedTask(agent, exitCode)
+}
+
+async function transitionExitedTask(agent: RuntimeAgent, exitCode?: number) {
+  if (exitCode !== 0 || !agent.meta.taskId) return
+  try {
+    const res = await fetch(`${METIS_API_URL}/api/tasks/governed/transition`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskId: agent.meta.taskId,
+        toState: 'needs_verification',
+        actor: 'metis-command-pty',
+      }),
+      signal: AbortSignal.timeout(8000),
+    })
+    const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; transitions?: unknown[] }
+    if (!res.ok || body.ok === false) {
+      appendAgentSystemOutput(agent, `\n[task transition failed for ${agent.meta.taskId}: ${body.error ?? `HTTP ${res.status}`}]\n`)
+      return
+    }
+    const hops = Array.isArray(body.transitions) ? body.transitions.length : 0
+    appendAgentSystemOutput(agent, `\n[task ${agent.meta.taskId} advanced to needs_verification${hops ? ` via ${hops} transition${hops === 1 ? '' : 's'}` : ''}]\n`)
+  } catch (err) {
+    appendAgentSystemOutput(agent, `\n[task transition failed for ${agent.meta.taskId}: ${err instanceof Error ? err.message : String(err)}]\n`)
+  }
 }
 
 function removeRuntimeAgent(id: string) {
@@ -1186,7 +1218,7 @@ const server = http.createServer(async (req, res) => {
           taskId: typeof body.taskId === 'string' ? body.taskId : undefined,
           initialPrompt: typeof body.initialPrompt === 'string' ? body.initialPrompt : undefined,
           effortLevel: coerceEffortLevel(body.effortLevel),
-          account: body.account === 'navore' ? 'navore' : 'default',
+          account: body.account === 'example' ? 'example' : 'default',
         })
         return send(res, 201, { agent: meta })
       } catch (e) {

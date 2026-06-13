@@ -14,11 +14,12 @@ import { NextResponse, type NextRequest } from 'next/server'
  * is not proxied — acceptable for review; reload the preview instead.
  */
 
-// Only exclude the API namespace this app actually owns (/api/reviews). A blanket
-// /api/ exclusion made the proxied page's own root-relative API calls (e.g. the
-// dashboard's /api/all) 404 against THIS origin instead of falling through to the
-// preview target — every embedded panel rendered empty + console 404 noise.
-const APP_PATHS = /^\/($|_next\/|api\/reviews|favicon\.ico|__nextjs)/
+// Only exclude the API namespaces this app actually owns (/api/reviews,
+// /api/sidecar-token — the #259 trust-gate hand-off). A blanket /api/ exclusion
+// made the proxied page's own root-relative API calls (e.g. the dashboard's
+// /api/all) 404 against THIS origin instead of falling through to the preview
+// target — every embedded panel rendered empty + console 404 noise.
+const APP_PATHS = /^\/($|_next\/|api\/reviews|api\/sidecar-token|favicon\.ico|__nextjs)/
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl

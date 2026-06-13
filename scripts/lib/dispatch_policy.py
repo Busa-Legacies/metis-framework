@@ -52,6 +52,23 @@ SECURITY_TERMS = re.compile(r"\b(security|auth|credential|secret|token|oauth|pro
 EXTERNAL_TERMS = re.compile(r"\b(push|publish|deploy|email|send|post|tweet|delete|remove|drop)\b", re.I)
 CRITICAL_TERMS = re.compile(r"\b(money|funds|trade|trading|order|withdraw|deposit|live flip|risk params)\b", re.I)
 
+# Inlined reference-file content the dispatch prompt quotes for the lane to edit
+# (queue-runner #329 TARGET FILE blocks). Risk/work-type/mutation must be inferred
+# from the INSTRUCTION, never from the quoted source the instruction references — a
+# 66k file with "in order to" in a comment, or "token" 70x as domain vocabulary,
+# would otherwise force critical/security classification on a benign edit task.
+_REF_BLOCK = re.compile(r"=== TARGET FILE:.*?=== END TARGET FILE ===", re.S)
+_REF_MARKER_LINE = re.compile(r"^=== TARGET FILE:.*$", re.M)
+
+
+def _strip_reference_blocks(message: str) -> str:
+    """Remove inlined TARGET FILE reference content before keyword inference."""
+    if not message or "=== TARGET FILE:" not in message:
+        return message
+    stripped = _REF_BLOCK.sub("", message)        # full (file-body) blocks
+    stripped = _REF_MARKER_LINE.sub("", stripped)  # leftover bodyless markers
+    return stripped
+
 
 @dataclass(frozen=True)
 class DispatchPolicyDecision:
@@ -67,6 +84,7 @@ class DispatchPolicyDecision:
 def infer_work_type(role: str, message: str, hint: str = "auto") -> str:
     if hint != "auto":
         return hint
+    message = _strip_reference_blocks(message)
     if SECURITY_TERMS.search(message):
         return "security"
     if role == "forge" or IMPLEMENTATION_TERMS.search(message):
@@ -83,6 +101,7 @@ def infer_work_type(role: str, message: str, hint: str = "auto") -> str:
 def infer_risk(message: str, work_type: str, hint: str = "auto") -> str:
     if hint != "auto":
         return hint
+    message = _strip_reference_blocks(message)
     if CRITICAL_TERMS.search(message):
         return "critical"
     if SECURITY_TERMS.search(message) or EXTERNAL_TERMS.search(message):
@@ -97,6 +116,7 @@ def infer_risk(message: str, work_type: str, hint: str = "auto") -> str:
 def infer_mutation(message: str, work_type: str, hint: str = "auto") -> str:
     if hint != "auto":
         return hint
+    message = _strip_reference_blocks(message)
     if CRITICAL_TERMS.search(message):
         return "live-runtime"
     if EXTERNAL_TERMS.search(message):

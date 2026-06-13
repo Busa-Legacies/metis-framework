@@ -8,6 +8,7 @@ import AnnotationRail from '@/components/AnnotationRail'
 import AgentTerminal from '@/components/AgentTerminal'
 import { ptyApi } from '@/lib/pty-client'
 import { useReviewStore } from '@/lib/review-store'
+import { useAgentRunWatcher } from '@/lib/use-agent-run-watcher'
 
 type Tab = 'preview' | 'annotate' | 'agent'
 
@@ -34,6 +35,8 @@ export default function ReviewShell() {
   const url = useReviewStore((s) => s.url)
   const hydrate = useReviewStore((s) => s.hydrate)
   const isMobile = useIsMobile()
+  // Round-trip verify loop (#258): shell-level so the watch survives mobile tab switches.
+  useAgentRunWatcher()
 
   useEffect(() => {
     ptyApi.health().then(() => setPtyUp(true)).catch(() => setPtyUp(false))

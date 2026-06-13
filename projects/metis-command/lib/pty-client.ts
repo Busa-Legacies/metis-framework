@@ -162,7 +162,7 @@ export const ptyApi = {
     role?: AgentRole
     taskId?: string
     initialPrompt?: string
-    account?: 'default' | 'navore'
+    account?: 'default' | 'example'
   }) =>
     fetch(`${PTY_BASE}/agents`, {
       method: 'POST',

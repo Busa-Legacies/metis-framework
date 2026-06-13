@@ -17,7 +17,7 @@ genuinely corrupt file surfaces instead of being silently overwritten.
 """
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def _load(path):
@@ -29,11 +29,23 @@ def _load(path):
 
 
 def _ts(v):
+    """Defensive timestamp parse (#269): accept Z-suffix and naive variants.
+
+    fromisoformat on older interpreters rejects a trailing Z, and a naive
+    datetime compared against an aware one raises TypeError mid-merge — both
+    would crash the driver on legitimate timestamp variants. Normalize Z to
+    +00:00 and assume UTC for naive values so every parsed pair is comparable.
+    """
     s = (v or {}).get("updatedAt", "") or ""
+    if not isinstance(s, str):
+        return None
+    if s.endswith(("Z", "z")):
+        s = s[:-1] + "+00:00"
     try:
-        return datetime.fromisoformat(s)
+        t = datetime.fromisoformat(s)
     except ValueError:
         return None
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
 def _newer_updatedat(a, b):

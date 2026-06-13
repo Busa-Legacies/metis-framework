@@ -37,7 +37,7 @@ export default function SettingsMode() {
       </div>
 
       {/* Workspace switch — re-scopes the whole Control Center between Personal and the
-          Navore professional context. Always available (independent of /api/all)
+          Example professional context. Always available (independent of /api/all)
           so you can switch even when the backend is down. */}
       <div className="shrink-0 border-b border-[var(--line)] bg-black/10 px-4 py-3">
         <WorkspaceToggle />
@@ -108,7 +108,7 @@ const WORKSPACE_ICON: Record<Workspace, React.ReactNode> = {
   professional: <Briefcase size={14} />,
 }
 
-/** Navore Claude account link status — professional-workspace agents run under
+/** Example Claude account link status — professional-workspace agents run under
  *  it once linked. Loading is a Jay-side `claude setup-token` step; this just
  *  reflects whether the Control Center can see the credential. */
 function NavoreAccountStatus() {
@@ -119,13 +119,13 @@ function NavoreAccountStatus() {
       <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${linked ? 'bg-emerald-300' : 'bg-amber-300'}`} />
       <div className="flex flex-col">
         <span className="text-slate-200">
-          Navore Claude account · <span className={linked ? 'text-emerald-200' : 'text-amber-200'}>{linked ? 'linked' : 'not linked'}</span>
+          Example Claude account · <span className={linked ? 'text-emerald-200' : 'text-amber-200'}>{linked ? 'linked' : 'not linked'}</span>
         </span>
         {!linked && (
           <span className="text-[var(--muted)]">
-            Run <code className="text-slate-300">claude setup-token</code> for the Navore login on Jay and set{' '}
+            Run <code className="text-slate-300">claude setup-token</code> for the Example login on Jay and set{' '}
             <code className="text-slate-300">AW_CLAUDE_NAVORE_OAUTH_TOKEN</code> in the workbench env. See{' '}
-            <span className="text-slate-300">docs/process/navore-claude-account.md</span>.
+            <span className="text-slate-300">docs/process/example-claude-account.md</span>.
           </span>
         )}
       </div>
@@ -133,7 +133,7 @@ function NavoreAccountStatus() {
   )
 }
 
-/** Personal ↔ Professional(Navore) switch — the canonical workspace control. */
+/** Personal ↔ Professional(Example) switch — the canonical workspace control. */
 function WorkspaceToggle() {
   const { workspace, setWorkspace } = useWorkspace()
   return (

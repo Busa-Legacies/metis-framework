@@ -26,32 +26,66 @@ set -euo pipefail
 OURS="${2:?ours path required}"
 THEIRS="${3:?theirs path required}"
 
-_fence() {
-  grep -oE '"fenceCounter"[[:space:]]*:[[:space:]]*[0-9]+' "$1" 2>/dev/null \
-    | grep -oE '[0-9]+$' | head -1
-}
-_updated() {
-  grep -oE '"updatedAt"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" 2>/dev/null \
-    | sed -E 's/.*"([^"]*)"$/\1/' | head -1
-}
-_valid_json() {
-  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$1" 2>/dev/null
-}
+# Field extraction is real JSON parsing (#269) — the old grep/sed pulled the first
+# textual "fenceCounter" match, so reformatted/minified JSON (or a fenceCounter-shaped
+# string inside a lease title) could silently extract 0 and the merge would pick the
+# wrong side of a live lease. json.load reads the actual top-level fields; a missing
+# or non-integer fenceCounter is treated as 0 explicitly, and either side failing to
+# parse exits 1 (human conflict), same contract as before.
+DECISION="$(python3 -c '
+import json, sys
+from datetime import datetime, timezone
 
-# If either side is not valid JSON, refuse — safer to leave a human conflict than to
-# pick a half-written file.
-if ! _valid_json "$OURS" || ! _valid_json "$THEIRS"; then
-  exit 1
-fi
 
-OF="$(_fence "$OURS")"; OF="${OF:-0}"
-TF="$(_fence "$THEIRS")"; TF="${TF:-0}"
+def load(path):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return None
 
-if [ "$TF" -gt "$OF" ]; then
+
+def fence(d):
+    v = d.get("fenceCounter", 0)
+    return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+
+def ts(d):
+    s = d.get("updatedAt", "")
+    if not isinstance(s, str) or not s:
+        return None
+    if s.endswith(("Z", "z")):
+        s = s[:-1] + "+00:00"
+    try:
+        t = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+ours, theirs = load(sys.argv[1]), load(sys.argv[2])
+if not isinstance(ours, dict) or not isinstance(theirs, dict):
+    sys.exit(1)
+
+of, tf = fence(ours), fence(theirs)
+if tf > of:
+    print("theirs"); sys.exit(0)
+if tf < of:
+    print("ours"); sys.exit(0)
+
+# Fence tie -> newer updatedAt wins. Real datetime compare (handles Z vs +00:00 vs
+# naive-assumed-UTC); falls back to lexical ISO compare only if a side is unparseable.
+ot, tt = ts(ours), ts(theirs)
+if ot is not None and tt is not None:
+    print("theirs" if tt > ot else "ours")
+else:
+    ou = ours.get("updatedAt", "") if isinstance(ours.get("updatedAt"), str) else ""
+    tu = theirs.get("updatedAt", "") if isinstance(theirs.get("updatedAt"), str) else ""
+    print("theirs" if tu > ou else "ours")
+' "$OURS" "$THEIRS")" || exit 1
+
+if [ "$DECISION" = "theirs" ]; then
   cp "$THEIRS" "$OURS"
-elif [ "$TF" -eq "$OF" ]; then
-  OU="$(_updated "$OURS")"; TU="$(_updated "$THEIRS")"
-  if [[ "$TU" > "$OU" ]]; then cp "$THEIRS" "$OURS"; fi
 fi
-# else ours already holds the higher fence -> keep ours (no copy needed)
+# else ours already holds authority -> keep ours (no copy needed)
 exit 0

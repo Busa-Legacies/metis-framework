@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Inbox as InboxIcon, RefreshCw, AlertTriangle, CheckCircle2, Unlock, Play,
-  GitMerge, ListChecks, Hourglass, Sparkles, Check, X as X2, ChevronRight, Pencil, Undo2, Star,
+  GitMerge, ListChecks, Hourglass, Sparkles, Check, X as X2, ChevronRight, Pencil, Undo2, Star, ScrollText,
 } from 'lucide-react'
 import { metisApi, ageLabel, type MetisResult } from '@/lib/metis-api'
 import type { MetisInbox, MetisGoverndTask, MetisDecision, MetisDecisionContext } from '@/lib/metis-api-types'
+import { ptyApi } from '@/lib/pty-client'
 import MaterialViewer from './MaterialViewer'
 import { AnnotateTrigger } from '../annotate/AnnotateWidget'
 import { CardLoading, CardError } from '../overview/cards'
@@ -16,7 +17,7 @@ import { stateTextCls } from '@/lib/task-state'
 // ── Operator inbox (#240 Phase 2) ─────────────────────────────────────────────
 // One surface for everything needing Ant's judgment: formal decisions, task
 // decision-points, verifications, blockers, parked work. Each task carries the
-// SAME actionType badge as the Notion Command Center (classified server-side), so
+// SAME actionType badge as the Notion Control Center (classified server-side), so
 // the mobile mirror and the Control Center agree. Every act-on-it button routes through
 // the governed mutators / the audited decision-resolve endpoint — no raw writes.
 
@@ -363,6 +364,61 @@ function DField({ label, value }: { label: string; value: string | null | undefi
   )
 }
 
+function VerificationScrollback({ task }: { task: MetisGoverndTask }) {
+  const [state, setState] = useState<{ loading: boolean; output?: string; agentName?: string; error?: string }>({ loading: false })
+  const canLoad = task.state === 'needs_verification' || task.state === 'execution_finished'
+
+  useEffect(() => {
+    let cancelled = false
+    if (!canLoad) {
+      setState({ loading: false })
+      return
+    }
+    setState({ loading: true })
+    ;(async () => {
+      try {
+        const list = await ptyApi.listAgents({ includeExited: true })
+        const matches = list.agents
+          .filter((agent) => agent.taskId === task.taskId)
+          .sort((a, b) => Date.parse(b.lastOutputAt ?? b.createdAt) - Date.parse(a.lastOutputAt ?? a.createdAt))
+        const agent = matches[0]
+        if (!agent) {
+          if (!cancelled) setState({ loading: false })
+          return
+        }
+        const scrollback = await ptyApi.scrollback(agent.id, 180)
+        if (!cancelled) setState({ loading: false, output: scrollback.output.trim(), agentName: agent.name })
+      } catch (err) {
+        if (!cancelled) setState({ loading: false, error: err instanceof Error ? err.message : String(err) })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [canLoad, task.taskId, task.state])
+
+  if (!canLoad) return null
+  return (
+    <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-300/5 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-200/80">
+        <ScrollText size={13} /> Agent output
+      </div>
+      {state.loading ? (
+        <div className="text-[12px] text-[var(--muted)]">loading exited agent scrollback...</div>
+      ) : state.error ? (
+        <div className="text-[12px] text-amber-200">scrollback unavailable: {state.error}</div>
+      ) : state.output ? (
+        <>
+          {state.agentName && <div className="mb-1 text-[11px] text-[var(--muted)]">{state.agentName}</div>}
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-black/40 bg-black/40 p-2.5 text-[11px] leading-relaxed text-slate-200">
+            {state.output}
+          </pre>
+        </>
+      ) : (
+        <div className="text-[12px] text-[var(--muted)]">No exited agent output is linked to this task yet.</div>
+      )}
+    </div>
+  )
+}
+
 // Curated decision frame (#240 review redesign): only what's needed to make the
 // call — the why-context, the resolved task references (with their live state),
 // and the spec/file paths the decision touches. Replaces dumping every task field
@@ -604,6 +660,7 @@ function InboxTaskDetail({ task, busy, onClose, onRecord, onSaveTask, actions }:
               <DField label="Next action" value={task.nextAction} />
               <DField label="Expected artifact" value={task.expectedArtifact} />
               <DField label="Verification method" value={task.verificationMethod} />
+              <VerificationScrollback task={task} />
             </>
           )}
           {task.blocker && (

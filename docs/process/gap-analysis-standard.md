@@ -53,7 +53,8 @@ should still be true and useful if every currently-blocked task unblocked tomorr
 
 Rank every gap by three axes (from the gap-analysis skill):
 
-- **Goal priority** — G/P1 > G/P2 > G/P3 (map the gap to a goal in `docs/process/goals.md`).
+- **Campaign priority** — G/P1 > G/P2 > G/P3 (map the gap to an active campaign in
+  `docs/process/goals.md`, and to a life domain in `docs/process/taxonomy.yaml`).
 - **Leverage** — does closing it unblock other work, or is it a leaf?
 - **Agent-executability** — can an agent run it now, or is it human-gated (decision/money/auth)?
 

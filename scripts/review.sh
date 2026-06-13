@@ -7,7 +7,7 @@
 #
 # Examples:
 #   scripts/review.sh decks/metis/index.html /tmp/metis.png
-#   scripts/review.sh decks/navore/index.html /tmp/n.png advance=2
+#   scripts/review.sh decks/example/index.html /tmp/n.png advance=2
 #   scripts/review.sh https://busa-legacies.github.io/decks/ /tmp/live.png
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

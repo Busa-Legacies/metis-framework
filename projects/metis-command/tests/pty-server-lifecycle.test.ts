@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import net from 'node:net'
+import http from 'node:http'
 
 const repoRoot = process.cwd()
 
@@ -35,11 +36,12 @@ async function waitFor<T>(fn: () => Promise<T | undefined> | T | undefined, time
   throw new Error('timed out')
 }
 
-function startPtyServer(port: number, dataDir: string) {
+function startPtyServer(port: number, dataDir: string, extraEnv: Record<string, string> = {}) {
   const proc = spawn(process.execPath, ['--import', 'tsx', 'server/pty-server.ts'], {
     cwd: repoRoot,
     env: {
       ...process.env,
+      ...extraEnv,
       AW_PTY_PORT: String(port),
       AW_DATA_DIR: dataDir,
       AW_HTTP_LOG: '0',
@@ -75,6 +77,35 @@ async function api<T>(port: number, pathPart: string, init?: RequestInit): Promi
 
 async function apiRaw(port: number, pathPart: string, init?: RequestInit): Promise<Response> {
   return fetch(`http://127.0.0.1:${port}${pathPart}`, init)
+}
+
+async function startMockMetisApi() {
+  const port = await freePort()
+  const requests: { path: string; body: any }[] = []
+  const server = http.createServer((req, res) => {
+    let raw = ''
+    req.setEncoding('utf8')
+    req.on('data', (chunk) => { raw += chunk })
+    req.on('end', () => {
+      requests.push({ path: req.url ?? '', body: raw ? JSON.parse(raw) : null })
+      if (req.method === 'POST' && req.url === '/api/tasks/governed/transition') {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, transitions: [{ from: 'in_progress', to: 'execution_finished' }, { from: 'execution_finished', to: 'needs_verification' }] }))
+        return
+      }
+      res.writeHead(404, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'not found' }))
+    })
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(port, '127.0.0.1', () => resolve())
+  })
+  return {
+    url: `http://127.0.0.1:${port}`,
+    requests,
+    stop: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  }
 }
 
 function isPidAlive(pid?: number) {
@@ -199,6 +230,48 @@ test('PTY server clear exited removes runtime panes without killing running agen
     assert.equal(isPidAlive(runningResp.agent.pid), true)
   } finally {
     await stopPtyServer(server)
+    fs.rmSync(dataDir, { recursive: true, force: true })
+  }
+})
+
+test('PTY server advances successful task-bound exits to verification', async () => {
+  const port = await freePort()
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aw-pty-test-'))
+  const metis = await startMockMetisApi()
+  const server = startPtyServer(port, dataDir, { AW_METIS_API_URL: metis.url })
+  try {
+    await waitFor(() => api<{ ok: boolean }>(port, '/health').then((h) => h.ok))
+    const workspaces = await api<{ workspaces: { id: string }[] }>(port, '/workspaces')
+    const workspaceId = workspaces.workspaces[0].id
+
+    const spawnResp = await api<{ agent: { id: string } }>(port, '/agents', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        workspaceId,
+        kind: 'custom',
+        name: 'task-transition-runtime',
+        taskId: '#999',
+        cmd: '/bin/sh',
+        args: ['-lc', 'printf "finished-task\\n"'],
+      }),
+    })
+
+    await waitFor(() => metis.requests.find((r) => r.path === '/api/tasks/governed/transition'), 5000)
+    assert.equal(metis.requests.length, 1)
+    assert.deepEqual(metis.requests[0].body, {
+      taskId: '#999',
+      toState: 'needs_verification',
+      actor: 'metis-command-pty',
+    })
+
+    await waitFor(async () => {
+      const scrollback = await api<{ output: string }>(port, `/agents/${spawnResp.agent.id}/scrollback?lines=40`)
+      return scrollback.output.includes('advanced to needs_verification') ? scrollback : undefined
+    })
+  } finally {
+    await stopPtyServer(server)
+    await metis.stop()
     fs.rmSync(dataDir, { recursive: true, force: true })
   }
 })

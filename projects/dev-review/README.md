@@ -32,6 +32,29 @@ sidecar skeleton) as a dedicated app. Plan + decisions:
   (also the agent-readable artifact).
 - **Agent handoff** — "to agent" types a structured prompt (numbered items +
   selectors + session-file path) into a real claude PTY via the sidecar.
+- **Orphan re-pick (#257)** — orphaned pins aren't dead ends: the crosshair on
+  an orphaned card arms re-pick — the next element you click in the preview
+  re-anchors that annotation (comment/severity preserved, selector/rect/styles/
+  text/crop refreshed, status back to open).
+- **Pin-time crops (#256)** — pinning fire-and-forgets a sidecar capture
+  (playwright-core headless Chrome): an element PNG lands beside the session
+  file, shows as a rail thumbnail, and is cited as `crop:` in the agent prompt —
+  visual ground truth that survives selector orphaning. The sidecar also exposes
+  `POST /preview/verify` for headless selector checks.
+- **Round-trip verify (#258)** — sending arms a run-complete watcher (polls the
+  sidecar's output byte counter; output-then-quiet ≥10s = done). On completion
+  the preview auto-reloads and every pin re-verifies: `changed` (style/text
+  diff vs pin-time baseline, surfaced in the rail for the human call), `open`
+  (untouched), or `orphaned`. The rail's summary strip shows the last pass —
+  review is done when pins verify, not when the agent says done.
+- **Sidecar trust gate (#259)** — the PTY sidecar (it spawns real shells) is
+  default-deny: every HTTP route *and* the WS upgrade require a shared-secret
+  token (`x-dev-review-token` header; for browser WS the token rides the
+  `Sec-WebSocket-Protocol` field — never the URL). Token comes from
+  `DEV_REVIEW_SIDECAR_TOKEN` or is auto-minted 0600 at
+  `~/.openclaw/dev-review/sidecar-token`; the console serves it to its own
+  pages via same-origin `/api/sidecar-token`, and crop thumbnails load through
+  authenticated fetch → object URLs. The sidecar never serves its own token.
 
 ## Run
 
@@ -39,8 +62,8 @@ sidecar skeleton) as a dedicated app. Plan + decisions:
 npm install
 npm run dev    # web :3760 + pty :3761
 npm run app    # desktop (Electron)
-npm test       # pty lifecycle + selector heuristics
-python3 scripts/e2e-verify.py   # full interaction chain vs a live target (8 checks)
+npm test       # pty lifecycle + selector heuristics + sidecar auth
+python3 scripts/e2e-verify.py   # full interaction chain vs a live target (25 checks)
 ```
 
 ## Known limits
@@ -49,3 +72,7 @@ python3 scripts/e2e-verify.py   # full interaction chain vs a live target (8 che
 - Pages sending `X-Frame-Options`/`frame-ancestors` won't iframe (not our targets).
 - The proxied page's links to its own `/` collide with the console shell — deep
   links work, root navigation belongs in the URL bar.
+- The console origin (:3760) is the trust boundary: any client that can load
+  the console can fetch the sidecar token from `/api/sidecar-token`. The #259
+  gate makes :3761 independently safe; exposing the console beyond the tailnet
+  still requires auth in front of :3760 (out of scope until then).

@@ -9,7 +9,7 @@ import {
   sortNavoreTasks,
   navoreOpenWork,
   type NavoreTask,
-} from '../lib/navore-data'
+} from '../lib/example-data'
 import type { MetisAll } from '../lib/metis-api-types'
 
 function task(over: Partial<NavoreTask> = {}): NavoreTask {
@@ -27,14 +27,14 @@ function fixture(over: Record<string, unknown> = {}): MetisAll {
     },
     ms365: { calendar: [{}, {}], email: [{}], cache_age_min: 4, stale: false },
     github: [
-      { repo: 'navore-platform', commits: [{ sha: 'abc1234', message: 'fix', author: 'Ant' }] },
+      { repo: 'example-platform', commits: [{ sha: 'abc1234', message: 'fix', author: 'Ant' }] },
       { repo: 'anthonyabusa.github.io', commits: [] },
     ],
     ...over,
   } as unknown as MetisAll
 }
 
-describe('navore-data selectors', () => {
+describe('example-data selectors', () => {
   it('extracts the clickup slice defensively', () => {
     const c = selectClickup(fixture())
     assert.equal(c.ops_tasks.length, 1)
@@ -55,10 +55,10 @@ describe('navore-data selectors', () => {
     assert.deepEqual(navoreCounts(c), { ops: 2, projects: 0, milestones: 0, dev: 0 })
   })
 
-  it('filters github to Navore-owned repos only', () => {
+  it('filters github to Example-owned repos only', () => {
     const repos = selectNavoreRepos(fixture())
     assert.equal(repos.length, 1)
-    assert.equal(repos[0].repo, 'navore-platform')
+    assert.equal(repos[0].repo, 'example-platform')
   })
 
   it('reads ms365 counts + staleness', () => {

@@ -1,6 +1,6 @@
 # Metis Command
 
-Desktop **multi-agent command cockpit** for Metis OS. Spawn, label, and steer real `claude`, `codex`, `gemini`, shell, and Python REPL processes from one window, track workspace git state, keep exited output available for review, and decide the next lane from live swarm status. Each CLI authenticates via its own OAuth flow; the cockpit exposes sign-in shortcuts.
+Desktop **multi-agent control center** for Metis OS. Spawn, label, and steer real `claude`, `codex`, `gemini`, shell, and Python REPL processes from one window, track workspace git state, keep exited output available for review, and decide the next lane from live swarm status. Each CLI authenticates via its own OAuth flow; the control center exposes sign-in shortcuts.
 
 Part of the [Metis OS](https://github.com/Busa-Legacies/metis-os) framework. Connects to the shared task/lease spine, lane entity model, and dispatch protocol.
 
@@ -60,7 +60,7 @@ npm run app:dist
 | **Gemini CLI** | Click *Settings → Sign in to Gemini*. Spawns `gemini auth login`. |
 | **Operator panel** | Settings → paste an OpenAI API key if you want tool-calling. Stored locally, never touches `.env`. |
 
-You don't need an OpenAI key to use the cockpit. It is only for the operator panel that can auto-spawn agents; CLIs work fine on their own once signed in.
+You don't need an OpenAI key to use the control center. It is only for the operator panel that can auto-spawn agents; CLIs work fine on their own once signed in.
 
 ## Voice
 

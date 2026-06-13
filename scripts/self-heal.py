@@ -451,7 +451,85 @@ def meter_taxonomy(recs):
             "samples": findings[:5]}
 
 
-METERS = [meter_signoff, meter_taxonomy]
+def meter_inbox_quality(recs):
+    """Thin Ant-decisions (#326-A safety-net): an owner=ant decision-point that is
+    open + undecided but LACKS the structured fields #323 needs to render a clean
+    one-tap card — decisionOptions, recommendation, or decisionContext. Without
+    them it regresses to a crude regex Yes/No card in the inbox. 0 = every genuine
+    Ant-decision is properly structured.
+
+    Detective only — flags thin decisions for enrichment, never blocks authoring.
+    Fails soft if the task store is absent/unreadable (a portable consumer may not
+    ship one), matching meter_taxonomy's optional-overlay contract."""
+    tasks_path = os.path.join(REPO, "docs/process/state/tasks.json")
+    skip = {"name": "inbox-quality", "status": PASS, "score": 1,
+            "threshold": "0 thin Ant-decisions",
+            "detail": "task store absent — skipped", "samples": []}
+    if not os.path.exists(tasks_path):
+        return skip
+    try:
+        d = json.load(open(tasks_path))
+        ts = d.get("tasks", d)
+        ts = list(ts.values()) if isinstance(ts, dict) else ts
+    except Exception as e:
+        return {**skip, "detail": f"task store unreadable — skipped ({e})"}
+    TERMINAL = {"done", "cancelled", "archived"}
+    thin = []
+    for t in ts:
+        if t.get("state") in TERMINAL:
+            continue
+        if (t.get("owner") or "").strip().lower() != "ant":
+            continue
+        if (t.get("decision") or "").strip():
+            continue  # already decided — the point is closed
+        ndp = (t.get("nextDecisionPoint") or "").strip()
+        is_decision = (bool(ndp) and not re.match(r"none\b", ndp, re.I)) or bool(t.get("decisionOptions"))
+        if not is_decision:
+            continue
+        missing = [f for f in ("decisionOptions", "recommendation", "decisionContext") if not t.get(f)]
+        if missing:
+            thin.append(f"{t.get('taskId')} missing {','.join(missing)}")
+    status = ALERT if thin else PASS
+    return {"name": "inbox-quality", "status": status, "score": 0 if thin else 1,
+            "threshold": "0 thin Ant-decisions",
+            "detail": f"{len(thin)} owner=ant decision(s) lacking structured #323 fields",
+            "samples": thin[:5]}
+
+
+def meter_curator_format(recs):
+    """Curator JSON discipline (#333): count 'Curator returned invalid JSON' /
+    'no JSON object' lines in the queue-runner log from the last 24h. Lanes
+    imitate formats present in reviewed content (the sign-off-block leak found
+    2026-06-12: shield/curator answered in block format after reviewing the
+    self-heal audit doc, which quotes meter_signoff patterns), and a malformed
+    curator verdict silently degrades the quality gate to a retry. #332's
+    raw_decode tolerates trailing prose; this catches the cases it can't.
+    Fails soft when the log is absent (runner not installed here)."""
+    import time as _time
+    log_path = os.path.expanduser("~/.openclaw/logs/queue-runner.log")
+    skip = {"name": "curator-format", "status": PASS, "score": 1,
+            "threshold": "0 parse failures/24h",
+            "detail": "queue-runner log absent — skipped", "samples": []}
+    if not os.path.exists(log_path):
+        return skip
+    try:
+        if os.path.getmtime(log_path) < _time.time() - 24 * 3600:
+            return {**skip, "detail": "queue-runner log stale (>24h) — skipped"}
+        bad = []
+        with open(log_path, errors="replace") as f:
+            for line in f.readlines()[-4000:]:
+                if "Curator returned invalid JSON" in line or "Curator returned no JSON object" in line:
+                    bad.append(line.strip()[:160])
+    except Exception as e:
+        return {**skip, "detail": f"queue-runner log unreadable — skipped ({e})"}
+    status = ALERT if bad else PASS
+    return {"name": "curator-format", "status": status, "score": 0 if bad else 1,
+            "threshold": "0 parse failures/24h",
+            "detail": f"{len(bad)} curator JSON parse failure(s) in recent runner log",
+            "samples": bad[-5:]}
+
+
+METERS = [meter_signoff, meter_taxonomy, meter_inbox_quality, meter_curator_format]
 
 
 # ───────────────────────────────── main ──────────────────────────────────────
@@ -498,6 +576,23 @@ def sync_worklist(agent_findings, apply):
     return items, cleared
 
 
+def _meter_actions(m):
+    """Build worklist action strings from a meter's samples. Samples are
+    meter-specific: signoff-compliance emits dicts ({session, tail, ...}); the
+    taxonomy / inbox-quality / curator-format meters emit plain strings. Format by
+    shape so one string-sample meter can't crash the whole harness (the prior code
+    assumed every sample was a signoff dict and died on the first non-signoff ALERT)."""
+    acts = []
+    for s in m.get("samples", []):
+        if isinstance(s, dict):
+            sess = s.get("session", "?")
+            tail = (s.get("tail", "") or "")[-120:]
+            acts.append(f"FP-candidate {sess}: tune gate regex — tail `{tail}`")
+        else:
+            acts.append(str(s))
+    return acts
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="perform safe auto-heals")
@@ -513,9 +608,7 @@ def main():
     healed = [h for h in heals if h["status"] == HEALED]
     # Findings that need someone to act = NEEDS_HUMAN heals + ALERT meters.
     findings = [dict(h, kind="heal") for h in heals if h["status"] == NEEDS_HUMAN] \
-             + [dict(m, kind="meter", detail=m["detail"],
-                     actions=[f"FP-candidate {s['session']}: tune gate regex — tail `{s['tail'][-120:]}`"
-                              for s in m.get("samples", [])])
+             + [dict(m, kind="meter", detail=m["detail"], actions=_meter_actions(m))
                 for m in meters if m["status"] == ALERT]
 
     # Tier each finding; partition.

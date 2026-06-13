@@ -1,12 +1,12 @@
 /**
- * Navore (professional workspace) selectors over the shared `/api/all` payload.
+ * Example (professional workspace) selectors over the shared `/api/all` payload.
  * The dashboard backend already aggregates `clickup`, `ms365`, and `github` into
  * /api/all, so the professional surface rides the SAME shared poller as the
- * personal one — no extra fetch plumbing. These selectors pull the Navore slices
+ * personal one — no extra fetch plumbing. These selectors pull the Example slices
  * out defensively (the keys are untyped in the strict MetisAll contract) so a
  * missing/erroring feed renders an explicit empty state, never a crash.
  *
- * Pure + framework-free → unit-tested in tests/navore-data.test.ts.
+ * Pure + framework-free → unit-tested in tests/example-data.test.ts.
  */
 
 import type { MetisAll } from './metis-api-types'
@@ -92,9 +92,9 @@ export function selectMs365(data?: MetisAll | null): NavoreMs365 {
   }
 }
 
-/** Navore-owned repos from the github feed (filters the cross-project list). */
+/** Example-owned repos from the github feed (filters the cross-project list). */
 export function selectNavoreRepos(data?: MetisAll | null): NavoreGithubRepo[] {
-  return asArray<NavoreGithubRepo>(data?.github).filter((r) => /navore/i.test(r?.repo ?? ''))
+  return asArray<NavoreGithubRepo>(data?.github).filter((r) => /example/i.test(r?.repo ?? ''))
 }
 
 export type NavoreTone = 'done' | 'active' | 'blocked' | 'open'

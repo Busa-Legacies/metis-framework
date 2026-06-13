@@ -396,7 +396,7 @@ function buildCliSystem(activeWorkspaceId?: string, persona: NormalizedAssistant
       ? `${ident.text}\n\n---\n\n${preamble}\n\n${toolDescriptions}`
       : `${preamble}\n\n${toolDescriptions}\n\n(Note: workspace identity files at ~/.openclaw/workspace/{SOUL,USER,IDENTITY,AGENTS}.md were not readable, so I'm operating from the bare Metis Brain preamble.)`
   }
-  return `You are the in-app operator for Metis Command Center.
+  return `You are the in-app operator for Metis Control Center.
 You can spawn and steer CLI agents (Claude Code, Codex, shells, Gemini, Python REPL).
 
 You CANNOT call tools directly. Instead, when you need to perform an action, emit ONE fenced block then STOP:
@@ -680,11 +680,11 @@ async function runOpenAI(messages: { role: string; content: string; attachments?
 function openClawPrompt(messages: { role: string; content: string; attachments?: Attachment[] }[], ctx: WorkbenchRequestContext): string {
   const transcript = flattenHistory(messages)
   return [
-    `You are being contacted from Metis Command Center, Ant's deep-work Control Center.`,
-    `Use the same Metis Brain/OpenClaw identity, but this is an isolated Metis Command Center session. Do not include Telegram inbound metadata or route Command Center directives to Telegram.`,
+    `You are being contacted from Metis Control Center, Ant's deep-work Control Center.`,
+    `Use the same Metis Brain/OpenClaw identity, but this is an isolated Metis Control Center session. Do not include Telegram inbound metadata or route Control Center directives to Telegram.`,
     ...workspaceContextLines(ctx),
     ``,
-    `# Metis Command Center tools`,
+    `# Metis Control Center tools`,
     `When the user asks to spawn agents / build a project / dispatch a swarm / open the workbench / decompose modules, you MUST act on it through the workbench by emitting fenced action blocks. The workbench will execute every block before your next turn and feed the results back as a [SYSTEM] message — you can chain (spawn → dispatch → confirm).`,
     ``,
     `Format — emit one or MORE blocks per reply:`,

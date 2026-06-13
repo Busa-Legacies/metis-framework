@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.cjs",
-  "description": "Metis OS — multi-agent command cockpit for Claude, Codex, and OpenClaw lanes.",
+  "description": "Metis OS — multi-agent control center for Claude, Codex, and OpenClaw lanes.",
   "author": "Anthony Abusa",
   "scripts": {
     "postinstall": "node -e \"const fs=require('fs'),p=require('path');const root=p.join('node_modules','node-pty','prebuilds');try{for(const d of fs.readdirSync(root)){const f=p.join(root,d,'spawn-helper');if(fs.existsSync(f)){fs.chmodSync(f,0o755);console.log('chmod +x',f)}}}catch(e){}\"",
@@ -44,8 +44,7 @@
       ".next/**/*",
       "next.config.ts",
       "tsconfig.json",
-      "package.json",
-      "node_modules/**/*"
+      "package.json"
     ],
     "asar": false,
     "mac": {

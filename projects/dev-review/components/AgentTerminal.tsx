@@ -5,7 +5,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
-import { agentWsUrl } from '@/lib/pty-client'
+import { agentWsUrl, agentWsProtocols } from '@/lib/pty-client'
 
 interface Props {
   agentId: string
@@ -44,44 +44,57 @@ export default function AgentTerminal({ agentId }: Props) {
     termRef.current = term
     fitRef.current = fit
 
-    const ws = new WebSocket(agentWsUrl(agentId))
-    wsRef.current = ws
-    let opened = false
+    // #259: the WS handshake carries the sidecar token via subprotocol, and the
+    // token arrives async (same-origin /api/sidecar-token) — connect once it does.
+    let cancelled = false
+    agentWsProtocols()
+      .then((protocols) => {
+        if (cancelled) return
+        const ws = new WebSocket(agentWsUrl(agentId), protocols)
+        wsRef.current = ws
+        let opened = false
 
-    ws.onopen = () => {
-      opened = true
-      const { cols, rows } = term
-      ws.send(JSON.stringify({ type: 'resize', cols, rows }))
-    }
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ev.data.toString())
-        if (msg.type === 'data') term.write(msg.data)
-        else if (msg.type === 'exit') term.write(`\r\n\x1b[33m[process exited code=${msg.exitCode}]\x1b[0m\r\n`)
-      } catch {}
-    }
-    ws.onclose = () => {
-      if (opened) term.write('\r\n\x1b[31m[disconnected]\x1b[0m\r\n')
-    }
+        ws.onopen = () => {
+          opened = true
+          const { cols, rows } = term
+          ws.send(JSON.stringify({ type: 'resize', cols, rows }))
+        }
+        ws.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(typeof ev.data === 'string' ? ev.data : ev.data.toString())
+            if (msg.type === 'data') term.write(msg.data)
+            else if (msg.type === 'exit') term.write(`\r\n\x1b[33m[process exited code=${msg.exitCode}]\x1b[0m\r\n`)
+          } catch {}
+        }
+        ws.onclose = () => {
+          if (opened) term.write('\r\n\x1b[31m[disconnected]\x1b[0m\r\n')
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) term.write(`\r\n\x1b[31m[sidecar auth unavailable: ${e instanceof Error ? e.message : String(e)}]\x1b[0m\r\n`)
+      })
 
     const onData = term.onData((d) => {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'data', data: d }))
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'data', data: d }))
     })
 
     const onResize = () => {
       try { fit.fit() } catch {}
       const { cols, rows } = term
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'resize', cols, rows }))
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols, rows }))
     }
     window.addEventListener('resize', onResize)
     const ro = new ResizeObserver(onResize)
     ro.observe(containerRef.current)
 
     return () => {
+      cancelled = true
       window.removeEventListener('resize', onResize)
       ro.disconnect()
       onData.dispose()
-      try { ws.close() } catch {}
+      try { wsRef.current?.close() } catch {}
       term.dispose()
       termRef.current = null
       fitRef.current = null

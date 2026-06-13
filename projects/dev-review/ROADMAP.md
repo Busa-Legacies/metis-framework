@@ -29,17 +29,22 @@ Build order: #258 round-trip-verify → #256 screenshot-crop → #257 orphan-re-
 whenever #212 Phase 3 planning starts.
 
 ## High leverage
-1. **Screenshot crop per annotation** — capture the pinned element's region
-   (canvas/`getDisplayMedia` or sidecar playwright) and attach to the payload;
-   gives the agent visual ground truth when selectors orphan. (Plan's original
-   open item.)
-2. **Orphan re-anchor flow** — orphaned pins are currently dead ends (e2e
-   confirmed send skips them, by design). Add "re-pick" on an orphaned
-   annotation to re-attach it to a new element, preserving the comment.
-3. **Round-trip verify loop** — after the agent edits, auto-reload the preview
-   and re-run each annotation's selector check: resolved/changed/still-broken
-   per pin. Closes the review loop in-window (evidence-first done gate, per
-   design-guidelines workspace UX).
+1. **Screenshot crop per annotation** — ✅ SHIPPED (#256, 2026-06-12). Sidecar
+   playwright-core (system Chrome / ms-playwright fallback, lazy singleton):
+   pin commit fire-and-forgets `POST /preview/crop` → element PNG beside the
+   session file; rail thumbnail; `crop:` line in the handoff prompt; orphaned
+   pins keep their crop. Also landed `POST /preview/verify` (the #258-deferred
+   headless verify). Plan: `docs/plans/PLAN-dev-review-screenshot-crop.md`.
+2. **Orphan re-anchor flow** — ✅ SHIPPED (#257, 2026-06-12). Crosshair re-pick
+   on orphaned cards: next pick REBINDS the annotation (comment/severity kept,
+   anchor data + crop refreshed, verify residue cleared); re-picked pins are
+   eligible to orphan again. Plan: `docs/plans/PLAN-dev-review-orphan-re-pick.md`.
+3. **Round-trip verify loop** — ✅ SHIPPED (#258, 2026-06-11). Run-complete
+   watcher (sidecar byte-counter quiet detection) → auto reload + re-verify;
+   verify summary strip in the rail; text-content change detection added to
+   the style diff. Plan: `docs/plans/PLAN-dev-review-round-trip-verify.md`.
+   Sidecar headless-verify endpoint deliberately deferred to #256 (needs the
+   Playwright dep that crops introduce).
 
 ## Medium
 4. **Severity picker in the comment bar** (defaults to `issue` today) +
@@ -56,7 +61,12 @@ whenever #212 Phase 3 planning starts.
    (shareable, RAG-indexable) once review files prove durable.
 9. **Electron packaging pass** — `app:dist` build, icon, signed artifact; only
    dev mode exercised so far.
-10. **Trust gate** — PTY sidecar has no auth; fine on the tailnet, required
-    before any wider exposure.
+10. **Trust gate** — ✅ SHIPPED (#259, 2026-06-12). Default-deny shared-secret
+    token on every sidecar HTTP route + WS upgrade (subprotocol-carried for
+    browsers, never in URLs); token auto-minted 0600, served same-origin by the
+    console; crop thumbs via authed fetch → object URL. e2e grew to 25 checks
+    (7 trust-gate incl. negative + WS 101/401 probes). Remaining for wider
+    exposure: auth in front of the console origin itself (README known limits).
+    Plan: `docs/plans/PLAN-dev-review-trust-gate.md`.
 11. **Sub-path SPA root navigation** — proxied page's `/` links collide with the
     console shell (documented v1 limit).

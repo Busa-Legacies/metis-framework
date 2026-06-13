@@ -1,14 +1,14 @@
 'use client'
 
 import { ExternalLink, Briefcase, RefreshCw } from 'lucide-react'
-import type { NavoreTask, NavoreTone } from '@/lib/navore-data'
-import { navoreStatusTone, sortNavoreTasks } from '@/lib/navore-data'
+import type { NavoreTask, NavoreTone } from '@/lib/example-data'
+import { navoreStatusTone, sortNavoreTasks } from '@/lib/example-data'
 import { useAuthStatus } from '@/lib/use-auth-status'
 
 /**
- * Shared presentation primitives for the Navore (professional) workspace. Reuses
+ * Shared presentation primitives for the Example (professional) workspace. Reuses
  * the Control Center card design system (overview/cards) for visual parity; only the
- * Navore-specific bits (ClickUp task rows, the scope banner, the mode header)
+ * Example-specific bits (ClickUp task rows, the scope banner, the mode header)
  * live here so NavoreMode and the per-mode professional variants stay DRY.
  */
 
@@ -77,7 +77,7 @@ export function NavoreTaskList({ tasks, limit = 8, empty = 'No tasks' }: { tasks
 
 /**
  * Scope banner shown atop shared-infra modes (Agents, Usage) in the professional
- * context. Reflects the real Navore Claude account state: once linked, spawned
+ * context. Reflects the real Example Claude account state: once linked, spawned
  * Claude agents run under it; until then they fall back to the default account
  * (stated plainly, not faked — PLAN §8.5).
  */
@@ -85,7 +85,7 @@ export function NavoreScopeBanner({ note }: { note?: string }) {
   const status = useAuthStatus()
   const linked = status?.claudeNavore?.linked
 
-  // Linked: confirm agents run under Navore (calm/emerald). Unknown or pending:
+  // Linked: confirm agents run under Example (calm/emerald). Unknown or pending:
   // amber, with the honest fallback note.
   const linkedView = linked === true
   return (
@@ -95,17 +95,17 @@ export function NavoreScopeBanner({ note }: { note?: string }) {
       }`}
     >
       <Briefcase size={13} className={`shrink-0 ${linkedView ? 'text-emerald-300' : 'text-amber-300'}`} />
-      <span className={`font-bold uppercase tracking-[0.16em] ${linkedView ? 'text-emerald-200' : 'text-amber-200'}`}>Navore</span>
+      <span className={`font-bold uppercase tracking-[0.16em] ${linkedView ? 'text-emerald-200' : 'text-amber-200'}`}>Example</span>
       <span className="text-[var(--muted)]">
         {linkedView
-          ? 'Professional context · Claude agents run under the Navore account.'
-          : note ?? 'Professional context · Navore Claude account not linked yet — using the default account.'}
+          ? 'Professional context · Claude agents run under the Example account.'
+          : note ?? 'Professional context · Example Claude account not linked yet — using the default account.'}
       </span>
     </div>
   )
 }
 
-/** Standard header for a Navore mode variant (title + data age + refresh). */
+/** Standard header for a Example mode variant (title + data age + refresh). */
 export function NavoreModeHeader({
   title,
   ageText,
@@ -121,7 +121,7 @@ export function NavoreModeHeader({
     <div className="flex shrink-0 items-center gap-2 border-b border-[var(--line)] bg-black/20 px-3 py-2 text-[15px] md:text-[12px]">
       <Briefcase size={14} className="text-amber-300" />
       <span className="text-[17px] md:text-[13px] font-black uppercase tracking-[0.18em] text-amber-100">{title}</span>
-      <span className="rounded-full bg-amber-300/15 px-1.5 py-0 text-[9px] font-bold text-amber-200">Navore</span>
+      <span className="rounded-full bg-amber-300/15 px-1.5 py-0 text-[9px] font-bold text-amber-200">Example</span>
       <div className="flex-1" />
       {ageText && <span className="text-[13px] md:text-[10px] text-[var(--muted)]">{ageText}</span>}
       <button

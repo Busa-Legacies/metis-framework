@@ -173,7 +173,7 @@ fi
 #    (incl. post-merge) so it self-heals after a pull strips .git/hooks.
 PRE_COMMIT="$GIT_HOOKS_DIR/pre-commit"
 if [[ -d "$GIT_HOOKS_DIR" ]]; then
-    if [[ ! -f "$PRE_COMMIT" ]] || ! grep -q 'pre-commit-conflict-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-path-replica-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-bash32-portability-guard' "$PRE_COMMIT" 2>/dev/null; then
+    if [[ ! -f "$PRE_COMMIT" ]] || ! grep -q 'pre-commit-conflict-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-path-replica-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-bash32-portability-guard' "$PRE_COMMIT" 2>/dev/null || ! grep -q 'pre-commit-fileclaim-guard' "$PRE_COMMIT" 2>/dev/null; then
         cat > "$PRE_COMMIT" << 'HOOKEOF'
 #!/usr/bin/env bash
 # Auto-installed by bootstrap-claude-memory.sh (#058, #076, #264)
@@ -183,11 +183,13 @@ ROOT="$(git rev-parse --show-toplevel)"
 bash "$ROOT/scripts/git-hooks/pre-commit-conflict-guard.sh" || exit 1
 bash "$ROOT/scripts/git-hooks/pre-commit-path-replica-guard.sh" || exit 1
 bash "$ROOT/scripts/git-hooks/pre-commit-bash32-portability-guard.sh" || exit 1
+# #308 advisory (never blocks): warn on a cross-session source-file edit, then claim it.
+bash "$ROOT/scripts/git-hooks/pre-commit-fileclaim-guard.sh" || true
 
 exit 0
 HOOKEOF
         chmod +x "$PRE_COMMIT"
-        echo "[bootstrap] Installed git pre-commit guards (conflict-marker + path-replica + bash32-portability): $PRE_COMMIT"
+        echo "[bootstrap] Installed git pre-commit guards (conflict-marker + path-replica + bash32-portability + fileclaim): $PRE_COMMIT"
     else
         echo "[bootstrap] Git pre-commit guards already present."
     fi
@@ -213,6 +215,30 @@ HOOKEOF
         echo "[bootstrap] Installed git commit-msg guard (born-governed): $COMMIT_MSG"
     else
         echo "[bootstrap] Git commit-msg guard already present."
+    fi
+fi
+
+# 5c. Git pre-push hook — secrets guard (#312). BLOCKS: prevents credential
+#     patterns (Anthropic/OpenAI keys, GitHub PATs, AWS keys) from reaching origin.
+#     Covers push ranges missed by pre-commit (e.g., commits made with --no-verify).
+#     Re-installed on every bootstrap so it self-heals after a pull strips .git/hooks.
+PRE_PUSH="$GIT_HOOKS_DIR/pre-push"
+if [[ -d "$GIT_HOOKS_DIR" ]]; then
+    if [[ ! -f "$PRE_PUSH" ]] || ! grep -q 'pre-push-secrets-guard' "$PRE_PUSH" 2>/dev/null; then
+        cat > "$PRE_PUSH" << 'HOOKEOF'
+#!/usr/bin/env bash
+# Auto-installed by bootstrap-claude-memory.sh (#312)
+# Runs pre-push guard scripts; any non-zero exit blocks the push.
+ROOT="$(git rev-parse --show-toplevel)"
+
+bash "$ROOT/scripts/git-hooks/pre-push-secrets-guard.sh" || exit 1
+
+exit 0
+HOOKEOF
+        chmod +x "$PRE_PUSH"
+        echo "[bootstrap] Installed git pre-push guard (secrets): $PRE_PUSH"
+    else
+        echo "[bootstrap] Git pre-push guard already present."
     fi
 fi
 

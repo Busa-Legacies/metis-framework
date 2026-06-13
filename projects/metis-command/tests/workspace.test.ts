@@ -27,9 +27,9 @@ describe('workspace model', () => {
     assert.equal(otherWorkspace('professional'), 'personal')
   })
 
-  it('exposes Navore branding + amber accent for the professional context', () => {
+  it('exposes Example branding + amber accent for the professional context', () => {
     const pro = workspaceMeta('professional')
-    assert.equal(pro.label, 'Navore')
+    assert.equal(pro.label, 'Example')
     assert.equal(pro.accent, 'amber')
     assert.equal(workspaceMeta('personal').accent, 'cyan')
   })

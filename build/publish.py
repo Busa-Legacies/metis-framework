@@ -4,7 +4,7 @@
 metis-os is the canonical AUTHOR of the framework (Phase 1). This script makes the
 publish reproducible so a refresh never re-contaminates the clean core:
 
-  1. DERIVED files (the bulk: most scripts/docs/hooks/frameworks + navore/) are
+  1. DERIVED files (the bulk: most scripts/docs/hooks/frameworks) are
      re-copied from metis-os via the manifest.
   2. OVERLAY files (metis-core OWNS these — the parameterized seam + product files)
      are NEVER overwritten by a copy. Upstream edits to them are ported by hand.
@@ -48,7 +48,7 @@ OVERLAY = {
 # templates, ownership are product config, not derived from metis-os).
 OVERLAY_DIRS = {".github"}
 
-# Safety-net scrub applied to DERIVED files after copy (never to OVERLAY/navore).
+# Safety-net scrub applied to DERIVED files after copy (never to OVERLAY).
 SCRUBS = [
     (re.compile(r"100\.82\.81\.93"), "<<MACHINE_1_TAILSCALE_IP>>"),
     (re.compile(r"100\.80\.166\.77"), "<<MACHINE_2_TAILSCALE_IP>>"),
@@ -59,6 +59,15 @@ SCRUBS = [
     (re.compile(r"/Users/Ant"), "$HOME"),
     (re.compile(r"/Users/abusa"), "$HOME"),
     (re.compile(r":-1489674856579600455"), ""),
+    # Org-specific project slugs used as examples in derived skill docs — neutralize
+    # so the public framework ships generic illustrations, not Ant's real projects.
+    # (Source stays accurate in metis-os; this is the publish seam. #121 launch.)
+    (re.compile(r"navore-lfpp-grant-tracker"), "example-grant-tracker"),
+    (re.compile(r"navore-lfpp"), "example-grant"),
+    (re.compile(r"navore-brief"), "partner-brief"),
+    (re.compile(r"gap/navore/"), "gap/example/"),
+    (re.compile(r"\bnavore\b"), "example"),
+    (re.compile(r"\bNavore\b"), "Example"),
 ]
 SCRUB_EXT = {".py", ".sh", ".json", ".md", ".ts", ".tsx", ".js", ".mjs", ".env", ".yml", ".yaml", ".template"}
 
@@ -73,16 +82,14 @@ def derived_items():
     items += [("file", f"docs/process/{d}") for d in M.CORE_PROCESS_DOCS]
     if (SRC / "docs/process/decisions").exists():
         items.append(("dir", "docs/process/decisions"))
-    for f in ["projects/forge3d/lib", "projects/forge3d/scripts", "projects/forge3d/README.md",
-              "projects/navore"]:  # navore -> navore/ via remap below
+    for f in ["projects/forge3d/lib", "projects/forge3d/scripts", "projects/forge3d/README.md"]:
         items.append(("any", f))
     return items
 
 
 def remap(rel):
-    """metis-os/projects/navore -> metis-core/navore (isolated, not under projects/)."""
-    if rel == "projects/navore":
-        return "navore"
+    """No remaps currently. (navore/ was cut from the public framework 2026-06-13,
+    #121 — business IP stays private, scaffold moved to the Navore-Ops repo.)"""
     return rel
 
 
@@ -121,12 +128,11 @@ def publish():
                     ".cache", "dist-app", "release")),
             )
             for f in d.rglob("*"):
-                if f.is_file() and rel != "navore":  # navore is Ant's content, left verbatim
+                if f.is_file():
                     scrub_file(f)
         else:
             shutil.copy2(s, d)
-            if rel != "navore":
-                scrub_file(d)
+            scrub_file(d)
         copied += 1
     print(f"published {copied} derived path(s)")
     # Overlay files can live INSIDE a wholesale-copied dir (e.g. scripts/lib/,

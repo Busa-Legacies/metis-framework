@@ -287,7 +287,7 @@ export default function Workbench() {
         args,
         role,
         initialPrompt: initialPrompt?.trim() || undefined,
-        // Professional (Navore) workspace → spawn Claude under the Navore login.
+        // Professional (Example) workspace → spawn Claude under the Example login.
         account: accountForWorkspace(workspace),
       })
       // Spawning into a non-active project switches to it so the new pane is visible

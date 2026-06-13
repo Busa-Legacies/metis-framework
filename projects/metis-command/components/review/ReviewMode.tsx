@@ -72,7 +72,7 @@ function ContentReview() {
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <a href="https://www.notion.so" target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-3 py-1.5 text-[15px] md:text-[12px] text-cyan-100 hover:bg-cyan-300/20">
-          <ExternalLink size={14} /> Notion Command Center
+          <ExternalLink size={14} /> Notion Control Center
         </a>
         <span className="rounded-lg border border-slate-400/20 bg-black/30 px-3 py-1.5 text-[15px] md:text-[12px] text-slate-400">drafts: projects/writing/drafts/</span>
       </div>

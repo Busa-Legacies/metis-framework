@@ -37,8 +37,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 | `#NNN` | 001–999 | Sequential, never reused. See counter below. |
 | `slug` | `kebab-case` | Verb-noun describing the work. No domain prefix — that's `area`. |
 | `type` | `bug` `feat` `chore` `infra` `research` `doc` | Kind of work |
-| `area` | `openclaw` `dashboard` `trading-bot` `navore` `infra` `jarry` `personal` | Project domain |
-| `goal` | `G1` `G2` `G3` `G4` `G5` | Goal this serves. See [goals.md](goals.md). |
+| `area` | `openclaw` `dashboard` `trading-bot` `example` `infra` `jarry` `personal` | Project domain |
+| `goal` | `G1` `G2` `G3` `G4` `G5` `G6` | Active campaign this serves. See [goals.md](goals.md); life-domain vocabulary lives in [taxonomy.yaml](taxonomy.yaml). |
 | `project` | kebab-case slug | Project this belongs to. See [projects.md](projects.md). |
 | `priority` | `P1` `P2` `P3` | P1 = blocking · P2 = important · P3 = nice-to-have |
 | `effort` | `XS` `S` `M` `L` `XL` | XS <30min · S <2hr · M half-day · L 1-2d · XL 3+d |
@@ -50,8 +50,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 ## ID Counter
 
-**Last assigned: #324**
-**Next available: #325**
+**Last assigned: #345**
+**Next available: #346**
 
 These two lines are a **human-readable mirror** — the canonical, race-safe counter lives in
 `docs/process/state/task-counter.json` and is allocated atomically by

@@ -23,6 +23,7 @@ EXAMPLE = os.path.join(FORGE, "models", "cable-clip", "cable-clip.scad")
 SPLIT_MODEL = os.path.join(FORGE, "models", "garden-lantern", "roof-pieces.scad")
 RENDER = os.path.join(REPO, "scripts", "forge3d-render.sh")
 BBOX = os.path.join(HERE, "stl-bbox.py")
+VIEWER = os.path.join(FORGE, "viewer.html")
 
 sys.path.insert(0, HERE)
 import importlib
@@ -63,6 +64,13 @@ def main():
     render_src = open(RENDER).read()
     for token in ("--pieces", "--piece-var", "fit-report", "assembled preview"):
         ok &= check(f"render script split mode handles {token!r}", token in render_src)
+    for token in ("--turntable", "--turntable-frames", "ffmpeg", "frame-%03d.png"):
+        ok &= check(f"render script turntable mode handles {token!r}", token in render_src)
+
+    # 3c. Browser viewer (#252): structural contract for the static STL viewer.
+    viewer = open(VIEWER).read()
+    for token in ("STLLoader", "OrbitControls", "fileInput", "model=", "X1C bed"):
+        ok &= check(f"viewer.html includes {token!r}", token in viewer)
 
     # 4. Live loop when OpenSCAD is available; skip cleanly otherwise.
     if shutil.which("openscad"):

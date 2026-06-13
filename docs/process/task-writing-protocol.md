@@ -158,7 +158,8 @@ Threads in `## Open threads` carry no Why/Plan and often get silently dropped at
 
 - [`task-naming-convention.md`](task-naming-convention.md) — header format (#NNN, fields line, goal/project)
 - [`projects.md`](projects.md) — project list; tasks must map to a project
-- [`goals.md`](goals.md) — goal list; tasks must map to a goal
+- [`taxonomy.yaml`](taxonomy.yaml) — life-domain vocabulary; tasks must carry one primary domain
+- [`goals.md`](goals.md) — active campaign list; tasks should map to a campaign or explain why they are evergreen/domain maintenance
 - [`task-state-contract.md`](task-state-contract.md) — governed schema (tasks.json fields)
 - [`task-pickup-and-lifecycle-standard.md`](task-pickup-and-lifecycle-standard.md) — claim/work/close cycle
 - `~/.claude/CLAUDE.md` — end protocol step 5 (reflect & extract), step 7 (task dedup gate)

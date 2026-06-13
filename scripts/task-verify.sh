@@ -9,6 +9,7 @@
 #   2  — no automated verification found; prints "Done when:" criterion for manual confirm
 #
 # Verification tiers (in order):
+#   0. Canonical doneWhen.check in tasks.json → run it (the v2 lander's contract)
 #   1. Explicit Verify: field in task-queue.md → run that shell command
 #   2. Section heuristic → run the canonical smoke test for that task type
 #   3. "Done when:" field in task-queue.md → print it and exit 2 (manual)
@@ -30,6 +31,74 @@ fi
 if [[ "${VERIFY_SKIP:-0}" == "1" ]]; then
   echo "verify: VERIFY_SKIP=1 — manual override acknowledged for '$TASK'"
   exit 0
+fi
+
+# ── tier 0: canonical doneWhen.check from tasks.json ─────────────────────────
+#
+# tasks.json is the single source of truth (#098). A task's doneWhen is the
+# governed verification contract the queue-runner-v2 lander uses to decide
+# whether work may merge. The markdown projection (task-queue.md) and the
+# section heuristic below are LOSSY fallbacks — so consult the canonical
+# doneWhen FIRST. This keeps the readiness gate, /checkpoint, and the v2 lander
+# all verifying against one contract, instead of a section-name guess that can
+# mis-map a task (e.g. branch-divergence-session-warn → "Trading Bot").
+#
+# doneWhen.type ∈ {check, both}  → run doneWhen.check (a shell command, exit 0 = pass)
+# doneWhen.type == acceptance     → criteria are curator-judged, not shell-checkable → exit 2
+TASKS_JSON="$REPO/docs/process/state/tasks.json"
+if [[ -f "$TASKS_JSON" ]]; then
+  DONEWHEN_CHECK=$(python3 - "$TASKS_JSON" "$TASK" <<'PYEOF'
+import json, re, sys
+tasks_path, query = sys.argv[1], sys.argv[2].strip()
+m = re.search(r"#?(\d{2,})", query)
+num = "#" + str(int(m.group(1))) if m else None
+q_slug = re.sub(r"^#?\d+\s*", "", query).lower().strip()
+try:
+    data = json.load(open(tasks_path))
+except Exception:
+    sys.exit(0)
+def norm_id(tid):
+    m = re.match(r"#0*(\d+)", str(tid))
+    return "#" + m.group(1) if m else str(tid)
+want = norm_id(num) if num else None
+hit = None
+for t in data.get("tasks", []):
+    tid = norm_id(t.get("taskId", ""))
+    title = str(t.get("title", "")).lower()
+    if want and tid == want:
+        hit = t; break
+    if not want and q_slug and (q_slug in title or title in q_slug):
+        hit = t; break
+if not hit:
+    sys.exit(0)
+dw = hit.get("doneWhen") or {}
+dtype = dw.get("type")
+check = (dw.get("check") or "").strip()
+if dtype in ("check", "both") and check:
+    print("RUN\t" + check)
+elif dtype == "acceptance":
+    print("ACCEPTANCE")
+PYEOF
+)
+  if [[ "$DONEWHEN_CHECK" == RUN$'\t'* ]]; then
+    CMD="${DONEWHEN_CHECK#RUN$'\t'}"
+    echo "verify: running canonical doneWhen.check from tasks.json for '$TASK'"
+    echo "  cmd: $CMD"
+    echo ""
+    if (cd "$REPO" && eval "$CMD"); then
+      echo ""
+      echo "✓ PASS — doneWhen.check passed"
+      exit 0
+    else
+      echo ""
+      echo "✗ FAIL — doneWhen.check failed (task not yet done)"
+      exit 1
+    fi
+  elif [[ "$DONEWHEN_CHECK" == "ACCEPTANCE" ]]; then
+    echo "verify: task has acceptance-only doneWhen (criteria are curator-judged)"
+    echo "  No shell check to run; confirm criteria manually, then re-run with VERIFY_SKIP=1."
+    exit 2
+  fi
 fi
 
 # ── helpers ──────────────────────────────────────────────────────────────────

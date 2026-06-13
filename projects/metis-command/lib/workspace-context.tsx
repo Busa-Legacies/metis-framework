@@ -5,7 +5,7 @@ import { DEFAULT_WORKSPACE, normalizeWorkspace, type Workspace } from './workspa
 
 /**
  * Live workspace context for the Control Center shell. Holds the Personal ↔
- * Professional(Navore) selection, persisted to localStorage so the Control Center
+ * Professional(Example) selection, persisted to localStorage so the Control Center
  * reopens in the last-used context. The toggle UI lives in Settings (PLAN: the
  * single canonical control); every mode reads `workspace` to re-scope itself.
  */
