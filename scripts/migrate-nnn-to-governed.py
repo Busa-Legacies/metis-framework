@@ -267,9 +267,13 @@ def main():
     for t in to_add:
         t.setdefault("mainFiles", [])
         t.setdefault("nextDecisionPoint", None)
-        t["updatedAt"] = now
+        # #285: a sweep/import must NOT clobber a real timestamp — preserve any
+        # the task already carries so mint/cycle-time stay computable; stamp
+        # createdAt at birth.
+        t.setdefault("updatedAt", now)
+        t.setdefault("createdAt", t["updatedAt"])
         t["updatedBy"] = args.actor
-        t["revision"] = 1
+        t.setdefault("revision", 1)
         if t["taskId"] in archived_ids and t.get("state") == "done":
             t["verificationMethod"] = "retroactive"
         doc["tasks"].append(t)

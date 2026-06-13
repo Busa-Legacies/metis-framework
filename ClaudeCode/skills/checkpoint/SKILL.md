@@ -70,6 +70,6 @@ At minimum:
 - `→ next: <single highest-value next action>` from `## Next action` + open threads just refreshed
 - If anything needs Ant to verify or decide: add a `Check:` (direct question with an easy y/n answer) / `Asks:` line — don't bury it. `Verified:` is for evidence you already ran, never a chore for Ant.
 
-Do NOT run any `/end` terminal ceremony during a normal (non-pivot) checkpoint: no Echo daily-log, no self-review, no task-queue sweep.
+Do NOT run any `/end` terminal ceremony during a normal (non-pivot) checkpoint: no Scribe daily-log, no self-review, no task-queue sweep.
 
 **When to run:** the instant you finish a discrete task — committing promptly keeps the meaningful commit ahead of the auto-sync timer. Skip for trivial one-line edits.

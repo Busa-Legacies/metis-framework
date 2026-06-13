@@ -35,7 +35,10 @@ CORE_DIRS = [
     "ClaudeCode/skills/study",
     "scripts/lib", "scripts/git-hooks", "scripts/tests",
     "docs/design",
-    "projects/dev-review", "projects/metis-command", "projects/agent-workbench",
+    "projects/dev-review", "projects/agent-workbench",
+    # projects/metis-command: Phase-3 surface (cockpit), NOT shipped in the Phase-1
+    # framework (#121, Ant 2026-06-13). Also still carries Navore-integration code to
+    # be cleaned as Phase-3 prep. Re-add when metis-command gets its own public repo.
     "decks/assets", "decks/metis",
     ".github",
 ]

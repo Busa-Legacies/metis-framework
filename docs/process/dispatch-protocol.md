@@ -5,7 +5,7 @@
 
 ## Why this exists
 
-The old pattern — `dispatch --agent forge --message "do X"` — is fire-and-forget.
+The old pattern — `dispatch --agent smith --message "do X"` — is fire-and-forget.
 Good for mechanical tasks; dangerous for anything with real scope or side effects.
 This protocol adds a **plan-before-dispatch** step that makes scope, model, risk,
 and cost visible before anything runs.
@@ -25,7 +25,7 @@ explicitly (shown to the human). Fields:
 
 ```
 Goal:         one-line description of what this lane will do
-Role:         forge / scout / shield / echo / ...
+Role:         smith / scout / warden / echo / ...
 Engine:       the model/tier (or "lane default")
 Scope:        files/dirs in scope; "unconstrained" if not specified
 Risk tier:    low / medium / high / critical
@@ -66,14 +66,14 @@ route explicitly grants a stronger execution surface.
 Any `dispatch` call can add `--preview` to print the plan without executing:
 
 ```bash
-dispatch --agent forge --engine 5.4-standard --message "refactor auth.py" --preview
+dispatch --agent smith --engine 5.4-standard --message "refactor auth.py" --preview
 ```
 
 Output:
 ```
 [dispatch:plan]
   Goal     : refactor auth.py
-  Role     : forge
+  Role     : smith
   Engine   : 5.4-standard → openai/gpt-5.4 (thinking: medium)
   Risk     : medium (role default)
   Scope    : unconstrained
@@ -103,16 +103,16 @@ Callers can add policy hints without hardcoding a model:
 
 ```bash
 dispatch --agent scout --work-type summary --message "summarize today’s queue" --preview
-dispatch --agent forge --work-type implementation --mutation mutates --message "add tests for scripts/dispatch" --preview
-dispatch --agent shield --work-type review --risk high --message "review auth token handling" --preview
+dispatch --agent smith --work-type implementation --mutation mutates --message "add tests for scripts/dispatch" --preview
+dispatch --agent warden --work-type review --risk high --message "review auth token handling" --preview
 ```
 
 High and critical routes are hard-gated. `--preview` always prints the plan, but
 execution requires explicit approval:
 
 ```bash
-dispatch --agent shield --message "review production auth tokens" --preview
-dispatch --agent shield --message "review production auth tokens" --approve-risk
+dispatch --agent warden --message "review production auth tokens" --preview
+dispatch --agent warden --message "review production auth tokens" --approve-risk
 ```
 
 Explicit `--engine` remains an override, but preview still shows the inferred work
@@ -123,10 +123,10 @@ Reference table:
 | Task class | Role | Engine guidance |
 |---|---|---|
 | Research / doc reading / pattern search | `scout` | `qwen-shallow` for bounded/local-context drafts; escalate to `5.4m-shallow` or Sonnet when source-backed accuracy matters |
-| Code generation / config / boilerplate | `forge` | `qwen-shallow` only for proposal/draft output; Codex/Sonnet for actual repo edits |
-| Code review / QA / security audit | `shield` | `5.4m-shallow`; `5.5-deep` for critical review |
-| Task decomposition | `hermes` | `5.4m-shallow` |
-| Quality verdict (approve/iterate/reject) | `curator` | `5.4m-shallow` |
+| Code generation / config / boilerplate | `smith` | `qwen-shallow` only for proposal/draft output; Codex/Sonnet for actual repo edits |
+| Code review / QA / security audit | `warden` | `5.4m-shallow`; `5.5-deep` for critical review |
+| Task decomposition | `steward` | `5.4m-shallow` |
+| Quality verdict (approve/iterate/reject) | `arbiter` | `5.4m-shallow` |
 | Session logs / daily log prose | `echo` | `qwen-shallow` (local, low stakes) |
 | Strategy / unclear / multi-step coordination | `main` | `5.4-standard`; `5.5-deep` for agentic |
 
@@ -170,7 +170,7 @@ continue parsing old and new records. New records include:
 - outcome placeholder: verdict, applied/used/discarded, and escalation count
 
 Queue-runner output artifacts also include a `Lane Metrics` JSON block. It records
-selected route, curator verdict, final status, whether output was used/applied, and
+selected route, arbiter verdict, final status, whether output was used/applied, and
 why it was discarded when rejected or infra-failed.
 
 Escalation is conservative: queue-runner passes accumulated local failure/reject

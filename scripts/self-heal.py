@@ -216,7 +216,7 @@ def check_lane_bloat(apply):
     """Lane sessions over the 20k-token bloat line → cold-start cascade. Detection only;
     a reset can clobber an in-flight lane call, so it's agent-tier, not auto."""
     bloated = []
-    for lane in ("forge", "scout", "shield", "echo", "curator"):
+    for lane in ("smith", "scout", "warden", "scribe", "arbiter"):
         p = os.path.join(HOME, ".openclaw", "agents", lane, "sessions", "sessions.json")
         if not os.path.exists(p):
             continue
@@ -253,8 +253,45 @@ def _invariant_finding(name, codes, label):
             "actions": [h[:160] for h in hits[:5]] + ["reconcile via scripts/agent-work.py + correct-state"]}
 
 
+def heal_reconcile_safe(apply):
+    """#345: auto-apply the mechanically-safe reconcile repairs in the daily harness.
+
+    reconcile.py --fix touches ONLY the fixable invariants — I1 (live lease on a
+    done/terminal task), I2 (duplicate leases on one task), I5 (crash-orphaned
+    in_progress tasks) — all idempotent, reversible lease releases via the
+    audited agent-work.py mutator. Folding it into self-heal's --apply means the
+    lease/drift family is auto-healed by the canonical daily harness, not only by
+    the queue-runner sweep (feedback_self_heal_autonomy: broaden auto-fix to the
+    mechanical+safe+reversible class). The judgment-laden invariants (I4/I6/I7/I8)
+    stay DETECT-only in check_lease_invariants/check_taskstate_drift below.
+    """
+    mode = ["--fix", "--apply"] if apply else ["--fix"]
+    rc, out = sh([sys.executable, os.path.join(REPO, "scripts", "reconcile.py"), *mode], timeout=120)
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    if rc != 0:
+        return {"name": "reconcile-safe", "status": NEEDS_HUMAN,
+                "detail": f"reconcile --fix exited {rc}", "actions": lines[-3:] or [out[:160]]}
+    # reconcile prints "N fix(es) planned" (dry-run) or "N fix(es) applied" (--apply);
+    # parse the count so the literal "0 fix(es) planned" no-op isn't read as drift.
+    m = re.search(r"(\d+)\s+fix\(es\)\s+(planned|applied)", out)
+    count = int(m.group(1)) if m else 0
+    if count == 0:
+        return {"name": "reconcile-safe", "status": OK,
+                "detail": "no fixable lease/state drift", "actions": []}
+    detail_lines = [l for l in lines if "released" in l.lower() or "corrected" in l.lower()
+                    or re.match(r"\s*[-•]?\s*I\d", l)]
+    if apply:
+        return {"name": "reconcile-safe", "status": HEALED,
+                "detail": f"auto-applied {count} safe reconcile repair(s) (I1/I2/I5)",
+                "actions": detail_lines[:5] or lines[-3:]}
+    return {"name": "reconcile-safe", "status": NEEDS_HUMAN,
+            "detail": f"{count} fixable lease/state drift item(s) (dry-run)",
+            "actions": detail_lines[:5] or lines[-3:]}
+
+
 def check_lease_invariants(apply):
-    """Lease/checkout/fence drift (I5/I6) — the active-checkouts conflict-loop class."""
+    """Lease/checkout/fence drift (I5/I6) — the active-checkouts conflict-loop class.
+    Detection of the non-auto-fixable residue; heal_reconcile_safe applies I5."""
     return _invariant_finding("lease-drift", [5, 6], "lease")
 
 
@@ -291,8 +328,8 @@ def check_detector_gaps(apply):
 
 HEALS = [heal_symlinks, heal_hook_exec, check_hook_wiring, check_mirror_drift, check_stray_git,
          check_gitsync_drift, heal_autosync, check_lane_bloat,
-         check_lease_invariants, check_taskstate_drift, check_dashboard_contract,
-         check_detector_gaps]
+         heal_reconcile_safe, check_lease_invariants, check_taskstate_drift,
+         check_dashboard_contract, check_detector_gaps]
 
 
 # ──────────── declarative command-checks (the self-growing registry) ───────────
@@ -403,7 +440,7 @@ def meter_signoff(recs):
     # "My lean: **build the bridge** — it's…" must not qualify.
     headerlike = re.compile(r"^\s*\*\*[^*\n]+\*\*\s*(?:—|--)\s*\S", re.M)
     # Either way the MISSING half must look present to a looser regex — h=T alone
-    # is a stray prose bold (0a111d59: `**Action required…**` in a shield verdict),
+    # is a stray prose bold (0a111d59: `**Action required…**` in a warden verdict),
     # f-words alone are a fieldless prose mention.
     fp = []
     for b in blocks:
@@ -497,17 +534,17 @@ def meter_inbox_quality(recs):
 
 
 def meter_curator_format(recs):
-    """Curator JSON discipline (#333): count 'Curator returned invalid JSON' /
+    """Arbiter JSON discipline (#333): count 'Arbiter returned invalid JSON' /
     'no JSON object' lines in the queue-runner log from the last 24h. Lanes
     imitate formats present in reviewed content (the sign-off-block leak found
-    2026-06-12: shield/curator answered in block format after reviewing the
+    2026-06-12: warden/arbiter answered in block format after reviewing the
     self-heal audit doc, which quotes meter_signoff patterns), and a malformed
-    curator verdict silently degrades the quality gate to a retry. #332's
+    arbiter verdict silently degrades the quality gate to a retry. #332's
     raw_decode tolerates trailing prose; this catches the cases it can't.
     Fails soft when the log is absent (runner not installed here)."""
     import time as _time
     log_path = os.path.expanduser("~/.openclaw/logs/queue-runner.log")
-    skip = {"name": "curator-format", "status": PASS, "score": 1,
+    skip = {"name": "arbiter-format", "status": PASS, "score": 1,
             "threshold": "0 parse failures/24h",
             "detail": "queue-runner log absent — skipped", "samples": []}
     if not os.path.exists(log_path):
@@ -518,14 +555,14 @@ def meter_curator_format(recs):
         bad = []
         with open(log_path, errors="replace") as f:
             for line in f.readlines()[-4000:]:
-                if "Curator returned invalid JSON" in line or "Curator returned no JSON object" in line:
+                if "Arbiter returned invalid JSON" in line or "Arbiter returned no JSON object" in line:
                     bad.append(line.strip()[:160])
     except Exception as e:
         return {**skip, "detail": f"queue-runner log unreadable — skipped ({e})"}
     status = ALERT if bad else PASS
-    return {"name": "curator-format", "status": status, "score": 0 if bad else 1,
+    return {"name": "arbiter-format", "status": status, "score": 0 if bad else 1,
             "threshold": "0 parse failures/24h",
-            "detail": f"{len(bad)} curator JSON parse failure(s) in recent runner log",
+            "detail": f"{len(bad)} arbiter JSON parse failure(s) in recent runner log",
             "samples": bad[-5:]}
 
 
@@ -579,7 +616,7 @@ def sync_worklist(agent_findings, apply):
 def _meter_actions(m):
     """Build worklist action strings from a meter's samples. Samples are
     meter-specific: signoff-compliance emits dicts ({session, tail, ...}); the
-    taxonomy / inbox-quality / curator-format meters emit plain strings. Format by
+    taxonomy / inbox-quality / arbiter-format meters emit plain strings. Format by
     shape so one string-sample meter can't crash the whole harness (the prior code
     assumed every sample was a signoff dict and died on the first non-signoff ALERT)."""
     acts = []

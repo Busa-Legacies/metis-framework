@@ -12,7 +12,7 @@ Pipeline (each stage fails SOFT so the weekly LaunchAgent never hard-crashes):
                  positive) and synthesizes recurring patterns + proposed fixes.
   3. SHIELD    — free local lane VERIFIES each proposed fix for accuracy /
                  applicability / effectiveness, refines it, and writes a concrete
-                 verificationMethod. Only shield-approved fixes get promoted.
+                 verificationMethod. Only warden-approved fixes get promoted.
   4. PROMOTE   — approved fixes become governed tasks via update-tier1-state.py
                  (canonical tasks.json) and surface on the OPEN_TASKS board.
                  Idempotent: a recurring pattern bumps its existing task instead
@@ -24,11 +24,11 @@ Pipeline (each stage fails SOFT so the weekly LaunchAgent never hard-crashes):
 Modes:
   --days N      weekly mode: scan last N days across both machines, full pipeline
   --latest      session mode: scan only the most-recent transcript (end protocol),
-                lightweight — no shield/promote, just flag misses + feed ledger
+                lightweight — no warden/promote, just flag misses + feed ledger
   --no-pull / --no-promote / --no-llm / --dry-run    stage toggles
 
 Usage:
-  self-review.py [--days 7] [--lane scout] [--verify-lane shield]
+  self-review.py [--days 7] [--lane scout] [--verify-lane warden]
   self-review.py --latest          # end-of-session reflection
 """
 
@@ -54,10 +54,10 @@ ROUTING_LINE_THRESHOLD = 12
 BOARD_START = "<!-- SELF-REVIEW:START -->"
 BOARD_END = "<!-- SELF-REVIEW:END -->"
 
-# Short system context handed to shield so "applicable" is grounded in Ant's setup.
+# Short system context handed to warden so "applicable" is grounded in Ant's setup.
 SYSTEM_CONTEXT = (
     "Ant's system: Claude Code is an orchestrator that should ROUTE codegen/research "
-    "to free local Ollama lanes (forge/scout/shield/echo) to save Claude quota; it has "
+    "to free local Ollama lanes (smith/scout/warden/echo) to save Claude quota; it has "
     "a session 'end' protocol, a governed tasks.json pipeline, LaunchAgent automations, "
     "and dashboards. Two machines: Jay (antfox) and Jarry. Fixes are things like hooks, "
     "CLAUDE.md rules, LaunchAgents, or habit changes."
@@ -234,7 +234,7 @@ def scan_transcript(path, machine):
         if turn["role"] == "assistant":
             for tu in turn["tool_uses"]:
                 cmd = str(tu.get("input", {}).get("command", ""))
-                if "openclaw agent" in cmd or "--agent forge" in cmd or "--agent scout" in cmd:
+                if "openclaw agent" in cmd or "--agent smith" in cmd or "--agent scout" in cmd:
                     saw_lane_call = True
                 if tu["name"] in ("Write", "Edit") and not saw_lane_call:
                     n = lines_in_edit(tu)
@@ -345,12 +345,12 @@ Then synthesize the top 3-6 RECURRING patterns across the real misses, each with
 
 Return ONLY valid JSON, no prose:
 {"items":[{"i":<index>,"verdict":"real_miss|false_positive","category":"...","lesson":"..."}],
- "patterns":[{"title":"...","evidence":"how often / which sessions","fix":"concrete action","priority":"P1|P2|P3","agent":"claude|forge|scout|shield"}]}
+ "patterns":[{"title":"...","evidence":"how often / which sessions","fix":"concrete action","priority":"P1|P2|P3","agent":"claude|smith|scout|warden"}]}
 
 Candidates:
 """
 
-# ---------------------------------------------------------------- stage 3: shield
+# ---------------------------------------------------------------- stage 3: warden
 SHIELD_PROMPT = """You are a QA reviewer verifying proposed self-improvement fixes for an AI agent system before they become tracked tasks. {ctx}
 
 For EACH proposed fix below, judge it on three axes and decide a verdict:
@@ -455,7 +455,8 @@ def run_shield(patterns, lane):
 
 
 # ---------------------------------------------------------------- ledger
-VALID_OWNERS = {"claude", "forge", "scout", "shield", "echo"}
+VALID_OWNERS = {"claude", "smith", "scout", "warden", "scribe",
+                "forge", "shield", "echo"}  # legacy (pre-Guild-rename) accepted
 
 
 def norm_owner(agent):
@@ -602,7 +603,7 @@ def write_board(led):
 
 
 # ---------------------------------------------------------------- digest
-def write_digest(date_str, cands, scout, shield, led, n_files, machines, promoted, effectiveness):
+def write_digest(date_str, cands, scout, warden, led, n_files, machines, promoted, effectiveness):
     os.makedirs(DIGEST_DIR, exist_ok=True)
     path = os.path.join(DIGEST_DIR, f"{date_str}.md")
     from collections import Counter
@@ -636,7 +637,7 @@ def write_digest(date_str, cands, scout, shield, led, n_files, machines, promote
         L.append("## Patterns → verified fixes")
         sv = {
             v["i"]: v
-            for v in (shield.get("verdicts", []) if shield else [])
+            for v in (warden.get("verdicts", []) if warden else [])
             if isinstance(v.get("i"), int)
         }
         for i, p in enumerate(scout["patterns"]):
@@ -651,7 +652,7 @@ def write_digest(date_str, cands, scout, shield, led, n_files, machines, promote
             L.append(f"- **Fix:** {fix}")
             if v.get("verificationMethod"):
                 L.append(
-                    f"- **Verify by:** {v['verificationMethod']}  _(shield confidence: {v.get('confidence', '?')})_"
+                    f"- **Verify by:** {v['verificationMethod']}  _(warden confidence: {v.get('confidence', '?')})_"
                 )
             if verdict == "reject":
                 L.append(
@@ -680,7 +681,7 @@ def main():
         "--latest", action="store_true", help="session mode: only the most-recent transcript"
     )
     ap.add_argument("--lane", default="scout")
-    ap.add_argument("--verify-lane", default="shield")
+    ap.add_argument("--verify-lane", default="warden")
     ap.add_argument("--no-pull", action="store_true")
     ap.add_argument("--no-promote", action="store_true")
     ap.add_argument("--no-llm", action="store_true")
@@ -712,7 +713,7 @@ def main():
 
     cat_counts = dict(Counter(c["category"] for c in deduped))
 
-    # session (end-protocol) mode: lightweight — flag + feed ledger, no shield/promote
+    # session (end-protocol) mode: lightweight — flag + feed ledger, no warden/promote
     if args.latest:
         scout = None if (args.no_llm or not deduped) else run_scout(deduped, args.lane)
         led = load_ledger()
@@ -735,7 +736,7 @@ def main():
     # weekly mode: full pipeline
     scout = None if (args.no_llm or not deduped) else run_scout(deduped, args.lane)
     patterns = scout.get("patterns", []) if scout else []
-    shield = None if (args.no_llm or not patterns) else run_shield(patterns, args.verify_lane)
+    warden = None if (args.no_llm or not patterns) else run_shield(patterns, args.verify_lane)
 
     led = load_ledger()
     # effectiveness check: compare this run's category counts to the last recorded run
@@ -757,10 +758,10 @@ def main():
                         f"⚠️ '{f['title']}' — `{cat}` still {after} (was {before}); fix not yet effective — task bumped."
                     )
 
-    # promote shield-approved fixes (idempotent via sig), capped
+    # promote warden-approved fixes (idempotent via sig), capped
     promoted = []
-    if not args.no_promote and not args.dry_run and shield:
-        sv = {v["i"]: v for v in shield.get("verdicts", []) if isinstance(v.get("i"), int)}
+    if not args.no_promote and not args.dry_run and warden:
+        sv = {v["i"]: v for v in warden.get("verdicts", []) if isinstance(v.get("i"), int)}
         approved = [
             (i, patterns[i], sv[i])
             for i in sv
@@ -824,11 +825,11 @@ def main():
         save_ledger(led)
 
     digest = write_digest(
-        date_str, deduped, scout, shield, led, len(files), machines, promoted, effectiveness
+        date_str, deduped, scout, warden, led, len(files), machines, promoted, effectiveness
     )
     print(
         f"[self-review] {', '.join(machines)} · {len(files)} transcripts · {len(deduped)} candidates · "
-        f"{'scout+shield' if shield else ('scout' if scout else 'heuristic')} · "
+        f"{'scout+warden' if warden else ('scout' if scout else 'heuristic')} · "
         f"{len(promoted)} promoted · digest: {digest}"
     )
 

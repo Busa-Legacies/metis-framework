@@ -32,6 +32,71 @@ PROTECTED=(
   "Jay/.gitignore"
 )
 
+# --- #234 split-sync: source never auto-commits to main; state files still do ----
+# STATE_PATHSPECS = the only paths auto-committed to `main` when OPENCLAW_SPLIT_LANES=1.
+# Everything else is SOURCE, durably snapshotted to autosync/<machine> (see below) and
+# left dirty in the working tree for a human to commit with intent (#311 close gate).
+# Phased rollout: the autosync/<machine> source snapshot is ALWAYS-ON (additive, can't
+# change `main`). OPENCLAW_SPLIT_LANES gates the actual `main` behavior flip and defaults
+# to 0 (legacy blanket-add) so landing this script does NOT flip every machine on the next
+# tick — flip to 1 deliberately once the durability branch is proven. Kill-switch = set 0.
+OPENCLAW_SPLIT_LANES="${OPENCLAW_SPLIT_LANES:-0}"
+STATE_PATHSPECS=(
+  'docs/process/state'
+  'docs/process/task-queue.md'
+  'docs/process/live-status.md'
+  'docs/process/projects.md'
+  'docs/process/task-naming-convention.md'
+  'docs/process/audits'
+  'docs/process/lane-outputs'
+  'docs/process/decisions'
+  'docs/process/taxonomy.yaml'
+  'Jay/state'
+  'Jay/memory'
+  'Jay/.gitignore'
+  'Jarry/memory'
+  'ClaudeCode/memory'
+)
+# Exclusion form of the allowlist (everything that is NOT state) — used to stage SOURCE
+# into a scratch index for the autosync/<machine> snapshot. Kept in lockstep with the list.
+SOURCE_EXCLUDES=( ':(exclude)Jay/lanes' )
+for _sp in "${STATE_PATHSPECS[@]}"; do SOURCE_EXCLUDES+=( ":(exclude)$_sp" ); done
+
+# Per-machine branch for the source durability snapshot. Override OPENCLAW_SYNC_MACHINE if
+# detection is wrong; falls back to the unix username (always unique per machine).
+SYNC_MACHINE="${OPENCLAW_SYNC_MACHINE:-}"
+if [ -z "$SYNC_MACHINE" ]; then
+  _sync_host=$(scutil --get LocalHostName 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+  _sync_user=$(id -un 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+  _sync_home=$(printf '%s' "${HOME:-}" | tr '[:upper:]' '[:lower:]')
+  if printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "abusa\|anthony"; then
+    SYNC_MACHINE="abusa"
+  elif printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "antfox\|/users/ant"; then
+    SYNC_MACHINE="antfox"
+  else
+    SYNC_MACHINE="${_sync_user:-unknown}"
+  fi
+fi
+AUTOSYNC_BRANCH="autosync/$SYNC_MACHINE"
+
+# Stage ONLY the state pathspecs that currently exist (working tree or tracked).
+# Why: `git add -A -- <pathspec>` hard-errors (exit 128) the instant ANY positive
+# pathspec matches nothing — and stages NOTHING when it does. Several STATE dirs
+# legitimately don't exist on a given machine (Jarry/memory on Jay, an as-yet-uncreated
+# lane-outputs/audits dir). Without this filter one absent path would abort the whole
+# add and silently drop real state changes off `main` (caught by the SPLIT-3 test). The
+# exclude-form used for the source snapshot has no such trap, so it needs no filter.
+git_add_state() {
+  local p present=()
+  for p in "${STATE_PATHSPECS[@]}"; do
+    if [ -e "$p" ] || [ -n "$(git ls-files -- "$p" 2>/dev/null)" ]; then
+      present+=( "$p" )
+    fi
+  done
+  [ "${#present[@]}" -gt 0 ] && git add -A -- "${present[@]}"
+  return 0
+}
+
 # --- self-redeploy: keep ~/.local/bin/ in sync with the canonical repo copy ------
 # After a pull, the repo copy may be newer than the running deployed binary. Detect
 # this BEFORE acquiring the lock (so re-exec is clean) and re-exec with the updated
@@ -197,7 +262,12 @@ fi
 # untracked files, so a lone new file (e.g. a fresh memory/test script) would
 # never sync until some coincident tracked change swept it up via `git add -A`.
 if [ -n "$(git status --porcelain)" ]; then
-  git add -A -- ':(exclude)Jay/lanes'
+  if [ "$OPENCLAW_SPLIT_LANES" = "1" ]; then
+    # #234: stage ONLY state files for main; source stays dirty (→ autosync/<machine>).
+    git_add_state
+  else
+    git add -A -- ':(exclude)Jay/lanes'   # legacy blanket-add (kill-switch path)
+  fi
 
   # --- guard 4: partial-tree wipe protection (T-SYNC-05) ----------------------
   # Count staged deletions; refuse if a protected path is being deleted, or if the
@@ -243,8 +313,14 @@ if [ -n "$(git status --porcelain)" ]; then
     exit 1
   fi
   if [ -z "${SKIP_COMMIT:-}" ]; then
-    git commit -m "[auto-sync] $TIMESTAMP" >> "$LOG" 2>&1
-    log "committed local changes ($DELETED_COUNT deletions, within limit)"
+    if [ -n "$(git diff --cached --name-only)" ]; then
+      git commit -m "[auto-sync] $TIMESTAMP" >> "$LOG" 2>&1
+      log "committed local changes ($DELETED_COUNT deletions, within limit)"
+    else
+      # split-sync: only source changed this tick → nothing staged for main; source
+      # goes to autosync/<machine> below. Avoid an empty-commit error.
+      log "no state changes to commit (source-only tick → $AUTOSYNC_BRANCH)"
+    fi
   fi
 fi
 
@@ -319,7 +395,11 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
     # auto-resolved ⇒ complete the merge and push instead of throwing the work away.
     # Any remaining unmerged path ⇒ a genuinely-novel conflict ⇒ fail-soft abort below.
     if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 && [ -z "$(git diff --name-only --diff-filter=U)" ]; then
-      git add -A -- ':(exclude)Jay/lanes'
+      if [ "$OPENCLAW_SPLIT_LANES" = "1" ]; then
+        git_add_state   # #234: complete the merge with state only
+      else
+        git add -A -- ':(exclude)Jay/lanes'
+      fi
       # Never let a botched replay commit conflict markers (same gate as the local path).
       if git diff --cached -U0 | grep -qE '^\+(<<<<<<< |>>>>>>> )'; then
         log "rerere recovery: replayed resolution still contains conflict markers — aborting merge, manual fix needed"
@@ -398,6 +478,41 @@ if [ -n "$STASH_REF" ]; then
     exit 1   # don't push — manual resolution needed
   fi
   log "restored stashed edits after pull"
+fi
+
+# --- #234 source durability snapshot → autosync/<machine> (never main) ---------
+# Always-on + additive: snapshots the working tree's SOURCE changes (everything outside
+# STATE_PATHSPECS) onto autosync/<machine> via plumbing — no checkout, no branch switch,
+# working tree untouched (source stays dirty so a human can /checkpoint it with intent).
+# This is the durability path that makes the OPENCLAW_SPLIT_LANES=1 flip safe (mobile WIP
+# survives without riding main). Every step is non-fatal: a failure here must NEVER block
+# the main state push below. Skipped only if there is no source to snapshot.
+if [ "${OPENCLAW_SOURCE_SNAPSHOT:-1}" = "1" ]; then
+  _src_idx="$LOCK_DIR/source-sync.idx.$$"
+  if GIT_INDEX_FILE="$_src_idx" git read-tree HEAD 2>>"$LOG" \
+     && GIT_INDEX_FILE="$_src_idx" git add -A -- "${SOURCE_EXCLUDES[@]}" 2>>"$LOG"; then
+    _src_tree=$(GIT_INDEX_FILE="$_src_idx" git write-tree 2>>"$LOG" || true)
+    rm -f "$_src_idx"
+    if [ -n "$_src_tree" ]; then
+      _autosync_parent=$(git rev-parse --verify "refs/heads/$AUTOSYNC_BRANCH" 2>/dev/null || git rev-parse HEAD)
+      _autosync_tree=$(git rev-parse "${_autosync_parent}^{tree}" 2>/dev/null || echo "")
+      if [ "$_src_tree" != "$_autosync_tree" ]; then
+        _src_commit=$(git commit-tree -p "$_autosync_parent" -m "[auto-sync source] $TIMESTAMP" "$_src_tree" 2>>"$LOG" || true)
+        if [ -n "$_src_commit" ]; then
+          git update-ref "refs/heads/$AUTOSYNC_BRANCH" "$_src_commit" 2>>"$LOG" \
+            || log "source-snap: update-ref failed (will retry next tick)"
+          if git push origin "$AUTOSYNC_BRANCH" >>"$LOG" 2>&1; then
+            log "source-snap: pushed $AUTOSYNC_BRANCH ($(git rev-parse --short "$_src_commit" 2>/dev/null || echo '?'))"
+          else
+            log "source-snap: push of $AUTOSYNC_BRANCH failed (non-fatal; local ref durable, retries next tick)"
+          fi
+        fi
+      fi
+    fi
+  else
+    rm -f "$_src_idx"
+    log "source-snap: scratch-index staging failed — skipping source snapshot this tick"
+  fi
 fi
 
 # --- push ---------------------------------------------------------------------

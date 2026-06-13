@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Autonomous queue runner — dispatches Agent:forge/scout tasks from task-queue.md.
+Autonomous queue runner — dispatches Agent:smith/scout tasks from task-queue.md.
 Runs on antfox (Jay) via LaunchAgent every 30 min, 06:00-22:00 PT.
 
 Design: docs/process/queue-runner-pattern.md + cron-checkpoint-runner.md
@@ -29,10 +29,10 @@ GIT_LOCK = REPO / "scripts/git-lock.sh"
 JAY_WORKSPACE = REPO / "Jay"
 
 # Canonical lane roles are a core convention (see CLAUDE.md agent routing).
-DISPATCHABLE_AGENTS = {"forge", "scout", "echo"}
-SHIELD_REVIEW_AGENTS = {"forge"}  # only code-generating lanes get shield review
-CURATOR_AGENTS = {"forge", "scout", "hermes", "echo"}  # all lane outputs get curated
-ECHO_WRITE_AGENTS = {"echo"}  # compose-mode lanes: produce file content only
+DISPATCHABLE_AGENTS = {"smith", "scout", "scribe"}
+SHIELD_REVIEW_AGENTS = {"smith"}  # only code-generating lanes get warden review
+CURATOR_AGENTS = {"smith", "scout", "steward", "scribe"}  # all lane outputs get curated
+ECHO_WRITE_AGENTS = {"scribe"}  # compose-mode lanes: produce file content only
 # Which machines auto-run dispatch is org topology -> config/infrastructure.json.
 import sys as _sys  # noqa: E402
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -58,7 +58,7 @@ def parse_tasks(text):
             continue
         task["title"] = title_m.group(1)
 
-        # Single-line format: Priority: P2 · Agent: forge · Machine: antfox · Status: queued
+        # Single-line format: Priority: P2 · Agent: smith · Machine: antfox · Status: queued
         inline_m = re.search(
             r"Priority:\s*(\w+)\s*[·•]\s*Agent:\s*(\w+)\s*[·•]\s*Machine:\s*(\w+)\s*[·•]\s*Status:\s*([\w-]+)",
             block,
@@ -224,7 +224,7 @@ def update_task_status(task_title, old_status, new_status, extra_note=""):
 TIMEOUT_STRINGS = ("LLM request timed out", "request timed out", "timed out")
 
 # Patterns that indicate the lane itself failed (tool unavailable, exec errors, etc.)
-# These pass dispatch_lane's success check but are not real output — don't run curator on them.
+# These pass dispatch_lane's success check but are not real output — don't run arbiter on them.
 INFRA_FAIL_STRINGS = (
     "I can't use the tool",
     "I cannot use the tool",
@@ -258,7 +258,7 @@ def _recover_parked_tasks():
 
     Only recovers tasks where the block note matches a known transient pattern (Ollama
     cold-start, LLM idle timeout, session takeover, tool unavailability). Tasks parked
-    by genuine logic failures (curator-rejected, dep-blocked, explicit human note) are
+    by genuine logic failures (arbiter-rejected, dep-blocked, explicit human note) are
     left untouched.
 
     Backoff rule: same-day failures stay parked (gives Ollama time to stabilise before
@@ -397,13 +397,13 @@ def _sweep_stale_qr_sessions(lanes, max_age_hours=6):
 
 
 def _policy_hints(agent, task=None):
-    if agent == "forge":
+    if agent == "smith":
         return "implementation", "proposal-only"
-    if agent == "shield":
+    if agent == "warden":
         return "review", "read-only"
-    if agent == "curator":
+    if agent == "arbiter":
         return "quality", "read-only"
-    if agent == "echo":
+    if agent == "scribe":
         return "docs", "proposal-only"
     return "research", "read-only"
 
@@ -416,7 +416,7 @@ def _local_failure_count(task):
     signals = (
         len(re.findall(r"Infra failure on", raw, re.I))
         + len(re.findall(r"Lane failed 2x on", raw, re.I))
-        + len(re.findall(r"curator=(?:reject|iterate)", raw, re.I))
+        + len(re.findall(r"arbiter=(?:reject|iterate)", raw, re.I))
         + len(re.findall(r"verdict:\s*\*\*(?:reject|iterate)", raw, re.I))
     )
     return signals
@@ -460,22 +460,22 @@ def slugify(title):
 
 
 def shield_review(task, forge_output):
-    """Run shield over forge output. Returns review text or None on failure."""
+    """Run warden over smith output. Returns review text or None on failure."""
     prompt = (
         f"Task: {task['title']}\n\nSummary: {task.get('summary', '')}\n\n"
-        f"Forge produced the following output. Review it for correctness, security issues, "
+        f"Smith produced the following output. Review it for correctness, security issues, "
         f"and completeness. Be concise — flag real problems only, not style nits.\n\n"
         f"--- FORGE OUTPUT ---\n{forge_output}\n--- END ---"
     )
-    success, review = dispatch_lane("shield", prompt, timeout=480)
+    success, review = dispatch_lane("warden", prompt, timeout=480)
     if not success:
-        print(f"[queue-runner] Shield review failed: {review[:100]}")
+        print(f"[queue-runner] Warden review failed: {review[:100]}")
         return None
     return review
 
 
 ECHO_INSTRUCTIONS = (
-    "You are Echo, a compose-mode lane. Output ONLY the requested artifact body — "
+    "You are Scribe, a compose-mode lane. Output ONLY the requested artifact body — "
     "no preamble, no 'I have composed', no closing remarks, no markdown fences. "
     "First word of your response is the first word of the artifact. "
     "A Claude Code session will apply your output to the repo."
@@ -500,11 +500,11 @@ Artifact check (CRITICAL — evaluate this first):
 An artifact is applyable work: actual code, a concrete shell command sequence, a file diff/patch, or a complete file body ready to write. A PLAN is a description of what to do — numbered steps saying "1. Add X, 2. Replace Y with Z" without providing the actual code. Plans are NOT artifacts.
 - is_artifact=true if the output IS actual code/commands/diff/file-body that can be applied directly.
 - is_artifact=false if the output DESCRIBES what changes to make rather than providing them.
-- For forge/echo outputs: if is_artifact=false, verdict MUST be "iterate" (confidence capped at 0.5) with iterate_prompt asking the lane to return the actual implementation, not a description of it.
-- For scout/hermes outputs: is_artifact=false is acceptable (analysis and plans are their deliverable); set is_artifact=false but do not penalise verdict for it.
+- For smith/scribe outputs: if is_artifact=false, verdict MUST be "iterate" (confidence capped at 0.5) with iterate_prompt asking the lane to return the actual implementation, not a description of it.
+- For scout/steward outputs: is_artifact=false is acceptable (analysis and plans are their deliverable); set is_artifact=false but do not penalise verdict for it.
 
 Rules:
-- verdict=approve if output is correct, complete, no safety issues, prereq satisfied, confidence >= 0.75, AND is_artifact=true (for forge/echo lanes)
+- verdict=approve if output is correct, complete, no safety issues, prereq satisfied, confidence >= 0.75, AND is_artifact=true (for smith/scribe lanes)
 - verdict=iterate if fixable problems exist or confidence < 0.75 (populate iterate_prompt with specific fix instructions)
 - verdict=reject if dangerous (safety_flags non-empty), completely wrong, or confidence < 0.3
 - issues: list every concrete problem found
@@ -513,15 +513,15 @@ Rules:
 - iterate_prompt: only if verdict=iterate — specific actionable fix instructions for the lane
 
 Per-lane checks:
-- forge: is_artifact? prereq satisfied? real imports? plausible file paths? real function APIs? shield issues? safety ops?
+- smith: is_artifact? prereq satisfied? real imports? plausible file paths? real function APIs? warden issues? safety ops?
 - scout: addresses the question? no contradictions? actionable? flag specific version/endpoint claims
-- hermes: valid agents (forge/scout/shield/echo/hermes/main)? valid machines (antfox/jarry/either)? no circular deps?
-- echo: starts directly with file content (e.g. '# Daily Log')? If starts with 'I have...', 'Here is...' → iterate"""
+- steward: valid agents (smith/scout/warden/scribe/steward/main)? valid machines (antfox/jarry/either)? no circular deps?
+- scribe: starts directly with file content (e.g. '# Daily Log')? If starts with 'I have...', 'Here is...' → iterate"""
 
 
 def curator_check(task, output, shield_review_text=None):
     """
-    Run curator over lane output. Returns parsed verdict dict or None on failure.
+    Run arbiter over lane output. Returns parsed verdict dict or None on failure.
     Verdict keys: verdict, confidence, issues, hallucination_flags, prereq_check,
                   prereq_note, safety_flags, iterate_prompt
     """
@@ -538,12 +538,12 @@ def curator_check(task, output, shield_review_text=None):
         f"{shield_section}\n\n"
         f"RESPOND NOW WITH THE JSON OBJECT ONLY:"
     )
-    success, raw = dispatch_lane("curator", prompt, timeout=480)
+    success, raw = dispatch_lane("arbiter", prompt, timeout=480)
     if not success:
-        print(f"[queue-runner] Curator failed: {raw[:100]}")
+        print(f"[queue-runner] Arbiter failed: {raw[:100]}")
         return None
 
-    # Extract JSON — curator may still wrap in markdown fences despite instructions
+    # Extract JSON — arbiter may still wrap in markdown fences despite instructions
     json_str = raw.strip()
     if json_str.startswith("```"):
         json_str = re.sub(r"^```[a-z]*\n?", "", json_str)
@@ -555,7 +555,7 @@ def curator_check(task, output, shield_review_text=None):
     try:
         verdict = json.loads(json_str)
     except json.JSONDecodeError as e:
-        print(f"[queue-runner] Curator returned invalid JSON: {e} — raw: {raw[:200]}")
+        print(f"[queue-runner] Arbiter returned invalid JSON: {e} — raw: {raw[:200]}")
         return None
 
     return verdict
@@ -643,7 +643,7 @@ def print_dispatch_preview(task):
 
 
 def _sync_governed_state(task, verdict):
-    """After a terminal curator verdict, update tasks.json so free-work.py reflects done/rejected
+    """After a terminal arbiter verdict, update tasks.json so free-work.py reflects done/rejected
     without waiting for manual session cleanup. Non-fatal — a failure just leaves the old state."""
     title = task.get("title", "")
     m = re.match(r"#(\d+)", title)
@@ -666,7 +666,7 @@ def _sync_governed_state(task, verdict):
                 "--expected-revision", str(revision),
                 "--actor", "queue-runner",
                 "--to-state", to_state,
-                "--reason", f"auto: curator verdict={verdict} ({datetime.date.today().isoformat()})",
+                "--reason", f"auto: arbiter verdict={verdict} ({datetime.date.today().isoformat()})",
             ],
             capture_output=True,
             timeout=10,
@@ -676,13 +676,13 @@ def _sync_governed_state(task, verdict):
         print(f"[queue-runner] WARN: governed state sync failed for {task_id}: {e}")
 
 
-def _lane_metrics(task, final_status, curator=None, infra_fail_reason=None):
+def _lane_metrics(task, final_status, arbiter=None, infra_fail_reason=None):
     agent = task.get("agent", "unknown")
     message = build_queue_runner_message(task)
     work_type, mutation = _policy_hints(agent, task)
     failures = _local_failure_count(task)
     decision = resolve_default_engine(agent, message, work_type=work_type, mutation=mutation, local_failures=failures)
-    verdict = curator.get("verdict") if curator else None
+    verdict = arbiter.get("verdict") if arbiter else None
     return {
         "role": agent,
         "selected_engine": decision.engine,
@@ -693,28 +693,28 @@ def _lane_metrics(task, final_status, curator=None, infra_fail_reason=None):
         "requires_approval": decision.requires_approval,
         "local_failures": failures,
         "curator_verdict": verdict,
-        "curator_confidence": curator.get("confidence") if curator else None,
+        "curator_confidence": arbiter.get("confidence") if arbiter else None,
         "artifact_kind": "lane-output",
         "final_status": final_status,
         "applied": final_status == "ready-to-apply",
         "used": final_status in {"ready-to-apply", "needs-review"},
-        "discarded_reason": infra_fail_reason or ("curator rejected" if verdict == "reject" else None),
+        "discarded_reason": infra_fail_reason or ("arbiter rejected" if verdict == "reject" else None),
         "escalation_count": failures,
     }
 
 
-def save_output(task, content, shield=None, curator=None, infra_fail_reason=None):
+def save_output(task, content, warden=None, arbiter=None, infra_fail_reason=None):
     LANE_OUTPUTS.mkdir(parents=True, exist_ok=True)
     date = datetime.date.today().isoformat()
     path = LANE_OUTPUTS / f"{date}-{slugify(task['title'])}.md"
 
     if infra_fail_reason:
         final_status = "infra-failed"
-    elif curator:
-        final_status = "ready-to-apply" if curator.get("verdict") == "approve" else "rejected"
+    elif arbiter:
+        final_status = "ready-to-apply" if arbiter.get("verdict") == "approve" else "rejected"
     else:
         final_status = "needs-review"
-    metrics = _lane_metrics(task, final_status, curator=curator, infra_fail_reason=infra_fail_reason)
+    metrics = _lane_metrics(task, final_status, arbiter=arbiter, infra_fail_reason=infra_fail_reason)
 
     body = (
         f"# {task['title']}\n\n"
@@ -722,34 +722,34 @@ def save_output(task, content, shield=None, curator=None, infra_fail_reason=None
         f"---\n\n## Lane Metrics\n\n```json\n{json.dumps(metrics, indent=2, ensure_ascii=False)}\n```\n\n"
         f"---\n\n## Output\n\n{content}\n"
     )
-    if shield:
-        body += f"\n---\n\n## Shield Review\n\n{shield}\n"
+    if warden:
+        body += f"\n---\n\n## Warden Review\n\n{warden}\n"
     if infra_fail_reason:
         body += (
             f"\n---\n\n## Infrastructure Failure\n\n"
             f"The lane returned an infrastructure error rather than task output.\n\n"
             f"> Matched pattern: `{infra_fail_reason}`\n"
         )
-    elif curator:
-        verdict = curator.get("verdict", "unknown")
-        confidence = curator.get("confidence", 0.0)
-        issues = "\n".join(f"- {i}" for i in curator.get("issues", [])) or "none"
-        flags = "\n".join(f"- {f}" for f in curator.get("hallucination_flags", [])) or "none"
-        is_artifact = curator.get("is_artifact")
+    elif arbiter:
+        verdict = arbiter.get("verdict", "unknown")
+        confidence = arbiter.get("confidence", 0.0)
+        issues = "\n".join(f"- {i}" for i in arbiter.get("issues", [])) or "none"
+        flags = "\n".join(f"- {f}" for f in arbiter.get("hallucination_flags", [])) or "none"
+        is_artifact = arbiter.get("is_artifact")
         artifact_str = (
             "yes" if is_artifact is True else
             "no (plan/description — not directly applyable)" if is_artifact is False else
             "unknown"
         )
         body += (
-            f"\n---\n\n## Curator Verdict\n\n"
+            f"\n---\n\n## Arbiter Verdict\n\n"
             f"Verdict: **{verdict}**  Confidence: {confidence:.2f}  Artifact: {artifact_str}\n\n"
-            f"Prereq: {curator.get('prereq_check', 'n/a')} — {curator.get('prereq_note', '')}\n\n"
+            f"Prereq: {arbiter.get('prereq_check', 'n/a')} — {arbiter.get('prereq_note', '')}\n\n"
             f"Issues:\n{issues}\n\n"
             f"Hallucination flags:\n{flags}\n"
         )
-        if curator.get("safety_flags"):
-            safety = "\n".join(f"- {s}" for s in curator["safety_flags"])
+        if arbiter.get("safety_flags"):
+            safety = "\n".join(f"- {s}" for s in arbiter["safety_flags"])
             body += f"\nSafety flags:\n{safety}\n"
     path.write_text(body)
 
@@ -764,8 +764,8 @@ def save_output(task, content, shield=None, curator=None, infra_fail_reason=None
         _dn.notify_task_complete(
             task_title=task.get("title", "unknown"),
             agent=task.get("agent", "unknown"),
-            curator_verdict=curator.get("verdict") if curator else None,
-            confidence=curator.get("confidence") if curator else None,
+            curator_verdict=arbiter.get("verdict") if arbiter else None,
+            confidence=arbiter.get("confidence") if arbiter else None,
             output_path=str(path),
             status=final_status,
         )
@@ -775,10 +775,10 @@ def save_output(task, content, shield=None, curator=None, infra_fail_reason=None
             _emoji = {"ready-to-apply": "✅", "rejected": "❌",
                       "needs-review": "⚠️", "infra-failed": "🔥"}.get(final_status, "❓")
             _curator_str = ""
-            if curator:
+            if arbiter:
                 _curator_str = (
-                    f"\nCurator: **{curator.get('verdict','?')}** "
-                    f"({curator.get('confidence', 0.0):.2f})"
+                    f"\nCurator: **{arbiter.get('verdict','?')}** "
+                    f"({arbiter.get('confidence', 0.0):.2f})"
                 )
             _dn.post_to_thread(
                 thread_id,
@@ -795,9 +795,9 @@ def save_output(task, content, shield=None, curator=None, infra_fail_reason=None
     except Exception:
         pass
 
-    # Auto-update governed state on terminal curator verdicts — eliminates manual cleanup
-    if curator and curator.get("verdict") in ("approve", "reject"):
-        _sync_governed_state(task, curator["verdict"])
+    # Auto-update governed state on terminal arbiter verdicts — eliminates manual cleanup
+    if arbiter and arbiter.get("verdict") in ("approve", "reject"):
+        _sync_governed_state(task, arbiter["verdict"])
 
     return path, final_status
 
@@ -927,7 +927,7 @@ def run(dry_run=False, dry_run_limit=1):
 
     # Sweep qr-* sessions leaked by hard-killed prior runs (cleanup never fired).
     if not dry_run:
-        _sweep_stale_qr_sessions(["forge", "scout", "shield", "echo", "main", "hermes", "curator"])
+        _sweep_stale_qr_sessions(["smith", "scout", "warden", "scribe", "main", "steward", "arbiter"])
 
     # Re-parse after recovery so newly-reopened tasks enter the eligible set.
     text = TASK_QUEUE.read_text()
@@ -1057,10 +1057,10 @@ def run(dry_run=False, dry_run_limit=1):
             infra_fail_reason = detect_infra_fail(output)
             review = None
             if not infra_fail_reason and agent in SHIELD_REVIEW_AGENTS:
-                print(f"[queue-runner] Running shield review for '{title}'...")
+                print(f"[queue-runner] Running warden review for '{title}'...")
                 review = shield_review(task, output)
                 if review:
-                    print(f"[queue-runner] Shield review complete.")
+                    print(f"[queue-runner] Warden review complete.")
                     _tid = task.get("_discord_thread_id")
                     if _tid:
                         try:
@@ -1073,26 +1073,26 @@ def run(dry_run=False, dry_run_limit=1):
                             _sh.post_to_thread(
                                 _tid,
                                 review[:600] + ("…" if len(review) > 600 else ""),
-                                persona="shield",
+                                persona="warden",
                             )
                         except Exception:
                             pass
 
-            # Curator quality gate — retry up to CURATOR_MAX_RETRIES on "iterate"
+            # Arbiter quality gate — retry up to CURATOR_MAX_RETRIES on "iterate"
             curator_verdict = None
             if not infra_fail_reason and agent in CURATOR_AGENTS:
                 for attempt in range(CURATOR_MAX_RETRIES + 1):
-                    print(f"[queue-runner] Curator check (attempt {attempt + 1}) for '{title}'...")
+                    print(f"[queue-runner] Arbiter check (attempt {attempt + 1}) for '{title}'...")
                     curator_verdict = curator_check(task, output, shield_review_text=review)
 
                     if curator_verdict is None:
-                        print(f"[queue-runner] Curator unavailable — skipping gate.")
+                        print(f"[queue-runner] Arbiter unavailable — skipping gate.")
                         break
 
                     verdict = curator_verdict.get("verdict", "approve")
                     confidence = curator_verdict.get("confidence", 1.0)
                     print(
-                        f"[queue-runner] Curator verdict: {verdict} (confidence={confidence:.2f})"
+                        f"[queue-runner] Arbiter verdict: {verdict} (confidence={confidence:.2f})"
                     )
                     _tid = task.get("_discord_thread_id")
                     if _tid:
@@ -1107,7 +1107,7 @@ def run(dry_run=False, dry_run_limit=1):
                             _cur_text = f"Verdict: **{verdict}** ({confidence:.2f})"
                             if _issues:
                                 _cur_text += "\n" + "\n".join(f"• {i}" for i in _issues[:5])
-                            _cur.post_to_thread(_tid, _cur_text, persona="curator")
+                            _cur.post_to_thread(_tid, _cur_text, persona="arbiter")
                         except Exception:
                             pass
 
@@ -1138,7 +1138,7 @@ def run(dry_run=False, dry_run_limit=1):
                         )
                         break
 
-                    # iterate — re-dispatch with curator's fix instructions
+                    # iterate — re-dispatch with arbiter's fix instructions
                     iterate_msg = curator_verdict.get("iterate_prompt", "Fix the issues identified.")
                     retry_failures = max(_local_failure_count(task), attempt + 1)
                     print(f"[queue-runner] Re-dispatching '{title}' with fix (local_failures={retry_failures}): {iterate_msg[:80]}...")
@@ -1158,9 +1158,9 @@ def run(dry_run=False, dry_run_limit=1):
             if infra_fail_reason:
                 out_path, final_status = save_output(task, output, infra_fail_reason=infra_fail_reason)
             else:
-                out_path, final_status = save_output(task, output, shield=review, curator=curator_verdict)
+                out_path, final_status = save_output(task, output, warden=review, arbiter=curator_verdict)
 
-            # Post-dispatch verify gate — if curator approved, confirm the task's done-when
+            # Post-dispatch verify gate — if arbiter approved, confirm the task's done-when
             # criterion is actually satisfied before marking ready-to-apply
             if final_status == "ready-to-apply":
                 try:
@@ -1193,11 +1193,11 @@ def run(dry_run=False, dry_run_limit=1):
             rel = out_path.relative_to(REPO)
             notes = []
             if review:
-                notes.append("shield reviewed")
+                notes.append("warden reviewed")
             if curator_verdict:
                 v = curator_verdict.get("verdict", "unknown")
                 c = curator_verdict.get("confidence", 0.0)
-                notes.append(f"curator={v} ({c:.2f})")
+                notes.append(f"arbiter={v} ({c:.2f})")
             note_str = " (" + ", ".join(notes) + ")" if notes else ""
             if infra_fail_reason:
                 task_note = f"Infra failure on {today}: {infra_fail_reason} — output at {rel}"

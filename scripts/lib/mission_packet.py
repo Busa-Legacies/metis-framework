@@ -15,7 +15,7 @@ from typing import Any
 
 
 ROLE_CONTRACTS: dict[str, dict[str, Any]] = {
-    "forge": {
+    "smith": {
         "purpose": "draft code, configs, tests, or docs as text for an applier",
         "allowed_behavior": [
             "Return proposed file content or patch text only.",
@@ -39,7 +39,7 @@ ROLE_CONTRACTS: dict[str, dict[str, Any]] = {
         "default_risk": "low",
         "proposal_only": True,
     },
-    "shield": {
+    "warden": {
         "purpose": "review code, QA changes, and identify risks",
         "allowed_behavior": [
             "Return findings first, with file/line references when available.",
@@ -51,7 +51,7 @@ ROLE_CONTRACTS: dict[str, dict[str, Any]] = {
         "default_risk": "low",
         "proposal_only": True,
     },
-    "echo": {
+    "scribe": {
         "purpose": "compose exact artifact prose for logs, memory, or handoff text",
         "allowed_behavior": [
             "Output only the requested artifact body.",
@@ -62,7 +62,7 @@ ROLE_CONTRACTS: dict[str, dict[str, Any]] = {
         "default_risk": "medium",
         "proposal_only": False,
     },
-    "hermes": {
+    "steward": {
         "purpose": "decompose broad work into ordered queue-ready tasks",
         "allowed_behavior": [
             "Return bounded tasks with dependencies and verification expectations.",
@@ -73,7 +73,7 @@ ROLE_CONTRACTS: dict[str, dict[str, Any]] = {
         "default_risk": "medium",
         "proposal_only": True,
     },
-    "curator": {
+    "arbiter": {
         "purpose": "quality gate an artifact with approve / iterate / reject",
         "allowed_behavior": [
             "Return a verdict and concise justification.",

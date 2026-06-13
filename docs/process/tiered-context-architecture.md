@@ -208,7 +208,7 @@ pack; each provider implements the three jobs — *progressive disclosure*, *JIT
 | **Kernel (Tier 0)** | `ClaudeCode/CLAUDE.md` (auto-loaded) | `codex/instructions.md` + AGENTS.md kernel (auto-loaded) | `bootstrap.md` per lane |
 | **Activity packs (Tier 1)** | skills (`.claude/skills/`) + path-scoped `.claude/rules/` | `.codex/prompts/` adapters + pointer-pattern doc reads | dispatch injects the pack into the lane prompt per task |
 | **JIT session context (Tier 2)** | `context: fork` skills + dynamic `` !`cmd` `` injection | prompt adapters run the same neutral scripts on demand | task payload only (no standing context) |
-| **Enforcement** | PreToolUse / Stop hooks (`hook-signoff-gate.sh`, file-guard) — hard block | `~/.codex/hooks.json` (hash-trusted) + self-enforced sign-off | curator/shield review gate on lane output |
+| **Enforcement** | PreToolUse / Stop hooks (`hook-signoff-gate.sh`, file-guard) — hard block | `~/.codex/hooks.json` (hash-trusted) + self-enforced sign-off | arbiter/warden review gate on lane output |
 
 Design rules that keep the providers in parity:
 - **One canonical doc per protocol.** Adapters point at it; they never re-inline it. (Today doctrine +

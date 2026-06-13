@@ -7,7 +7,7 @@ let the caller land it to main. Nothing touches the live tree until it's proven.
 
 Safety properties this module guarantees:
   - Lane output is applied in a throwaway worktree, never the live checkout.
-  - The doneWhen CHECK comes from the human-authored task, NOT the lane — forge
+  - The doneWhen CHECK comes from the human-authored task, NOT the lane — smith
     produces the code, it cannot choose its own grade.
   - Paths are sandboxed to the worktree (no abs paths, no `..` traversal).
   - A red or unrun check never produces a landable commit.
@@ -173,7 +173,7 @@ def commit_worktree(worktree: Path, message: str) -> str:
 def apply_and_verify(repo, base_ref, taskid, artifact_text, done_when, worktree_root):
     """Orchestrate parse → worktree → apply → run check → commit-in-worktree.
 
-    Does NOT land to main — the caller runs curator on the evidence first, then
+    Does NOT land to main — the caller runs arbiter on the evidence first, then
     lands on approve (commit_sha) or discards (remove_worktree). Returns an
     ApplyResult capturing every stage so the caller and tests can assert on it.
     """
@@ -207,7 +207,7 @@ def apply_and_verify(repo, base_ref, taskid, artifact_text, done_when, worktree_
         # caller could mistakenly land. Leave the worktree for inspection/cleanup.
         if not res.check_passed:
             return res
-    # acceptance-only (no runnable check): curator judges; commit so it's landable.
+    # acceptance-only (no runnable check): arbiter judges; commit so it's landable.
 
     try:
         res.commit_sha = commit_worktree(dest, f"{taskid}: queue-runner-v2 applied lane output")
@@ -222,7 +222,7 @@ def land_to_main(repo, commit_sha, message, git_lock=None, push=True):
     the live main checkout (no-ff so the task lands as one identifiable merge),
     under git-lock if provided. Returns the merge commit SHA.
 
-    NOTE: caller must have already confirmed check_passed AND curator approve.
+    NOTE: caller must have already confirmed check_passed AND arbiter approve.
     This function does not re-check — it is the trusted landing primitive.
     """
     repo = Path(repo)

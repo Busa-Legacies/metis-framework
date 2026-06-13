@@ -116,7 +116,7 @@ this session's hard-won rules:
 3. **Renew before the lease expires** (`agent-work.py renew ... --fence-token N`) for
    multi-hour work; default lease is 4h.
 4. **Route generation to Jay's lanes when it qualifies** (see `~/.claude/CLAUDE.md`
-   routing): scout for research-first, forge for code/draft, shield for review.
+   routing): scout for research-first, smith for code/draft, warden for review.
    Apply their output inline. Keep runtime/git/security work inline.
 5. **Verify is a phase, not an afterthought.** Before claiming done, actually run the
    `verificationMethod`. Capture concrete `evidence_refs` (command output, commit sha,
@@ -149,7 +149,7 @@ evidence is recorded. Then, in order:
    archaeology.
 
 Closing a *session* (not a task) is the heavier `/end` ceremony — that adds rename,
-Echo daily-log, self-review, full reflection, and the task-queue sweep on top of the
+Scribe daily-log, self-review, full reflection, and the task-queue sweep on top of the
 above. `/checkpoint` accumulates; `/end` synthesizes + terminates.
 
 ## Phase 5 — Choose the next task

@@ -70,7 +70,7 @@ source "$metrics_file"
 # API returns fractional percentages like 14.0000002) would make every bash
 # `[ -ge ]` test error under 2>/dev/null and silently no-op — disabling the whole
 # limiter (the #125 root bug). Truncate any decimal; non-numeric becomes 0.
-_int() { local v="${1%%.*}"; case "$v" in ''|*[!0-9]*) echo 0;; *) echo "$v";; esac; }
+_int() { local v="${1%%.*}"; case "$v" in ''|*[!0-9]*) scribe 0;; *) echo "$v";; esac; }
 r5=$(_int "${RATE_5H_PCT:-0}")
 r7=$(_int "${RATE_7D_PCT:-0}")
 cpct=$(_int "${CTX_PCT:-0}")
@@ -112,7 +112,7 @@ _bypassed=0
 if [ "$r7" -ge 95 ] && [ "$_bypassed" -eq 0 ] && ! _resets_soon "${RATE_7D_RESETS:-}"; then
   block_reason="Weekly (7-day) rate limit is at ${r7}% — pausing to protect the cap, which recovers only on the weekly reset (no local substitute). Override: touch /tmp/claude-rate-bypass (remove it when done)."
 elif [ "$r7" -ge 80 ]; then
-  rate_msg="WEEKLY RATE LIMIT: 7-day window at ${r7}% — the scarce cap. Be maximally economical with Claude-API calls: route ALL generation, research, review, and drafting to Jay's Ollama lanes (forge/scout/shield/echo) and apply output inline. Reserve Claude for orchestration, git, and applying lane output."
+  rate_msg="WEEKLY RATE LIMIT: 7-day window at ${r7}% — the scarce cap. Be maximally economical with Claude-API calls: route ALL generation, research, review, and drafting to Jay's Ollama lanes (smith/scout/warden/echo) and apply output inline. Reserve Claude for orchestration, git, and applying lane output."
   additional_ctx="${additional_ctx:+${additional_ctx} }${rate_msg}"
 fi
 
@@ -125,11 +125,11 @@ _prev_rl_state=""
 [ -f "$_rl_state_file" ] && _prev_rl_state=$(cat "$_rl_state_file" 2>/dev/null)
 
 if [ "$r5" -ge 85 ]; then
-  rate_msg="RATE LIMIT FALLBACK: 5-hour window at ${r5}% (it recovers continuously). Switch to local-model fallback NOW: route code generation, research, review, and drafting to Jay's Ollama lanes (forge/scout/shield/echo) and apply output inline. Reserve Claude-API for orchestration, git, and applying lane output. Be concise; avoid unnecessary tool calls."
+  rate_msg="RATE LIMIT FALLBACK: 5-hour window at ${r5}% (it recovers continuously). Switch to local-model fallback NOW: route code generation, research, review, and drafting to Jay's Ollama lanes (smith/scout/warden/echo) and apply output inline. Reserve Claude-API for orchestration, git, and applying lane output. Be concise; avoid unnecessary tool calls."
   additional_ctx="${additional_ctx:+${additional_ctx} }${rate_msg}"
   printf 'HIGH\n' > "$_rl_state_file"
 elif [ "$r5" -ge 70 ]; then
-  rate_msg="RATE LIMIT NOTICE: 5-hour window at ${r5}%. Be concise and efficient; avoid unnecessary tool calls. Prefer routing generation to Jay's Ollama lanes (forge/scout/shield)."
+  rate_msg="RATE LIMIT NOTICE: 5-hour window at ${r5}%. Be concise and efficient; avoid unnecessary tool calls. Prefer routing generation to Jay's Ollama lanes (smith/scout/warden)."
   additional_ctx="${additional_ctx:+${additional_ctx} }${rate_msg}"
   printf 'HIGH\n' > "$_rl_state_file"
 else

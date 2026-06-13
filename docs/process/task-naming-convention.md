@@ -25,7 +25,7 @@ Optional additions: `**Next action:**`, `**Blocked by:** #NNN`, `**Done when:**`
 ### OPEN_TASKS.md (board view) entries
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:forge @machine:antfox
+- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:antfox
 ```
 
 Type and area tags optional in board view; include `@type:T @area:A` when useful for filtering.
@@ -42,7 +42,7 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 | `project` | kebab-case slug | Project this belongs to. See [projects.md](projects.md). |
 | `priority` | `P1` `P2` `P3` | P1 = blocking · P2 = important · P3 = nice-to-have |
 | `effort` | `XS` `S` `M` `L` `XL` | XS <30min · S <2hr · M half-day · L 1-2d · XL 3+d |
-| `agent` | `claude` `forge` `scout` `shield` `echo` `hermes` | Who executes |
+| `agent` | `claude` `smith` `scout` `warden` `echo` `steward` | Who executes |
 | `machine` | `antfox` `jarry` `either` | Where it runs |
 | `status` | `open` `in-progress` `blocked` `done` `cancelled` `needs-review` `monitoring` `partially-fixed` | Current state |
 | `blocked-by` | `#NNN` | Optional. Dependency link. |
@@ -50,8 +50,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 ## ID Counter
 
-**Last assigned: #345**
-**Next available: #346**
+**Last assigned: #353**
+**Next available: #354**
 
 These two lines are a **human-readable mirror** — the canonical, race-safe counter lives in
 `docs/process/state/task-counter.json` and is allocated atomically by

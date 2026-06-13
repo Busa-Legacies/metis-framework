@@ -17,7 +17,7 @@
 <the path you'll take, and the 1-2 alternatives you rejected and why — grounded in scout research>
 
 ## Steps (ordered)
-1. <step> → <lane/owner: forge/scout/shield/claude>
+1. <step> → <lane/owner: smith/scout/warden/claude>
 2. ...
 
 ## Files touched

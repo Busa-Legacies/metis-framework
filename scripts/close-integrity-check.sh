@@ -283,6 +283,19 @@ else
   check "context-budget" "${over:-over budget — run scripts/context-budget-check.py}"
 fi
 
+# 12. End-durability gate (#311) — refuse a close that banked work only via [auto-sync].
+#     Catches the #219 signature: tracked source/governance files moved this session
+#     but no intentional commit captured the intent (auto-sync swept them into a
+#     snapshot the roll-up filters out). SKIPs cleanly when no baseline / diverged.
+durability_out=$(python3 "$REPO/scripts/durability-check.py" --repo "$REPO" --quiet 2>&1) || durability_fail=1
+durability_fail=${durability_fail:-0}
+if [ "$durability_fail" -eq 0 ]; then
+  check "end-durability (intentional commit banked this session's work)" "ok"
+else
+  files=$(printf '%s\n' "$durability_out" | grep -E '^[[:space:]]+•' | sed 's/^[[:space:]]*•[[:space:]]*//' | tr '\n' ' ')
+  check "end-durability" "un-banked work landed only via auto-sync: ${files:-see durability-check.py}"
+fi
+
 echo ""
 echo "  $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

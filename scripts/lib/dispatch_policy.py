@@ -87,14 +87,14 @@ def infer_work_type(role: str, message: str, hint: str = "auto") -> str:
     message = _strip_reference_blocks(message)
     if SECURITY_TERMS.search(message):
         return "security"
-    if role == "forge" or IMPLEMENTATION_TERMS.search(message):
+    if role == "smith" or IMPLEMENTATION_TERMS.search(message):
         return "implementation"
-    if role in {"shield", "curator"} or REVIEW_TERMS.search(message):
-        return "review" if role == "shield" else "quality"
-    if role == "hermes":
+    if role in {"warden", "arbiter"} or REVIEW_TERMS.search(message):
+        return "review" if role == "warden" else "quality"
+    if role == "steward":
         return "decomposition"
-    if SUMMARY_TERMS.search(message) or role in {"scout", "echo"}:
-        return "summary" if role == "echo" else "research"
+    if SUMMARY_TERMS.search(message) or role in {"scout", "scribe"}:
+        return "summary" if role == "scribe" else "research"
     return "planning" if role == "main" else "research"
 
 
@@ -169,10 +169,10 @@ def resolve_default_engine(
         )
 
     if rk == "critical":
-        # Approval gates EXECUTION. A read-only route (shield/curator reviewing
+        # Approval gates EXECUTION. A read-only route (warden/arbiter reviewing
         # trading code) can't act on what it reads — keyword-inferred risk from
         # reviewed content must not block the quality gates themselves (the
-        # 2026-06-11 incident: every shield/curator pass REFUSED, gates skipped).
+        # 2026-06-11 incident: every warden/arbiter pass REFUSED, gates skipped).
         return DispatchPolicyDecision(
             engine=DEEP_CODEX_ENGINE,
             work_type=wt,
@@ -213,16 +213,16 @@ def resolve_default_engine(
         )
 
     if wt in REVIEW_WORK:
-        # shield review prefers Sonnet's judgment; under the no-Claude ceiling it
+        # warden review prefers Sonnet's judgment; under the no-Claude ceiling it
         # drops to standard Codex (5.4) — still stronger than a local draft.
         shield_engine = SONNET_ENGINE if claude_ok else STANDARD_CODEX_ENGINE
         return DispatchPolicyDecision(
-            engine=shield_engine if role == "shield" else MINI_CODEX_ENGINE,
+            engine=shield_engine if role == "warden" else MINI_CODEX_ENGINE,
             work_type=wt,
             risk=rk,
             mutation=mut,
             reason="review/quality route uses stronger judgment than local draft"
-            + ("" if claude_ok or role != "shield" else " (no-Claude ceiling → Codex)"),
+            + ("" if claude_ok or role != "warden" else " (no-Claude ceiling → Codex)"),
             requires_approval=False,
             proposal_only=True,
         )

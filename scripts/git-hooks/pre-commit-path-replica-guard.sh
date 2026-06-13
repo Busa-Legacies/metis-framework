@@ -4,7 +4,7 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# Echo (and occasionally other lanes) wrote output files using absolute paths
+# Scribe (and occasionally other lanes) wrote output files using absolute paths
 # (~session 7: created files under $HOME/Ant-openclaw-framework/ inside the
 # repo tree, producing paths like
 #   projects/dashboard$HOME/Ant-openclaw-framework/Jay/memory/2026-xx.md).

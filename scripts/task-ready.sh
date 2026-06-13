@@ -154,7 +154,7 @@ case "$SECTION" in
     fi
     ;;
   "OpenClaw Infrastructure"|Automation)
-    if echo "$LABEL_LOWER" | grep -q "lane\|forge\|scout\|shield\|echo\|jlane\|ollama"; then
+    if echo "$LABEL_LOWER" | grep -q "lane\|smith\|scout\|warden\|echo\|jlane\|ollama"; then
       if curl -sf http://localhost:11434/api/tags >/dev/null 2>&1; then
         echo "  ✓ Ollama is up (port 11434)"
       else

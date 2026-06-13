@@ -17,7 +17,10 @@ PROJECTS_PATH = ROOT / "docs/process/state/projects.json"
 
 # Board-projection enums (#100). area is validated against task-areas.json (one
 # source of truth, shared with render-tier1-state.py); agent/machine are fixed.
-VALID_AGENTS = {"forge", "scout", "shield", "echo", "claude", "codex", "hermes", "curator"}
+VALID_AGENTS = {"smith", "scout", "warden", "scribe", "claude", "codex", "steward", "arbiter",
+                # legacy lane names (pre-2026-06-13 Guild rename) — accepted so historical
+                # tasks still transition; new work uses the names above.
+                "forge", "shield", "echo", "hermes", "curator"}
 VALID_MACHINES = {"antfox", "jarry", "either"}
 BOARD_FIELDS = ("area", "agent", "machine")
 
@@ -77,12 +80,14 @@ TASK_MUTABLE_FIELDS = {
     "recommendation",
     "decisionContext",
     "decision",  # resolved outcome: the chosen decisionOptions.key (writeback sets it)
+    "createdAt",   # #285: set once at create (or backfilled); flow-instrumentation
+    "completedAt",  # #285: set on the transition into done; flow-instrumentation
 }
 
 # queue-runner-v2 hybrid doneWhen contract (docs/process/queue-runner-v2-design.md).
-# Optional today; the v2 runner executes/judges it so curator-approve == done
+# Optional today; the v2 runner executes/judges it so arbiter-approve == done
 # honestly. type=check -> runnable command (exit 0 = pass); acceptance -> explicit
-# criteria curator judges; both -> run the check AND confirm the criteria.
+# criteria arbiter judges; both -> run the check AND confirm the criteria.
 VALID_DONEWHEN_TYPES = {"check", "acceptance", "both"}
 
 # WHO originated the task: ant=Ant directly asked; agent=agent proposed autonomously;
@@ -151,7 +156,7 @@ def restamp_lease_on_transition(task_id, old_state, new_state, checkouts_path=No
     the owning live lease's lastRenewedAt so stale-lease logic (reconcile I5 grace)
     never requeues actively-progressing work. Fires only on a real transition, and
     records liveness via lastRenewedAt ONLY — it never rewrites the lease's state
-    backwards (the bug in the first forge attempt). Best-effort under an flock: a
+    backwards (the bug in the first smith attempt). Best-effort under an flock: a
     missing or locked checkouts file must never block the governed task write that
     already landed. Does not extend leaseExpiresAt — the lease's live/stale status
     for I1/I2 is unchanged; only the I5 crash-recovery grace consumes lastRenewedAt."""
@@ -260,7 +265,7 @@ def validate_decision(task_id: str, task: dict):
 
 def validate_done_when(task_id: str, task: dict):
     """Validate the optional structured doneWhen (queue-runner-v2). When present it
-    must be USABLE — the v2 runner executes the check or curator judges the
+    must be USABLE — the v2 runner executes the check or arbiter judges the
     criteria, so a malformed contract would silently break the apply+verify loop.
       {"type": "check"|"acceptance"|"both",
        "check": "<shell command, exit 0 = pass>",   # required for check/both
@@ -426,6 +431,10 @@ def create_task(args):
     task["updatedAt"] = now_iso()
     task["updatedBy"] = args.actor
     task["revision"] = 1
+    # #285: createdAt is set once, at birth. A --backfill import (or an explicit
+    # patch carrying createdAt) preserves the historical value; a fresh create
+    # stamps it equal to updatedAt. It is never bumped again (see update_task).
+    task["createdAt"] = task.get("createdAt") or task["updatedAt"]
 
     backfill = getattr(args, "backfill", False)
     validate_task_shape(task_id, task, require_rich=not backfill)
@@ -464,6 +473,13 @@ def update_task(args):
     new_task["updatedAt"] = now_iso()
     new_task["updatedBy"] = args.actor
     new_task["revision"] = task.get("revision", 0) + 1
+    # #285: createdAt is immutable once born — preserve the original even if a
+    # patch tried to carry one. completedAt stamps the FIRST entry into done so
+    # cycle-time (completedAt - createdAt) is computable.
+    if task.get("createdAt"):
+        new_task["createdAt"] = task["createdAt"]
+    if new_task.get("state") == "done" and task.get("state") != "done" and not new_task.get("completedAt"):
+        new_task["completedAt"] = new_task["updatedAt"]
     validate_task_shape(args.task_id, new_task)
     validate_board_fields(args.task_id, new_task, require_present=False)
     validate_done_gate(args.task_id, task.get("state"), new_task)
@@ -547,6 +563,15 @@ def correct_state(args):
     new_task["updatedAt"] = correction["at"]
     new_task["updatedBy"] = args.actor
     new_task["revision"] = task.get("revision", 0) + 1
+    # #285: keep completedAt honest across a correction — stamp it when a
+    # correction lands a task in done (e.g. retroactive close), and clear a stale
+    # one if a correction pulls a task back out of done.
+    if task.get("createdAt"):
+        new_task["createdAt"] = task["createdAt"]
+    if args.to_state == "done":
+        new_task.setdefault("completedAt", correction["at"])
+    elif old_state == "done":
+        new_task.pop("completedAt", None)
     # shape always applies; done-gate too unless this is an audited retroactive close
     validate_task_shape(args.task_id, new_task)
     if not retroactive:

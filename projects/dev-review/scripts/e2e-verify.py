@@ -305,7 +305,7 @@ def main() -> int:
         # → preview reloads → verify pass with trigger='auto'.
         pg.evaluate("() => window.__reviewStore.getState().setAwaitingAgent(true)")
         time.sleep(3.5)  # let the watcher arm with a byte baseline first
-        rest("POST", f"{PTY}/agents/{agent['id']}/input", {"text": "echo round-trip-ping\n"})
+        rest("POST", f"{PTY}/agents/{agent['id']}/input", {"text": "scribe round-trip-ping\n"})
         fired = False
         for _ in range(30):  # up to ~30s for quiet-detection + reload + verify
             time.sleep(1.0)

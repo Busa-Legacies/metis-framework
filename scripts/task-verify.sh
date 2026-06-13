@@ -44,7 +44,7 @@ fi
 # mis-map a task (e.g. branch-divergence-session-warn → "Trading Bot").
 #
 # doneWhen.type ∈ {check, both}  → run doneWhen.check (a shell command, exit 0 = pass)
-# doneWhen.type == acceptance     → criteria are curator-judged, not shell-checkable → exit 2
+# doneWhen.type == acceptance     → criteria are arbiter-judged, not shell-checkable → exit 2
 TASKS_JSON="$REPO/docs/process/state/tasks.json"
 if [[ -f "$TASKS_JSON" ]]; then
   DONEWHEN_CHECK=$(python3 - "$TASKS_JSON" "$TASK" <<'PYEOF'
@@ -95,7 +95,7 @@ PYEOF
       exit 1
     fi
   elif [[ "$DONEWHEN_CHECK" == "ACCEPTANCE" ]]; then
-    echo "verify: task has acceptance-only doneWhen (criteria are curator-judged)"
+    echo "verify: task has acceptance-only doneWhen (criteria are arbiter-judged)"
     echo "  No shell check to run; confirm criteria manually, then re-run with VERIFY_SKIP=1."
     exit 2
   fi
@@ -219,7 +219,7 @@ case "$SECTION" in
   "OpenClaw Infrastructure")
     if echo "$LABEL_LOWER" | grep -q "close\|integrity\|end-protocol\|checkpoint\|session"; then
       heuristic_run "close integrity check" bash "$REPO/scripts/close-integrity-check.sh"
-    elif echo "$LABEL_LOWER" | grep -q "lane\|jlane\|forge\|scout\|shield\|echo"; then
+    elif echo "$LABEL_LOWER" | grep -q "lane\|jlane\|smith\|scout\|warden\|echo"; then
       heuristic_run "lane health check" bash -c "cd '$REPO' && scripts/lane-health 2>&1 | tail -5"
     elif echo "$LABEL_LOWER" | grep -q "sync\|git-lock\|guard"; then
       heuristic_run "git-sync guard tests" zsh "$REPO/scripts/test-git-sync-guards.sh"

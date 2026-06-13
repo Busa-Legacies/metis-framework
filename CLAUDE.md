@@ -53,12 +53,12 @@ them. The canonical roles:
 
 | Role | Use for |
 |---|---|
-| forge | code generation, drafts, config, boilerplate, tests, docs |
+| smith | code generation, drafts, config, boilerplate, tests, docs |
 | scout | research, doc reading, summarization, spec drafting, pattern search |
-| shield | code review, QA, security audit, pre-commit check |
-| echo | memory writes, working-context updates, daily logs |
-| hermes | task decomposition → queue-ready sub-tasks |
-| curator | automated quality gate (approve/iterate/reject) |
+| warden | code review, QA, security audit, pre-commit check |
+| scribe | memory writes, working-context updates, daily logs |
+| steward | task decomposition → queue-ready sub-tasks |
+| arbiter | automated quality gate (approve/iterate/reject) |
 
 A task = **role** × **engine** (which model, at what cost/latency). Pick the
 cheapest engine that will succeed; escalate only when correctness justifies cost.

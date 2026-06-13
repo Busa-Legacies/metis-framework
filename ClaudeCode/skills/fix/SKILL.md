@@ -52,7 +52,7 @@ Apply the test: *"would this bite a future session?"* Route by reusability:
 |---|---|
 | Reusable technical gotcha | `ClaudeCode/memory/feedback_*.md` + MEMORY.md index line |
 | Design-level decision | a Decision Record (`docs/process/decisions/`) |
-| One-off but real | the commit message / Echo daily log |
+| One-off but real | the commit message / Scribe daily log |
 | Trivial typo fixed instantly | nothing |
 
 **Why in the moment:** a bug fixed before commit leaves NO git trace — the close roll-up structurally cannot surface it. Only you, now, can record it.

@@ -267,7 +267,7 @@ def main():
     p_res.add_argument("id")
     p_res.add_argument("--chosen", required=True)
     p_res.add_argument("--rationale", required=True)
-    p_res.add_argument("--by", choices=["claude", "ant", "forge", "scout", "main"], default="claude")
+    p_res.add_argument("--by", choices=["claude", "ant", "smith", "scout", "main"], default="claude")
 
     p_skip = sub.add_parser("skip", help="Skip a decision")
     p_skip.add_argument("id")

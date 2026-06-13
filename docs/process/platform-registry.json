@@ -76,7 +76,7 @@
             "id": "openclaw-lanes",
             "roles": ["executor", "engine"],
             "status": "live",
-            "agentName": ["forge", "scout", "shield", "echo", "main", "curator", "hermes"],
+            "agentName": ["smith", "scout", "warden", "scribe", "main", "arbiter", "steward"],
             "entrypoint": "ClaudeCode/CLAUDE.md",
             "neutralEntrypoint": "AGENTS.md",
             "commandSurface": null,

@@ -108,7 +108,7 @@ Surfaces judgment cards Ant directed from his phone that need an agent this sess
 Include any surfaced cards in the briefing as a **Control Center** section and treat them as high-priority pickups. Soft-fail: if the sweep errors (Notion down, token/share issue → `restricted_resource`/`object_not_found`), note "Control Center unreachable" and continue — never block session start. Reading per-card comments is the #219 feedback loop (gated on the comment-capability toggle).
 
 ## Step 6 — Dispatched/pending agent work
-Scan `## Open threads` for items marked `[Scout/Forge dispatched]` or `awaiting`. Note any with results ready to review and apply.
+Scan `## Open threads` for items marked `[Scout/Smith dispatched]` or `awaiting`. Note any with results ready to review and apply.
 
 ## Step 7 — Present the session briefing
 See `briefing-format.md` in this skill directory for the exact output template.

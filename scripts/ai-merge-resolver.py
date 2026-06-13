@@ -133,7 +133,7 @@ def dispatch(repo: Path, agent: str, engine: str | None, message: str) -> str | 
         cmd += ["--engine", engine]
     # Both calls are read-only from dispatch's view — the model returns text; the
     # resolver does any file-writing itself, under its own gates. Declaring this
-    # lets a read-only high-risk review lane (shield) auto-proceed without an
+    # lets a read-only high-risk review lane (warden) auto-proceed without an
     # interactive --approve-risk prompt the unattended daemon can't answer.
     cmd += ["--mutation", "read-only"]
     try:
@@ -191,7 +191,7 @@ Return ONLY the complete resolved file, with all markers removed, wrapped EXACTL
 FILE:
 {original}"""
     for engine in ("sonnet-standard", None, "qwen-shallow"):  # strong → policy → free
-        out = dispatch(repo, "forge", engine, prompt)
+        out = dispatch(repo, "smith", engine, prompt)
         if not out:
             continue
         resolved = extract(out)
@@ -225,10 +225,10 @@ Did the resolution preserve BOTH sides' intent, drop no logic, and introduce no 
 or syntax error? Be skeptical. As the VERY LAST line of your reply, output exactly
 one machine token: `VERDICT=APPROVE` or `VERDICT=REJECT` (REJECT if unsure)."""
     for engine in ("sonnet-standard", None):
-        out = dispatch(repo, "shield", engine, prompt)
+        out = dispatch(repo, "warden", engine, prompt)
         if not out:
             continue
-        # Search the whole reply for the explicit token (the shield lane wraps its
+        # Search the whole reply for the explicit token (the warden lane wraps its
         # output in a sign-off block, so the verdict isn't positional). Take the
         # LAST token; absence ⇒ reject (fail-safe).
         tokens = re.findall(r"VERDICT\s*=\s*(APPROVE|REJECT)", out, re.I)

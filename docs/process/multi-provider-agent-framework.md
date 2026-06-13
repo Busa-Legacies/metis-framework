@@ -71,7 +71,7 @@ be a driver, an executor, or both.
 | Role | Meaning | Examples |
 |---|---|---|
 | `driver` | Runs interactive/agentic sessions: claims work, edits, commits, closes | Claude Code, Codex CLI |
-| `executor` | Receives dispatched sub-tasks, returns output; does not own session lifecycle | OpenClaw lanes (forge/scout/shield/echo/curator/hermes) |
+| `executor` | Receives dispatched sub-tasks, returns output; does not own session lifecycle | OpenClaw lanes (smith/scout/warden/echo/arbiter/steward) |
 | `engine` | A model endpoint behind a driver/executor turn | ollama/qwen, openai/gpt-5.x, anthropic/claude-* |
 
 A platform can hold more than one role (Codex is a `driver` *and* an `engine` on the ladder).
@@ -144,7 +144,7 @@ is not Claude-private). All drivers:
 - **Write** durable, cross-session, non-obvious lessons there using the frontmatter standard in
   `ClaudeCode/CLAUDE.md` (`name`/`description`/`metadata.type`/`tags`/`updated`), and add the
   one-line index entry to `MEMORY.md`.
-- Keep raw daily logs in `Jay/memory/YYYY-MM-DD.md` (the Echo-owned narrative layer).
+- Keep raw daily logs in `Jay/memory/YYYY-MM-DD.md` (the Scribe-owned narrative layer).
 
 Adapters wire their native memory path to this dir (Codex: `~/.codex/memories` → symlink into
 `ClaudeCode/memory/`, declared in `mirror-manifest.json`). The physical rename of the dir to a

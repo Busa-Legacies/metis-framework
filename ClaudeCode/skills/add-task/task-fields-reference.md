@@ -14,7 +14,7 @@ To add this task I need a few details:
 4. **How** — approach direction + what NOT to do / what was already tried
 5. **Priority**: P1 / P2 / P3
 6. **Owner machine**: antfox / jarry / either → governed `owner`
-7. **Agent lane** (board only): forge / scout / shield / echo / claude
+7. **Agent lane** (board only): smith / scout / warden / echo / claude
 8. **Main files** — key files this touches (optional if unknown) → governed `mainFiles`
 9. **First step** (optional) — the single concrete starting action from THIS session; one line, distinct from how. Record now while intent is fresh; skip if genuinely unknown.
 10. **Origin** (required) — WHO originated this task:
@@ -85,7 +85,7 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 ## Board line format (Step 5)
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:forge @machine:antfox
+- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:antfox
 ```
 
 Section target: `## <area>` header in `Jay/state/OPEN_TASKS.md`. Create the section if none fits.

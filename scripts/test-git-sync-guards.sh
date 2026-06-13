@@ -50,7 +50,12 @@ teardown() { cd /; rm -rf "$SBX"; }
 # REQUIRED: the script resolves its repo as ${METIS_HOME:-$HOME/metis-os}; without
 # it every scenario `cd`s to a nonexistent $SBX/metis-os and exits 1 (the post-rename
 # drift that silently failed all 18 functional tests until 2026-06-09).
-run_sync() { HOME="$SBX" METIS_HOME="$SBX/Ant-openclaw-framework" "$CANONICAL" >/dev/null 2>&1; echo $?; }
+# TEST_SPLIT / TEST_MACHINE let a scenario drive the #234 split-sync behavior
+# (OPENCLAW_SPLIT_LANES / OPENCLAW_SYNC_MACHINE) without exporting globally. Default
+# off (0) so every legacy scenario above runs against the kill-switch/legacy path.
+run_sync() { HOME="$SBX" METIS_HOME="$SBX/Ant-openclaw-framework" \
+  OPENCLAW_SPLIT_LANES="${TEST_SPLIT:-0}" OPENCLAW_SYNC_MACHINE="${TEST_MACHINE:-testbox}" \
+  "$CANONICAL" >/dev/null 2>&1; echo $?; }
 log_has()  { grep -q "$1" "$LOG" 2>/dev/null; }
 
 check() { # check <description> <expect: pass|fail-condition already evaluated>
@@ -225,7 +230,10 @@ git clone -q "$SBX/origin.git" "$SBX/pusher122b"
   printf 'origin-novel\n' > file1.txt; git commit -qam o122b; git push -q origin HEAD:main )
 printf 'local-novel\n' > file1.txt   # conflicts, but rerere has NEVER seen this preimage
 ec=$(run_sync)
-log_has "unresolved conflict (no rerere" && r=0 || r=1; check "novel conflict logged as unresolved (no rerere replay)" "$r"
+# Daemon now routes a novel conflict through the Tier-3 AI resolver before the soft
+# abort; when rerere has no replay AND Tier-3 declines/fails it logs "unresolved
+# conflict" (line 440). Grep the stable substring, not the retired "(no rerere" wording.
+log_has "unresolved conflict" && r=0 || r=1; check "novel conflict logged as unresolved (no rerere/Tier-3 replay)" "$r"
 [ "$ec" = "1" ] && r=0 || r=1; check "novel conflict still exits 1 (fail-soft, no regression)" "$r"
 teardown
 
@@ -337,6 +345,64 @@ printf 'export const B = 1\n' > src2.ts; git add src2.ts
 out2=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=jarry bash "$FCGUARD" 2>&1)
 printf '%s' "$out2" | grep -q "FILE-CLAIM WARNING" && r=1 || r=0
 check "T-SYNC-14 no false warning on an unclaimed file" "$r"
+teardown
+
+# ================================================================================
+# #234 split-sync: with OPENCLAW_SPLIT_LANES=1 the daemon commits ONLY state files to
+# main and snapshots SOURCE to autosync/<machine> (never main), leaving source dirty.
+# STATE = the allowlist (Jay/memory, Jay/state, ClaudeCode/memory, docs/process/state…);
+# SOURCE = everything else (root *.txt in the sandbox stands in for scripts/projects).
+echo "=== SPLIT-1 (#234): state-only change is committed to main ==="
+make_sandbox
+printf 'state edit\n' >> Jay/memory/working-context.md   # STATE path
+ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+log_has "sync complete" && r=0 || r=1; check "state-only tick completes" "$r"
+git show --stat HEAD 2>/dev/null | grep -q "Jay/memory/working-context.md" && r=0 || r=1
+check "state file landed on main HEAD" "$r"
+unset TEST_SPLIT TEST_MACHINE
+teardown
+
+echo "=== SPLIT-2 (#234): source-only change does NOT hit main, lands on autosync/<machine> ==="
+make_sandbox
+printf 'source edit\n' >> file1.txt   # SOURCE path (root file, not in allowlist)
+PRE=$(git rev-parse HEAD)
+ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+log_has "source-only tick" && r=0 || r=1; check "source-only tick logged (nothing staged for main)" "$r"
+[ "$(git rev-parse HEAD)" = "$PRE" ] && r=0 || r=1; check "main HEAD unchanged (source kept off main)" "$r"
+git rev-parse --verify refs/heads/autosync/antfox >/dev/null 2>&1 && r=0 || r=1
+check "autosync/antfox branch created" "$r"
+git show autosync/antfox:file1.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
+check "source change captured on autosync/antfox" "$r"
+git ls-remote "$SBX/origin.git" refs/heads/autosync/antfox 2>/dev/null | grep -q . && r=0 || r=1
+check "autosync/antfox pushed to origin" "$r"
+grep -q "source edit" file1.txt && r=0 || r=1; check "source left dirty in working tree (checkpointable)" "$r"
+unset TEST_SPLIT TEST_MACHINE
+teardown
+
+echo "=== SPLIT-3 (#234): mixed tick splits — state→main, source→autosync, source stays dirty ==="
+make_sandbox
+printf 'state edit\n' >> Jay/state/OPEN_TASKS.md   # STATE
+printf 'source edit\n' >> file2.txt                 # SOURCE
+ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+git show --stat HEAD 2>/dev/null | grep -q "Jay/state/OPEN_TASKS.md" && r=0 || r=1
+check "state file landed on main HEAD" "$r"
+git show --stat HEAD 2>/dev/null | grep -q "file2.txt" && r=1 || r=0
+check "source file NOT on main HEAD" "$r"
+git show autosync/antfox:file2.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
+check "source change on autosync/antfox" "$r"
+git status --porcelain 2>/dev/null | grep -q "file2.txt" && r=0 || r=1
+check "source still dirty in working tree after the split tick" "$r"
+unset TEST_SPLIT TEST_MACHINE
+teardown
+
+echo "=== SPLIT-4 (#234): kill-switch (SPLIT=0) → legacy blanket-add puts source on main ==="
+make_sandbox
+printf 'source edit\n' >> file3.txt
+ec=$(TEST_SPLIT=0 TEST_MACHINE=antfox; run_sync)
+log_has "sync complete" && r=0 || r=1; check "legacy tick completes" "$r"
+git show --stat HEAD 2>/dev/null | grep -q "file3.txt" && r=0 || r=1
+check "kill-switch keeps source on main (legacy behavior intact)" "$r"
+unset TEST_SPLIT TEST_MACHINE
 teardown
 
 echo ""

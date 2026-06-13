@@ -3,7 +3,7 @@
  *
  * The sidecar can spawn real shells, so its surface is default-deny: every
  * HTTP route and the WS upgrade require the token. Design constraints from
- * the #259 curator pass on the earlier (rejected) attempt:
+ * the #259 arbiter pass on the earlier (rejected) attempt:
  *   - no unauthenticated endpoint may return the token (the console web app
  *     serves it from ITS origin via /api/sidecar-token — the console origin
  *     is the trust boundary, documented in README known limits);

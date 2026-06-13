@@ -11,7 +11,7 @@ Steps:
 1. Commit any uncommitted work with a descriptive message.
 2. Push to GitHub.
 3. Update `working-context.md` via ops (`working-context-update.py`) — max 35 lines, forward-looking only.
-4. Roll up completed work from git history. Filter auto-sync snapshots: `git log <range> --invert-grep --grep='\[auto-sync\]' --oneline`. Run `python3 scripts/self-review.py --latest` for session friction signals. Route Echo lane to compose the daily log.
+4. Roll up completed work from git history. Filter auto-sync snapshots: `git log <range> --invert-grep --grep='\[auto-sync\]' --oneline`. Run `python3 scripts/self-review.py --latest` for session friction signals. Route Scribe lane to compose the daily log.
 5. Task dedup gate — run `python3 scripts/free-work.py` and check `task-queue.md` + `OPEN_TASKS.md` before logging any followup. Add genuinely-new entries with Priority/Agent/Machine/Status.
 6. Save durable, non-obvious decisions or Ant preferences to `ClaudeCode/memory/`.
 7. Run `bash scripts/close-integrity-check.sh` — fix any FAILs before declaring done.

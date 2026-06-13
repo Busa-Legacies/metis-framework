@@ -67,7 +67,7 @@ while you fill it in incrementally. Field-by-field:
       "user":        "alice",      // the OS username on that host ($USER)
       "tailscaleIp": "100.x.x.x",  // or "" if single-machine / no Tailscale
       "modelHost":   true,         // true on the box that runs local inference
-      "agents":      ["forge", "claude"]   // identities that work on this host
+      "agents":      ["smith", "claude"]   // identities that work on this host
     }
     // add a second {...} for a secondary machine; role "secondary",
     // modelHost false. Omit the whole array's extra entries if single-host.

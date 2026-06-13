@@ -164,7 +164,7 @@ check(raises(S.validate_board_fields, "x", {"machine": "mars"}, False),
       "board: invalid machine should be rejected")
 check(raises(S.validate_board_fields, "x", {"origin": "aliens"}, False),
       "board: invalid origin should be rejected")
-check(not raises(S.validate_board_fields, "x", {"agent": "forge", "machine": "either", "origin": "ant"}, False),
+check(not raises(S.validate_board_fields, "x", {"agent": "smith", "machine": "either", "origin": "ant"}, False),
       "board: valid agent/machine/origin should pass")
 
 # Unknown patch fields are rejected (governed write surface is closed).

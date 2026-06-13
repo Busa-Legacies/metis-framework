@@ -5,7 +5,7 @@
  * complete" is detected as: output flowed after the send, then went quiet for
  * `quietMs`. Pure state machine — the polling/React side lives in
  * `use-agent-run-watcher.ts`; this module has no DOM, no timers, no I/O.
- * (Generated via forge lane against the #258 plan spec; test 3 corrected.)
+ * (Generated via smith lane against the #258 plan spec; test 3 corrected.)
  */
 
 export type RunPhase = 'idle' | 'awaiting-output' | 'active' | 'complete' | 'gave-up'

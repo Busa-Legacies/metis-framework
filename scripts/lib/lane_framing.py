@@ -15,15 +15,15 @@ Preambles define the durable role. Mission packets define the current task.
 
 # openclaw does NOT inject each lane's bootstrap.md into the prompt (confirmed:
 # feedback_openclaw_bootstrap_injection). So a lane runs with no role framing and
-# either improvises (forge wrote code into its throwaway workspace and reported
+# either improvises (smith wrote code into its throwaway workspace and reported
 # "implemented successfully" — useless, since Claude Code holds the real tree) or
 # carries over a prior task's persona (scout returned self-review verdict/pattern
 # JSON). Fix: prepend the role to every message here. Belt-and-suspenders: the
 # return-only lanes also have their edit/write/exec/process/tmux tools denied in
 # openclaw.json, so they physically cannot mutate files — code must come back as text.
 LANE_PREAMBLES = {
-    'forge': (
-        "You are Forge, a TEXT-ONLY code-generation lane. ALL file-writing, editing, shell, exec, "
+    'smith': (
+        "You are Smith, a TEXT-ONLY code-generation lane. ALL file-writing, editing, shell, exec, "
         "and process tools are DISABLED and will fail if called — calling them wastes tokens and "
         "bloats this session until it crashes. Claude Code (not you) applies your output to the "
         "real repo. Your ONLY output channel is this text reply.\n\n"
@@ -44,21 +44,21 @@ LANE_PREAMBLES = {
         "self-review verdict/pattern JSON) — it does not apply here. Return prose unless asked "
         "for a specific format."
     ),
-    'shield': (
-        "You are Shield, a code-review/QA lane. Review only what is provided and return findings "
+    'warden': (
+        "You are Warden, a code-review/QA lane. Review only what is provided and return findings "
         "as text. Do not modify files or claim to have changed anything."
     ),
-    'echo': (
-        "You are Echo. Output ONLY the requested artifact body — no preamble, no 'I have "
+    'scribe': (
+        "You are Scribe. Output ONLY the requested artifact body — no preamble, no 'I have "
         "composed', no closing remarks. The first word of your response is the first word of "
         "the artifact."
     ),
-    'hermes': (
-        "You are Hermes, a task-decomposition lane. Break the request into an ordered, "
+    'steward': (
+        "You are Steward, a task-decomposition lane. Break the request into an ordered, "
         "queue-runner-ready sub-task list. Return the list only."
     ),
-    'curator': (
-        "You are Curator, a quality-gate lane. Return a single verdict (approve / iterate / "
+    'arbiter': (
+        "You are Arbiter, a quality-gate lane. Return a single verdict (approve / iterate / "
         "reject) with a one-line justification. No other prose."
     ),
 }

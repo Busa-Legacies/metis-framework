@@ -2,9 +2,9 @@
 """task-domain.py — Map a task label to its project domain and high-level concern.
 
 Usage:
-  python3 scripts/task-domain.py "Curator patch-vs-plan gate"
+  python3 scripts/task-domain.py "Arbiter patch-vs-plan gate"
   python3 scripts/task-domain.py "dashboard-terminal-verify"
-  python3 scripts/task-domain.py --concern "Curator patch-vs-plan gate"
+  python3 scripts/task-domain.py --concern "Arbiter patch-vs-plan gate"
 
 Default output: raw section name from OPEN_TASKS.md (e.g. "Automation")
 --concern flag: high-level bucket (e.g. "infrastructure") — use THIS for pivot comparison
@@ -36,14 +36,14 @@ CONCERN_MAP = {
 # Keyword fallback for tasks not yet in the board projection. Extend per org.
 KEYWORD_TO_SECTION = {
     "Infrastructure": [
-        "lane", "gateway", "forge", "scout", "shield", "echo", "agent", "lease",
-        "handoff", "bootstrap", "hermes", "checkout", "free-work", "fencing",
+        "lane", "gateway", "smith", "scout", "warden", "scribe", "agent", "lease",
+        "handoff", "bootstrap", "steward", "checkout", "free-work", "fencing",
         "protocol", "session-lifecycle", "close-lock", "mirror", "reconcile",
         "projection", "task-domain", "workstream", "dispatch", "queue-runner",
         "working-context", "task-system",
     ],
     "Automation": [
-        "curator", "git-sync", "auto-sync", "cron", "sync-guard", "sync-health",
+        "arbiter", "git-sync", "auto-sync", "cron", "sync-guard", "sync-health",
         "self-review", "guard", "conflict-marker", "pre-commit", "autosync",
     ],
 }

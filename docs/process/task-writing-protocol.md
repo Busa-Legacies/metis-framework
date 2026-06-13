@@ -47,7 +47,7 @@ Why/Plan/Main files are required on every task entry. There is no "trivial" esca
 
 ```markdown
 - **#NNN `verb-noun-slug`** — one-line description
-  - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|forge|scout | machine:antfox|jarry|either | status:open
+  - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|smith|scout | machine:antfox|jarry|either | status:open
   - **Why:** [What triggered this — incident, observation, friction point, date if live]
   - **Plan:** [Approach direction, constraints, what to avoid. Be specific enough that a fresh session can start without asking.]
   - **Main files:** `path/to/file.py`, `path/to/other.py`
@@ -136,7 +136,7 @@ Tasks enter the system through multiple paths. The protocol applies to ALL of th
 The standard path — the protocol is prompted inline.
 
 ### 2. Lane / queue-runner output
-When `hermes` decomposes a task or `forge` suggests follow-ups as output, those entries must still satisfy this protocol before they're written to task-queue.md. Rule: **whoever applies the lane output is responsible for adding Why/Plan before committing**. The lane won't do it — it returns bare slugs. The apply step is the enforcement gate.
+When `steward` decomposes a task or `smith` suggests follow-ups as output, those entries must still satisfy this protocol before they're written to task-queue.md. Rule: **whoever applies the lane output is responsible for adding Why/Plan before committing**. The lane won't do it — it returns bare slugs. The apply step is the enforcement gate.
 
 ### 3. GitHub issues
 Tasks created as GitHub issues (via `agent-checkout <issue>`) have their own format and bypass task-queue.md. When creating a GH issue that maps to this system:

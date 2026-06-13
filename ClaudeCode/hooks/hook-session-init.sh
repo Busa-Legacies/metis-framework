@@ -124,7 +124,7 @@ from pathlib import Path
 THRESHOLD = 20_000
 agents = Path.home() / '.openclaw' / 'agents'
 bloated = []
-for lane in ['forge', 'scout', 'shield', 'echo', 'curator']:
+for lane in ['smith', 'scout', 'warden', 'scribe', 'arbiter']:
     p = agents / lane / 'sessions' / 'sessions.json'
     if not p.exists(): continue
     try:

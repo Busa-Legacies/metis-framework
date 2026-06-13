@@ -74,6 +74,15 @@ process_range() {
         [[ "$line" == "+++"* ]] && continue
         content="${line:1}"
 
+        # --- ALLOWLIST: the secrets-guard's OWN test fixtures must contain
+        #     fabricated key patterns (the AKIA / sk-ant / ghp_ literals) to
+        #     test detection. Excluding this one file by EXACT path keeps
+        #     VALUE-pattern blocking strict everywhere else. Add new fixture
+        #     files here explicitly if ever needed — never a broad tests/ glob. ---
+        case "$current_file" in
+            tests/test_secrets_guard.py) continue ;;
+        esac
+
         # --- VALUE patterns: always block regardless of file type ---
 
         if echo "$content" | grep -qE 'sk-ant-api[0-9]+-[A-Za-z0-9_-]{20,}'; then

@@ -51,28 +51,28 @@ Thread KEY is the `[...]` label. If exit 2 (over budget without dropping a concu
 **Format contract (enforce strictly):**
 - Max 35 lines total
 - Allowed sections: `## Active focus` (1 line) · `## Open threads` (bullets) · `## Blockers` (bullets) · `## Next action` (1 line)
-- **No session narrative** — no "Session A/B/C did X". That belongs in the Echo daily log.
+- **No session narrative** — no "Session A/B/C did X". That belongs in the Scribe daily log.
 - **No completed work** — if it's done, it's gone. Only forward-looking state.
 - Deploy commands and keys are allowed inline if still pending; remove when resolved.
 
 ## Step 5 — Reflect & extract
 Three outputs:
-- **Lessons learned** → route via `docs/process/correction-protocol.md`: if the lesson should change *behavior* → delta-edit the governing skill/CLAUDE.md and make the memory entry a ≤3-line breadcrumb. Durable non-behavioral lessons → `feedback_*` memory file (step 10); session-specific → Echo summary (step 6)
+- **Lessons learned** → route via `docs/process/correction-protocol.md`: if the lesson should change *behavior* → delta-edit the governing skill/CLAUDE.md and make the memory entry a ≤3-line breadcrumb. Durable non-behavioral lessons → `feedback_*` memory file (step 10); session-specific → Scribe summary (step 6)
 - **Suggested next steps** → highest-priority one → `## Next action`; rest → `task-queue.md` entries with Why/Plan/Main files per [task-writing-protocol.md](../../docs/process/task-writing-protocol.md)
-- **New to-dos** → `task-queue.md` + (if board-worthy) `Jay/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:forge @machine:antfox`
+- **New to-dos** → `task-queue.md` + (if board-worthy) `Jay/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:antfox`
 
-Also: **backstop sweep for bugs fixed before committing** — these leave no git trace and the roll-up can't surface them. Recall by hand and route: reusable gotcha → `feedback_*`; design-level → DR; one-off → commit/Echo log; trivial → nothing.
+Also: **backstop sweep for bugs fixed before committing** — these leave no git trace and the roll-up can't surface them. Recall by hand and route: reusable gotcha → `feedback_*`; design-level → DR; one-off → commit/Scribe log; trivial → nothing.
 
 ## Step 5b — Pre-close suggestions
 Surface 2–3 concrete improvement ideas (friction points, missing automation). Present briefly and **pause** — ask Ant if any are worth acting on before continuing. If yes, handle inline; if no, log actionable ones to `task-queue.md`.
 
 ## Step 6 — Daily log
-See `daily-log-protocol.md` in this skill directory for the full Echo compose + CC write + boundary advance procedure.
+See `daily-log-protocol.md` in this skill directory for the full Scribe compose + CC write + boundary advance procedure.
 
-Short form: roll up git commits → route Echo to compose → CC writes file → run boundary advance script → assert file exists with today's date.
+Short form: roll up git commits → route Scribe to compose → CC writes file → run boundary advance script → assert file exists with today's date.
 
 ## Step 7 — Task dedup gate
-Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py` and skim `task-queue.md` + `OPEN_TASKS.md`. For each next-step from step 5, write it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing queued entry, or (c) completed per the step-6 git roll-up. Skip any match and state why. Prune completed entries from `task-queue.md`. Update `docs/process/live-status.md` if state changed. Each new entry must include: `Priority:` P1/P2/P3 · `Agent:` forge/scout/shield/echo/claude · `Machine:` antfox/jarry/either · `Status:` queued/blocked/in-progress
+Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py` and skim `task-queue.md` + `OPEN_TASKS.md`. For each next-step from step 5, write it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing queued entry, or (c) completed per the step-6 git roll-up. Skip any match and state why. Prune completed entries from `task-queue.md`. Update `docs/process/live-status.md` if state changed. Each new entry must include: `Priority:` P1/P2/P3 · `Agent:` smith/scout/warden/scribe/claude · `Machine:` antfox/jarry/either · `Status:` queued/blocked/in-progress
 
 ## Step 8 — Cross-agent handoff
 ```bash
@@ -86,7 +86,7 @@ Run `/rename <short-descriptive-name>` matching the primary work done.
 ## Step 10 — Save to Claude Code memory
 *(Skip only if nothing durable and non-obvious surfaced.)*
 
-**Ownership:** Claude Code owns `ClaudeCode/memory/` writes, inline. Echo owns only `Jay/memory/`, `working-context.md`, and daily logs — no overlap.
+**Ownership:** Claude Code owns `ClaudeCode/memory/` writes, inline. Scribe owns only `Jay/memory/`, `working-context.md`, and daily logs — no overlap.
 
 Write to `ClaudeCode/memory/` using the frontmatter standard in `~/.claude/CLAUDE.md`. Filter test: **durable + cross-session + non-obvious + not already in code/git/commit message**. Update/extend an existing file rather than creating a near-duplicate. Refresh its `MEMORY.md` line.
 

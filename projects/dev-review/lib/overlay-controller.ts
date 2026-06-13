@@ -3,7 +3,7 @@
  * SAME-ORIGIN iframe's document, operated entirely from the parent window.
  * No script injection, no postMessage: for our all-localhost review targets
  * the parent can touch contentDocument directly, which sidesteps CSP and
- * keeps one source of truth (forge draft, corrected: every DOM/style/scroll
+ * keeps one source of truth (smith draft, corrected: every DOM/style/scroll
  * call must hit the iframe's document/window, never the parent's).
  */
 
