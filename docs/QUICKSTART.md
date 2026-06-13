@@ -1,11 +1,11 @@
-# Metis Framework — QuickStart
+# Metis Framework QuickStart
 
 Stand up the Metis framework inside your org's operating repo. By the end you'll
 have the core vendored, your topology declared in one config file, and the
 governed session lifecycle running. Budget ~15 minutes.
 
-> **Mental model.** Metis Framework is the *portable spine* — protocols, skills,
-> hooks, task-governance machinery. Your repo is the *overlay* — identity,
+> **Mental model.** Metis Framework is the *portable spine*: protocols, skills,
+> hooks, task-governance machinery. Your repo is the *overlay*: identity,
 > projects, real integration IDs. Core is parameterized; the one file you fill in
 > is [`config/infrastructure.json`](../config/infrastructure.json). Nothing else
 > is hardcoded to a machine, IP, or person.
@@ -18,7 +18,7 @@ governed session lifecycle running. Budget ~15 minutes.
 - Read access to `git@github.com:Busa-Legacies/metis-framework.git`
 - *(optional, multi-machine)* **Tailscale** if you run agents across >1 host
 
-## 1 — Vendor the core via git subtree
+## 1 · Vendor the core via git subtree
 
 From the root of your operating repo:
 
@@ -28,10 +28,10 @@ git subtree add --prefix metis-core \
 ```
 
 This drops the whole framework under `metis-core/` as ordinary tracked files (no
-submodule, no extra clone). Pull updates and contribute fixes back later — see
+submodule, no extra clone). Pull updates and contribute fixes back later; see
 [§6](#6--staying-in-sync).
 
-## 2 — Point the scripts at the core (`METIS_HOME`)
+## 2 · Point the scripts at the core (`METIS_HOME`)
 
 The scripts **self-locate** from their own path, so the common case needs zero
 env. Set `METIS_HOME` only if you'll invoke scripts from symlinks or wrappers
@@ -43,13 +43,13 @@ echo 'export METIS_HOME="$HOME/<your-operating-repo>/metis-core"' >> ~/.zshenv
 ```
 
 `METIS_HOME` (env) always wins over self-location. `paths.py` / `paths.env` are
-the keystone — renaming or moving the directory is a no-op for code.
+the keystone; renaming or moving the directory is a no-op for code.
 
-## 3 — Fill in `config/infrastructure.json`
+## 3 · Fill in `config/infrastructure.json`
 
 This is the single seam. It ships full of `<<PLACEHOLDER>>` values; the loader
-([`scripts/lib/infra_config.py`](../scripts/lib/infra_config.py)) is **tolerant**
-— placeholders fall back to a generic single-machine default, so nothing crashes
+([`scripts/lib/infra_config.py`](../scripts/lib/infra_config.py)) is **tolerant**;
+placeholders fall back to a generic single-machine default, so nothing crashes
 while you fill it in incrementally. Field-by-field:
 
 ```jsonc
@@ -115,10 +115,10 @@ print('dispatchable machines:', c.dispatchable_machines()); \
 print('domains:', c.domains())"
 ```
 
-You should see your real machine id(s) and domains — not `<<...>>`. If you still
+You should see your real machine id(s) and domains, not `<<...>>`. If you still
 see placeholders, that field isn't filled (the loader is just falling back).
 
-## 4 — Smoke-test the core
+## 4 · Smoke-test the core
 
 ```bash
 cd "$METIS_HOME"
@@ -129,23 +129,23 @@ python3 scripts/test-self-heal.py                    # self-heal harness passes
 Both are exactly what CI runs ([`core-ci.yml`](../.github/workflows/core-ci.yml)),
 so green here means green upstream.
 
-## 5 — Run the session lifecycle
+## 5 · Run the session lifecycle
 
 The day-to-day loop, governed and collision-free across parallel sessions:
 
-- **Start** — orient + claim work atomically:
+- **Start**: orient + claim work atomically:
   `python3 scripts/agent-work.py claim-next --agent <you>`
-- **Work** — a lease + fencing token is held on your task; siblings can't grab it.
-- **Checkpoint** — bank a finished unit mid-session (commit with intent, keep going).
-- **End** — full close: commit + push, refresh forward state, route lessons, sign off.
+- **Work**: a lease + fencing token is held on your task; siblings can't grab it.
+- **Checkpoint**: bank a finished unit mid-session (commit with intent, keep going).
+- **End**: full close. Commit + push, refresh forward state, route lessons, and sign off.
 
 The board (`task-queue.md`, `OPEN_TASKS.md`) is a **projection** of the canonical
-`tasks.json` — render it, never hand-edit. State moves through a forward-only DAG
+`tasks.json`; render it, never hand-edit. State moves through a forward-only DAG
 (`scripts/update-tier1-state.py`); data fixes use the audited `correct-state`
 escape hatch. See [`CLAUDE.md`](../CLAUDE.md) for the doctrine the agents follow
 and [`docs/process/`](process/) for the full protocols.
 
-## 6 — Staying in sync
+## 6 · Staying in sync
 
 ```bash
 # Pull core updates into your operating repo
@@ -158,7 +158,7 @@ git subtree push --prefix metis-core \
 ```
 
 Keep your overlay (identity, projects, real IDs, credentials) **out** of
-`metis-core/` — it belongs in your operating repo. The boundary is spelled out in
+`metis-core/`; it belongs in your operating repo. The boundary is spelled out in
 [`SPLIT.md`](../SPLIT.md). `main` on the core is protected: changes land via PR
 with code-owner review.
 
@@ -167,7 +167,7 @@ with code-owner review.
 | Symptom | Cause / fix |
 |---|---|
 | Scripts can't find the repo root | `export METIS_HOME=.../metis-core`; confirm with `python3 -c "import sys;sys.path.insert(0,'scripts');from lib.paths import METIS_HOME;print(METIS_HOME)"` |
-| Config helpers return generic defaults | A field is still a `<<placeholder>>` — fill it; the loader falls back silently by design |
+| Config helpers return generic defaults | A field is still a `<<placeholder>>`, so fill it; the loader falls back silently by design |
 | `compileall` fails on 3.11 | Use Python 3.12+ |
-| `git subtree` not found | Older git — upgrade, or use `git submodule` as a fallback (not recommended) |
+| `git subtree` not found | Older git; upgrade, or use `git submodule` as a fallback (not recommended) |
 | Multi-machine sync uses wrong IPs | Set them in `scripts/lib/network.env` or export `JAY_IP`/`JARRY_IP` |

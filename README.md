@@ -1,18 +1,18 @@
 # Metis Framework
 
-> **Metis** (Greek): cunning, adaptive, practical intelligence — counsel internalized into judgment.
+> **Metis** (Greek): cunning, adaptive, practical intelligence; counsel internalized into judgment.
 
-The shared architectural core of the Metis operating system: the portable,
+The portable core of the Metis operating system: an
 org-agnostic framework for running AI agents as a governed, multi-session,
-memory-backed workforce. This repo holds **only** the pieces that work for any
-organization adopting the system — the protocols, skills, hooks, governance
-machinery, and templates — with every personal/organization-specific value
+memory-backed workforce. This repo holds **only** the pieces that generalize to any
+organization adopting the system (the protocols, skills, hooks, governance
+machinery, and templates), with every personal or organization-specific value
 parameterized out into [`config/infrastructure.json`](config/infrastructure.json).
 
 It is consumed by downstream repos (e.g. an org's private operating repo) via
 **git subtree**, so the same spine stays in sync across every agent that runs it.
 
-![Metis Command cockpit — agent lanes, governed task board, assistant panel (agent-captured demo)](docs/assets/metis-cockpit-demo.gif)
+![Metis Command cockpit: agent lanes, governed task board, assistant panel (agent-captured demo)](docs/assets/metis-cockpit-demo.gif)
 
 ## What's in here
 
@@ -31,7 +31,7 @@ It is consumed by downstream repos (e.g. an org's private operating repo) via
 
 ## Getting started
 
-New consumer? Follow **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)** — vendor the
+New consumer? Follow **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)** to vendor the
 core, declare your topology in one config file, smoke-test, and run the session
 lifecycle in ~15 minutes. The short version is below.
 
@@ -40,7 +40,7 @@ lifecycle in ~15 minutes. The short version is below.
 In your org's operating repo:
 
 ```bash
-# First time — add the core under a vendored path
+# First time: add the core under a vendored path
 git subtree add --prefix metis-core git@github.com:Busa-Legacies/metis-framework.git main --squash
 
 # Pull updates later
@@ -66,4 +66,4 @@ LaunchAgents, and any credentials. The boundary is documented in
 
 `main` is protected: changes require a pull request with review from the code
 owner ([`.github/CODEOWNERS`](.github/CODEOWNERS)). The core is the shared
-contract — it changes deliberately.
+contract; it changes deliberately.
