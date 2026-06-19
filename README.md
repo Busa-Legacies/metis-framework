@@ -14,6 +14,25 @@ It is consumed by downstream repos (e.g. an org's private operating repo) via
 
 ![Metis Command cockpit: agent lanes, governed task board, assistant panel (agent-captured demo)](docs/assets/metis-cockpit-demo.gif)
 
+## A production implementation of the long-running-agent harness
+
+Anthropic's *[Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)*
+names five primitives for building agents that work across many fresh-context sessions without a
+human babysitting each step. Metis was built on the same problem and **independently converged on
+four of them** — with an evidence gate that runs as a standing protocol across every agent, not a
+per-project hook. It's a battle-tested implementation of the pattern the article describes in theory.
+
+| Harness primitive | In Metis |
+|---|---|
+| Default-FAIL / evidence-first contract | The done-gate — a task stays `needs_verification` until observed proof is Read (`scripts/update-tier1-state.py`, `docs/process/doctrine-to-operations-bridge.md`) |
+| Fresh-context evaluator | `warden` / `arbiter` lanes grade from a virgin context with no write tools, binary PASS/NEEDS_WORK (`CLAUDE.md`) |
+| Agent-maintained handoff | `checkpoint` / `end` commit state + refresh forward state across the context boundary (`ClaudeCode/skills/`, `surgical-delivery-protocol.md`) |
+| Decomposed, one-feature-at-a-time work | `plan` → `build` over a forward-only task DAG with leases + fencing (`ClaudeCode/skills/`, `scripts/agent-work.py`) |
+| Operator control hooks | Budgeted unattended windows (`offline-autopilot-protocol.md`); in-band steer/kill is on the roadmap |
+
+Full mapping, with the honest "four of five" caveat: **[`docs/harness-primitives.md`](docs/harness-primitives.md)**.
+Metis is a **personal-system spine you vendor into your own operating repo**, not a turnkey product.
+
 ## What's in here
 
 | Area | Path | What it is |

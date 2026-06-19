@@ -42,6 +42,7 @@ OVERLAY = {
     "ClaudeCode/settings.shared.json", "ClaudeCode/mirror-manifest.json",
     "scripts/lib/network.env", "scripts/lib/network.py",
     "docs/PRODUCTIZATION.md",
+    "docs/harness-primitives.md",
 }
 
 # Whole directories metis-core OWNS — publish never copies into them (CI, issue
