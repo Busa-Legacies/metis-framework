@@ -45,6 +45,19 @@ def machine_agents() -> dict:
     return out or {"primary": {"primary", "claude"}}
 
 
+def primary_machine() -> str:
+    """Default machine id for this install: the one marked role 'primary', else the
+    first declared machine, else a generic 'primary' (matches machine_agents()'s key).
+    Lets scripts default to the org's own topology instead of a hardcoded host."""
+    ms = machines()
+    for m in ms:
+        if m.get("role") == "primary" and m.get("id"):
+            return m["id"]
+    if ms and ms[0].get("id"):
+        return ms[0]["id"]
+    return "primary"
+
+
 def dispatchable_agents() -> set:
     a = load().get("agents", {}) or {}
     vals = {x for x in (a.get("dispatchable") or []) if not _is_placeholder(x)}

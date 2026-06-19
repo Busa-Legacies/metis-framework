@@ -67,6 +67,12 @@ SCRUBS = [
     # no host persona leaks regardless of source vintage. (#121 launch.)
     (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)\b"), "<<MACHINE_1_ID>>"),
     (re.compile(r"\b(?:Outpost|OUTPOST|Jarry|JARRY)\b"), "<<MACHINE_2_ID>>"),
+    # Bare lowercase machine-id / user personas used in CODE (set literals, defaults).
+    # The capitalized rule above and the CI leak-guard both missed these. Must run
+    # AFTER the antfox-macbook hostname rule so the hostname maps to its own placeholder. (#434)
+    (re.compile(r"\bantfox\b"), "<<MACHINE_1_ID>>"),
+    (re.compile(r"\bjarry\b"), "<<MACHINE_2_ID>>"),
+    (re.compile(r"\babusa\b"), "<<MACHINE_2_USER>>"),
     # Org-specific project slugs used as examples in derived skill docs — neutralize
     # so the public framework ships generic illustrations, not Ant's real projects.
     # (Source stays accurate in metis-os; this is the publish seam. #121 launch.)

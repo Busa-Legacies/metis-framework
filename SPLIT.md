@@ -53,12 +53,16 @@ out before the seed is clean; this is the open work:
 
 ## Status · SEEDED 2026-06-11
 
-- **Parameterization: DONE.** All items above are wired to `config/infrastructure.json`
-  via `scripts/lib/infra_config.py` (free-work, queue-runner, task-domain) or
-  templatized to `<<PLACEHOLDER>>` values (network helpers, mirror-manifest,
-  settings.shared model, machine-identity, hook-session-init). Final scan: **0
-  hardcoded IPs, 0 home paths, 0 real credentials** in core (navore/ holds Ant's
-  own content by design).
+- **Parameterization: in progress (#434).** **0 real credentials, 0 hardcoded IPs,
+  0 home paths** in core — those are scrubbed at publish + enforced by the CI guard.
+  The config seam is now load-bearing: `free-work.py` (machine detection + agent map),
+  `update-tier1-state.py` (`VALID_MACHINES`), `queue-runner.py`, `task-domain.py`, and the
+  network/mirror/settings helpers read `config/infrastructure.json` via
+  `scripts/lib/infra_config.py` (or `<<PLACEHOLDER>>` values). **Remaining:** bare lowercase
+  persona names (`antfox`/`jarry`/`abusa`) still appear as illustrative text in ~23 derived
+  doc/skill files and in machine-specific tooling (`self-review.py`, `mirror-manifest.json`);
+  these are scrubbed to `<<MACHINE_N_ID>>` on the next `build/publish.py` run and the CI
+  `Parameterization guard` now catches bare `antfox|jarry|abusa` so a leak fails red.
 - **Repo created**: `Busa-Legacies/metis-framework`, **private**, seed pushed to `main`.
 - **CODEOWNERS** (`@anthonyabusa`) is in place, so PRs auto-request his review.
 - **Branch-protection enforcement** turns on at the public flip. Repo rulesets are

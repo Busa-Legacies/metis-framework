@@ -21,7 +21,22 @@ VALID_AGENTS = {"smith", "scout", "warden", "scribe", "claude", "codex", "stewar
                 # legacy lane names (pre-2026-06-13 Guild rename) — accepted so historical
                 # tasks still transition; new work uses the names above.
                 "forge", "shield", "echo", "hermes", "curator"}
-VALID_MACHINES = {"antfox", "jarry", "either"}
+def _valid_machines() -> set:
+    """Valid machine ids, read from config/infrastructure.json via the infra_config
+    seam so ANY org topology validates. Falls back to placeholders only if the config
+    is still an unfilled template. (#434: the seam must not reject a configured machine.)"""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+        import infra_config
+        ids = set(infra_config.machine_agents().keys())
+        if ids:
+            return ids | {"either"}
+    except Exception:
+        pass
+    return {"<<MACHINE_1_ID>>", "<<MACHINE_2_ID>>", "either"}
+
+
+VALID_MACHINES = _valid_machines()
 BOARD_FIELDS = ("area", "agent", "machine")
 
 VALID_TASK_STATES = {

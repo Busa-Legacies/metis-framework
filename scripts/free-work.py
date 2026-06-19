@@ -104,14 +104,18 @@ def detect_machine(override: str | None) -> str:
     signals.append(str(Path.home()).lower())
     signals.append(socket.gethostname().lower())
     blob = " ".join(signals)
-    if "abusa" in blob or "anthony" in blob:
-        return "abusa"
-    if "antfox" in blob or user == "ant" or "/users/ant" in blob:
-        return "antfox"
+    # Match the org's declared topology (config/infrastructure.json): a machine whose
+    # id or user appears in the host signals. No hardcoded hostnames. (#434)
+    for m in _infra.machines():
+        mid = (m.get("id") or "").lower()
+        muser = (m.get("user") or "").lower()
+        if (mid and mid in blob) or (muser and muser in blob):
+            return mid
+    default = _infra.primary_machine()
     warn(
-        f"could not identify machine from {signals!r}; defaulting to 'antfox' (override with --machine)"
+        f"could not identify machine from {signals!r}; defaulting to {default!r} (override with --machine)"
     )
-    return "antfox"
+    return default
 
 
 def prank(p: str) -> int:
