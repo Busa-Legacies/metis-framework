@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "docs/process/task-queue.md"
 ARCHIVE = ROOT / "docs/process/task-archive.md"
-BOARD = ROOT / "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
+BOARD = ROOT / "workspace/state/OPEN_TASKS.md"
 
 # Non-terminal statuses stay in the active queue (per #089):
 #   open, in-progress, blocked, needs-review, monitoring, partially-fixed

@@ -125,7 +125,7 @@ Target: always-on ~14.5k → ~7k tokens.
 - ✅ Path-scoped design rule (`.claude/rules/design.md`) — UI guidelines off always-on.
 - ✅ Root `AGENTS.md` split → kernel + Router (14,727c → 5,854c, −60%); comms/heartbeat/Discord →
   `docs/process/assistant-comms.md` (gateway-only). Parity check green.
-- ✅ `<<MACHINE_1_ID>>/AGENTS.md` trimmed to kernel + comms pointer (220→~45 lines); `<<MACHINE_2_ID>>/AGENTS.md` left as-is
+- ✅ `workspace/AGENTS.md` trimmed to kernel + comms pointer (220→~45 lines); `<<MACHINE_2_ID>>/AGENTS.md` left as-is
   (already lean + genuinely machine-specific, no comms bloat).
 - ✅ `codex/instructions.md` doctrine collapsed — Codex also auto-loads the AGENTS.md kernel, so the
   duplicated act-vs-ask prose is now a kernel pointer (priority stack + sign-off block kept inline).

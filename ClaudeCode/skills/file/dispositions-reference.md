@@ -45,4 +45,4 @@
 - Architecture decisions → `docs/process/decisions/`
 - Scripts and tooling → `scripts/`
 - Ephemeral session artifacts → `scratch/` (git-ignored)
-- Daily logs → `<<MACHINE_1_ID>>/memory/YYYY-MM-DD.md`
+- Daily logs → `workspace/memory/YYYY-MM-DD.md`

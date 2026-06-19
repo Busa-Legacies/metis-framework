@@ -17,7 +17,7 @@ Pipeline (each stage fails SOFT so the weekly LaunchAgent never hard-crashes):
                  (canonical tasks.json) and surface on the OPEN_TASKS board.
                  Idempotent: a recurring pattern bumps its existing task instead
                  of spawning a duplicate.
-  5. LEDGER    — durable record (<<MACHINE_1_ID>>/state/self-review/ledger.json) of weekly
+  5. LEDGER    — durable record (workspace/state/self-review/ledger.json) of weekly
                  signal counts + every fix's lifecycle, so EFFECTIVENESS is
                  checked over time: did the signal drop after a fix shipped?
 

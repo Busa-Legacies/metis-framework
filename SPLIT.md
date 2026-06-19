@@ -58,11 +58,23 @@ out before the seed is clean; this is the open work:
   The config seam is now load-bearing: `free-work.py` (machine detection + agent map),
   `update-tier1-state.py` (`VALID_MACHINES`), `queue-runner.py`, `task-domain.py`, and the
   network/mirror/settings helpers read `config/infrastructure.json` via
-  `scripts/lib/infra_config.py` (or `<<PLACEHOLDER>>` values). **Remaining:** bare lowercase
-  persona names (`antfox`/`jarry`/`abusa`) still appear as illustrative text in ~23 derived
-  doc/skill files and in machine-specific tooling (`self-review.py`, `mirror-manifest.json`);
-  these are scrubbed to `<<MACHINE_N_ID>>` on the next `build/publish.py` run and the CI
-  `Parameterization guard` now catches bare `antfox|jarry|abusa` so a leak fails red.
+  `scripts/lib/infra_config.py` (or `<<PLACEHOLDER>>` values).
+- **Board/workspace path resolution: DONE (#434 path-resolution sweep).** The persona-named
+  board+working-context dir (`Hearth/state`, `Hearth/memory` in metis-os) previously scrubbed
+  to an *unresolved* `<<MACHINE_1_ID>>/state` literal that `render-tier1-state.py` would create
+  as a directory literally named `<<MACHINE_1_ID>>` — breaking a fresh consumer's cold-start
+  loop. It now resolves to a neutral, portable `workspace/` (87 refs across 37 files);
+  `publish.py` has a path-aware scrub (`Hearth/<child>` → `workspace/`, prose `Hearth` still
+  → `<<MACHINE_1_ID>>`); `init-board.py` seeds `workspace/state` + `workspace/memory`;
+  `render` `mkdir`s its parent. **Verified end-to-end** on a stranger config (`host-a`):
+  init-board → create-task → claim-next → render all succeed and the board lands in
+  `workspace/state/OPEN_TASKS.md`.
+- **Remaining (#434):** bare lowercase persona names (`antfox`/`jarry`/`abusa`) still appear
+  as illustrative text in ~23 files (71 refs). Derived files are scrubbed to `<<MACHINE_N_ID>>`
+  on the next `build/publish.py` run, but OVERLAY files (`free-work.py`, `hook-session-init.sh`,
+  `mirror-manifest.json`, `queue-runner.py`) need hand-editing since publish never scrubs them.
+  The CI `Parameterization guard` for bare `antfox|jarry|abusa` is **deferred** until that
+  cleanup lands (it would fail red on the current residuals).
 - **Repo created**: `Busa-Legacies/metis-framework`, **private**, seed pushed to `main`.
 - **CODEOWNERS** (`@anthonyabusa`) is in place, so PRs auto-request his review.
 - **Branch-protection enforcement** turns on at the public flip. Repo rulesets are

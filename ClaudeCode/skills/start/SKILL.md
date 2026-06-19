@@ -15,7 +15,7 @@ cd ~/metis-os
 git status --short
 
 # Intentional commits since the last close (filter out auto-sync snapshots)
-last_sha=$(grep -h 'closed-at:' <<MACHINE_1_ID>>/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}')
+last_sha=$(grep -h 'closed-at:' workspace/memory/*.md 2>/dev/null | tail -1 | awk '{print $2}')
 if [ -n "$last_sha" ]; then
   git log "${last_sha}..HEAD" --invert-grep --grep='\[auto-sync\]' --oneline
 else
@@ -45,7 +45,7 @@ Interpret three-column `(PID, Status, Label)` output:
 Flag `dashboard` and `ttyd` explicitly if PID is absent (they should be persistent).
 
 ## Step 4 — Working context
-Read `~/metis-os/<<MACHINE_1_ID>>/memory/working-context.md` explicitly:
+Read `~/metis-os/workspace/memory/working-context.md` explicitly:
 - **Active focus** — what last session was driving
 - **Open threads** — in-flight items, dispatched agents, residuals
 - **Blockers** — anything unresolved

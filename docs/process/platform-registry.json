@@ -17,7 +17,7 @@
         "state": [
             "docs/process/state/active-checkouts.json",
             "docs/process/state/tasks.json",
-            "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
+            "workspace/state/OPEN_TASKS.md"
         ],
         "memory": "ClaudeCode/memory",
         "docs": "docs"
@@ -81,7 +81,7 @@
             "neutralEntrypoint": "AGENTS.md",
             "commandSurface": null,
             "agentPersonas": "ClaudeCode/agents",
-            "memory": "<<MACHINE_1_ID>>/memory",
+            "memory": "workspace/memory",
             "sessionIdEnv": "OPENCLAW_SESSION",
             "lifecycle": "dispatch",
             "notes": "Local Ollama lanes invoked via scripts/dispatch. Executor role: receives sub-tasks, returns output; does not own session lifecycle, so no command surface is required. <<MACHINE_1_ID>> is the sole Ollama host for qwen3-coder:30b; <<MACHINE_2_ID>> is secondary/on-demand and routes Ollama to <<MACHINE_1_ID>>. <<MACHINE_2_ID>> currently runs OpenClaw sandbox mode off because Docker is unavailable there, so keep <<MACHINE_2_ID>> lanes proposal-only unless sandboxing is restored and verified."

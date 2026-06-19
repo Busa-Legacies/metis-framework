@@ -37,7 +37,7 @@ GROUPS = [
     },
     {
         "name": "gateway/jay (workspace)",
-        "files": ["<<MACHINE_1_ID>>/AGENTS.md"],
+        "files": ["workspace/AGENTS.md"],
         "ceiling": 3_500,
     },
     {

@@ -27,9 +27,9 @@ DELETE_LIMIT="${OPENCLAW_SYNC_DELETE_LIMIT:-5}"
 # Paths that auto-sync must NEVER delete — if staging marks any of these deleted, it is a
 # partial-tree fault, not an intentional removal. (Critical shared state + the guard config.)
 PROTECTED=(
-  "<<MACHINE_1_ID>>/memory/working-context.md"
-  "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
-  "<<MACHINE_1_ID>>/.gitignore"
+  "workspace/memory/working-context.md"
+  "workspace/state/OPEN_TASKS.md"
+  "workspace/.gitignore"
 )
 
 # --- #234 split-sync: source never auto-commits to main; state files still do ----
@@ -51,15 +51,15 @@ STATE_PATHSPECS=(
   'docs/process/lane-outputs'
   'docs/process/decisions'
   'docs/process/taxonomy.yaml'
-  '<<MACHINE_1_ID>>/state'
-  '<<MACHINE_1_ID>>/memory'
-  '<<MACHINE_1_ID>>/.gitignore'
+  'workspace/state'
+  'workspace/memory'
+  'workspace/.gitignore'
   '<<MACHINE_2_ID>>/memory'
   'ClaudeCode/memory'
 )
 # Exclusion form of the allowlist (everything that is NOT state) — used to stage SOURCE
 # into a scratch index for the autosync/<machine> snapshot. Kept in lockstep with the list.
-SOURCE_EXCLUDES=( ':(exclude)<<MACHINE_1_ID>>/lanes' )
+SOURCE_EXCLUDES=( ':(exclude)workspace/lanes' )
 for _sp in "${STATE_PATHSPECS[@]}"; do SOURCE_EXCLUDES+=( ":(exclude)$_sp" ); done
 
 # Per-machine branch for the source durability snapshot. Override OPENCLAW_SYNC_MACHINE if
@@ -212,9 +212,9 @@ if [ -x "$TASKSTATE_DRIVER" ]; then
 fi
 
 # --- self-register: ignore dirty submodule content (idempotent) ----------------
-# T-SYNC-15 (2026-06-13): <<MACHINE_1_ID>>/lanes is an orphaned gitlink (committed submodule
+# T-SYNC-15 (2026-06-13): workspace/lanes is an orphaned gitlink (committed submodule
 # pointer, NO .gitmodules entry, no remote) holding ever-dirty lane working files.
-# The daemon already EXCLUDES <<MACHINE_1_ID>>/lanes from commits, but stash/pull still saw it as
+# The daemon already EXCLUDES workspace/lanes from commits, but stash/pull still saw it as
 # "modified content" → every post-pull `git stash pop` conflicted on the submodule and
 # wedged the tick (.failing loop, ~10h outage). `submodule.<name>.ignore` is INEFFECTIVE
 # without a .gitmodules entry (can't resolve name→path); `diff.ignoreSubmodules=dirty`
@@ -277,7 +277,7 @@ if [ -n "$(git status --porcelain)" ]; then
     # #234: stage ONLY state files for main; source stays dirty (→ autosync/<machine>).
     git_add_state
   else
-    git add -A -- ':(exclude)<<MACHINE_1_ID>>/lanes'   # legacy blanket-add (kill-switch path)
+    git add -A -- ':(exclude)workspace/lanes'   # legacy blanket-add (kill-switch path)
   fi
 
   # --- guard 4: partial-tree wipe protection (T-SYNC-05) ----------------------
@@ -335,8 +335,8 @@ if [ -n "$(git status --porcelain)" ]; then
   fi
 fi
 
-# --- stash any files the commit step couldn't capture (e.g. <<MACHINE_1_ID>>/lanes exclusion)
-# The commit above uses :(exclude)<<MACHINE_1_ID>>/lanes, so modifications there are never
+# --- stash any files the commit step couldn't capture (e.g. workspace/lanes exclusion)
+# The commit above uses :(exclude)workspace/lanes, so modifications there are never
 # committed by the daemon.  A git pull on a dirty tree either fails ("would be
 # overwritten") or silently clobbers those files — both revert live edits.
 # Stashing before pull guarantees pull operates on a clean tree, and the pop
@@ -409,7 +409,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
       if [ "$OPENCLAW_SPLIT_LANES" = "1" ]; then
         git_add_state   # #234: complete the merge with state only
       else
-        git add -A -- ':(exclude)<<MACHINE_1_ID>>/lanes'
+        git add -A -- ':(exclude)workspace/lanes'
       fi
       # Never let a botched replay commit conflict markers (same gate as the local path).
       if git diff --cached -U0 | grep -qE '^\+(<<<<<<< |>>>>>>> )'; then

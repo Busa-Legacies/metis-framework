@@ -58,8 +58,8 @@ This bridge applies directly to:
 - `docs/process/state/live-focus.json`
 - `docs/process/task-queue.md`
 - `docs/process/live-status.md`
-- `<<MACHINE_1_ID>>/AGENTS.md`
-- `<<MACHINE_1_ID>>/SOUL.md`
+- `workspace/AGENTS.md`
+- `workspace/SOUL.md`
 
 It also informs, but does not fully control by itself:
 - `docs/process/orchestration-model.md`
@@ -156,7 +156,7 @@ When operational surfaces answer questions about current work, prior decisions, 
 
 ### 7. Peer-agent inheritance must preserve independence without doctrine drift
 
-Agent-local docs such as `<<MACHINE_1_ID>>/AGENTS.md` and `<<MACHINE_1_ID>>/SOUL.md` may differ in voice, emphasis, and lane ownership.
+Agent-local docs such as `workspace/AGENTS.md` and `workspace/SOUL.md` may differ in voice, emphasis, and lane ownership.
 
 But they should still preserve:
 - explicit ownership

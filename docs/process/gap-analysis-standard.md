@@ -109,7 +109,7 @@ tasks and contradictory roadmaps:
 - T3 → `docs/plans/PLAN-full-os-forward-gap-analysis.md` (single living file; date the revisions inside)
 - Detailed evidence (optional) → `docs/plans/evidence/<slug>-<date>.md`
 
-Each run appends a one-line pointer to `<<MACHINE_1_ID>>/memory/working-context.md` so the next session sees it.
+Each run appends a one-line pointer to `workspace/memory/working-context.md` so the next session sees it.
 
 ## 7. When to run
 

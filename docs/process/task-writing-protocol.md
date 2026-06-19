@@ -1,7 +1,7 @@
 # Task Writing Protocol
 
 **Version:** 1.1 (2026-06-03)
-**Applies to:** Any task written to `docs/process/task-queue.md` or `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`
+**Applies to:** Any task written to `docs/process/task-queue.md` or `workspace/state/OPEN_TASKS.md`
 
 ---
 

@@ -22,7 +22,7 @@
 #
 # --append-to <log>: instead of failing on unattributed commits, write a one-line
 # SHA attribution for each directly into <log> (created if absent) and exit 0.
-# Point it at a <<MACHINE_1_ID>>/memory daily log so future runs see the SHAs and pass cleanly.
+# Point it at a workspace/memory daily log so future runs see the SHAs and pass cleanly.
 # Use during /end to auto-close the gap rather than hand-pasting each SHA.
 
 set -euo pipefail
@@ -51,7 +51,7 @@ done
 
 cd "$(git rev-parse --show-toplevel)"
 
-LOG_DIR="<<MACHINE_1_ID>>/memory"
+LOG_DIR="workspace/memory"
 
 # Current open-range start = the most recent closed-at across the daily logs.
 # Shell glob expands in alphabetical order, which for YYYY-MM-DD.md is chronological,
@@ -111,5 +111,5 @@ echo
 echo "These will be SWALLOWED when the closed-at boundary advances past them. Add a"
 echo "one-line attribution (with the short SHA) for each to the daily log before"
 echo "writing the new closed-at, then re-run this check. Or re-run with"
-echo "--append-to <<<MACHINE_1_ID>>/memory/YYYY-MM-DD.md> to capture them automatically."
+echo "--append-to <workspace/memory/YYYY-MM-DD.md> to capture them automatically."
 exit 1

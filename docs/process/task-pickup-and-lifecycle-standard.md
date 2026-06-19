@@ -29,7 +29,7 @@ Every phase below depends on knowing which sources you can trust:
 |---|---|---|
 | `docs/process/state/active-checkouts.json` (leases) | who holds what, fence tokens | **CANONICAL** |
 | `docs/process/state/tasks.json` (state/owner) | task lifecycle state | **CANONICAL** |
-| `<<MACHINE_1_ID>>/state/OPEN_TASKS.md` | dashboard board | projection |
+| `workspace/state/OPEN_TASKS.md` | dashboard board | projection |
 | `gh issue list` | cross-device task record | projection (when reachable) |
 
 If a projection disagrees with canonical, **canonical wins** — that disagreement is
@@ -178,7 +178,7 @@ python3 scripts/agent-work.py claim "<label>" --agent claude    # claim-backed
 
 # 3. Work — present the fence on shared-state writes; verify; checkpoint under lock
 python3 scripts/agent-work.py fence --issue <n> --token <N>      # pre-write staleness check
-scripts/git-lock.sh run sh -c "git add <paths> <<MACHINE_1_ID>>/memory/working-context.md \
+scripts/git-lock.sh run sh -c "git add <paths> workspace/memory/working-context.md \
   && git commit -m 'checkpoint: <desc>' && git push"
 
 # 4. Close out (with evidence)

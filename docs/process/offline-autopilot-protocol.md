@@ -75,7 +75,7 @@ Picking the next autopilot task?
 
 ## Execution loop
 
-1. **Read state first** — `<<MACHINE_1_ID>>/state/OPEN_TASKS.md`, `<<MACHINE_1_ID>>/memory/working-context.md`, and the governed `docs/process/state/tasks.json`. Know what's in flight before adding to it.
+1. **Read state first** — `workspace/state/OPEN_TASKS.md`, `workspace/memory/working-context.md`, and the governed `docs/process/state/tasks.json`. Know what's in flight before adding to it.
 2. **Build a shortlist** — run every candidate through the independence test. Prefer well-specified, verifiable tasks (clear `summary`, `mainFiles`, owner `either`) over vague ones.
 3. **Work in small, committed slices** — one logical change per commit, descriptive message, governed-state updated honestly (`update-tier1-state.py` → `render-tier1-state.py write`).
 4. **Verify what you can** — `py_compile`, `node --check`, unit tests, smoke scripts. Whatever the environment allows. Record what you *couldn't* verify and why.

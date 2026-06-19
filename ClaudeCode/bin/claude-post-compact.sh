@@ -2,7 +2,7 @@
 # Re-inject working-context.md after Claude Code compacts the context window.
 # Prevents Claude from losing task state mid-session after compaction.
 
-WORKING_CTX="${METIS_HOME:-$HOME/metis-os}/<<MACHINE_1_ID>>/memory/working-context.md"
+WORKING_CTX="${METIS_HOME:-$HOME/metis-os}/workspace/memory/working-context.md"
 
 if [ ! -f "$WORKING_CTX" ]; then
   exit 0

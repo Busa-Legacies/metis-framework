@@ -72,5 +72,8 @@ def dispatchable_machines() -> set:
 
 
 def domains() -> list:
+    # Canonical shape is {"domains": {"list": [...]}}, but tolerate a bare
+    # {"domains": [...]} list since that's an easy way for a consumer to fill it in.
     d = load().get("domains", {}) or {}
-    return [x for x in (d.get("list") or []) if not _is_placeholder(x)] or ["uncategorized"]
+    raw = d if isinstance(d, list) else (d.get("list") or [])
+    return [x for x in raw if not _is_placeholder(x)] or ["uncategorized"]

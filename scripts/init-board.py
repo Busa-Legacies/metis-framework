@@ -70,7 +70,19 @@ def main() -> int:
            {"version": 1, "focusSummary": "", "mode": "active", "waitingOnAnt": False,
             "blockerSummary": None, "nextSteps": [], "derivedFromTaskIds": [],
             "updatedAt": _now()})
+
+    # The machine-local workspace: 'state/' holds the rendered board projection
+    # (render-tier1-state.py writes OPEN_TASKS.md here) and 'memory/' holds the
+    # cross-session working-context scratchpad. Seed both so the first render and
+    # session-start read succeed instead of dead-ending on a missing dir.
+    ws = HOME / "workspace"
+    (ws / "state").mkdir(parents=True, exist_ok=True)
+    (ws / "memory").mkdir(parents=True, exist_ok=True)
+    wc = ws / "memory" / "working-context.md"
+    if not wc.exists():
+        wc.write_text("# Working context\n\n## Next action\n\n## Open threads\n")
     print(f"seeded board at {STATE}: {len(areas)} area(s), starter project 'general', empty task list")
+    print(f"seeded workspace at {ws}: state/ (board projection) + memory/working-context.md")
 
     render = HERE / "render-tier1-state.py"
     if render.exists():

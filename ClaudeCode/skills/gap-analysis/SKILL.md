@@ -25,7 +25,7 @@ for p in json.load(sys.stdin)['projects']:
 "
 ```
 
-Read `<<MACHINE_1_ID>>/memory/working-context.md` for open threads that may already address a gap.
+Read `workspace/memory/working-context.md` for open threads that may already address a gap.
 
 ### 2. Compute gaps — two passes
 

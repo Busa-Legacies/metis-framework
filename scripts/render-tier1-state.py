@@ -19,7 +19,7 @@ PROJECTS_PATH = ROOT / "docs/process/state/projects.json"
 TAXONOMY_PATH = ROOT / "docs/process/taxonomy.yaml"
 QUEUE_MD = ROOT / "docs/process/task-queue.md"
 LIVE_MD = ROOT / "docs/process/live-status.md"
-OPEN_TASKS_MD = ROOT / "<<MACHINE_1_ID>>/state/OPEN_TASKS.md"
+OPEN_TASKS_MD = ROOT / "workspace/state/OPEN_TASKS.md"
 PROJECTS_MD = ROOT / "docs/process/projects.md"
 
 # Project progress layer (#221) — optional; render degrades gracefully if absent.
@@ -502,6 +502,7 @@ def main():
     print("Rendered:")
     for path, new_body in targets:
         old = read_text_if_exists(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(replace_governed_section(old, new_body))
         print(f"- {path}")
 

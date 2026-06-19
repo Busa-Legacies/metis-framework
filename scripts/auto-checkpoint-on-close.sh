@@ -43,7 +43,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 MSGEOF
 
 # The git-lock inner command must use absolute paths to scripts/ since CWD may vary.
-TASK_FILES="docs/process/state/tasks.json <<MACHINE_1_ID>>/memory/working-context.md <<MACHINE_1_ID>>/state/OPEN_TASKS.md docs/process/task-queue.md docs/process/live-status.md docs/process/projects.md"
+TASK_FILES="docs/process/state/tasks.json workspace/memory/working-context.md workspace/state/OPEN_TASKS.md docs/process/task-queue.md docs/process/live-status.md docs/process/projects.md"
 
 "$SCRIPTS_DIR/git-lock.sh" run bash -c "
   cd '$REPO_ROOT'

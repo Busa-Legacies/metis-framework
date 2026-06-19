@@ -6,8 +6,8 @@
 # WHY THIS EXISTS
 # ---------------
 # <<MACHINE_1_ID>> is always-on with several concurrent Claude Code sessions. The close protocol
-# rewrites three single-writer files — <<MACHINE_1_ID>>/memory/working-context.md,
-# ClaudeCode/memory/MEMORY.md, and the daily log <<MACHINE_1_ID>>/memory/<date>.md. When two
+# rewrites three single-writer files — workspace/memory/working-context.md,
+# ClaudeCode/memory/MEMORY.md, and the daily log workspace/memory/<date>.md. When two
 # closes overlap they race those files; live on 2026-06-02 a second close clobbered
 # MEMORY.md and the surviving fix was ad-hoc (one session hand-deferred its writes).
 #

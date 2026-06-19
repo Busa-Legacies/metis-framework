@@ -29,10 +29,10 @@ make_sandbox() {
   git config user.email "test@test"; git config user.name "test"
   git config commit.gpgsign false
   # seed the protected paths so deletion guards have something to delete
-  mkdir -p <<MACHINE_1_ID>>/memory <<MACHINE_1_ID>>/state
-  printf 'seed\n' > <<MACHINE_1_ID>>/memory/working-context.md
-  printf 'seed\n' > <<MACHINE_1_ID>>/state/OPEN_TASKS.md
-  printf 'seed\n' > <<MACHINE_1_ID>>/.gitignore
+  mkdir -p workspace/memory workspace/state
+  printf 'seed\n' > workspace/memory/working-context.md
+  printf 'seed\n' > workspace/state/OPEN_TASKS.md
+  printf 'seed\n' > workspace/.gitignore
   for i in 1 2 3 4 5 6 7 8; do printf 'f%s\n' "$i" > "file$i.txt"; done
   git add -A; git commit -qm seed; git push -q origin HEAD:main 2>/dev/null
   git branch -q -M main 2>/dev/null || true
@@ -118,7 +118,7 @@ teardown
 
 echo "=== guard-4: deleting a PROTECTED path aborts ==="
 make_sandbox
-rm -f <<MACHINE_1_ID>>/memory/working-context.md
+rm -f workspace/memory/working-context.md
 ec=$(run_sync)
 log_has "protected path staged for deletion" && r=0 || r=1; check "protected-path deletion refused" "$r"
 teardown
@@ -350,14 +350,14 @@ teardown
 # ================================================================================
 # #234 split-sync: with OPENCLAW_SPLIT_LANES=1 the daemon commits ONLY state files to
 # main and snapshots SOURCE to autosync/<machine> (never main), leaving source dirty.
-# STATE = the allowlist (<<MACHINE_1_ID>>/memory, <<MACHINE_1_ID>>/state, ClaudeCode/memory, docs/process/state…);
+# STATE = the allowlist (workspace/memory, workspace/state, ClaudeCode/memory, docs/process/state…);
 # SOURCE = everything else (root *.txt in the sandbox stands in for scripts/projects).
 echo "=== SPLIT-1 (#234): state-only change is committed to main ==="
 make_sandbox
-printf 'state edit\n' >> <<MACHINE_1_ID>>/memory/working-context.md   # STATE path
+printf 'state edit\n' >> workspace/memory/working-context.md   # STATE path
 ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
 log_has "sync complete" && r=0 || r=1; check "state-only tick completes" "$r"
-git show --stat HEAD 2>/dev/null | grep -q "<<MACHINE_1_ID>>/memory/working-context.md" && r=0 || r=1
+git show --stat HEAD 2>/dev/null | grep -q "workspace/memory/working-context.md" && r=0 || r=1
 check "state file landed on main HEAD" "$r"
 unset TEST_SPLIT TEST_MACHINE
 teardown
@@ -381,10 +381,10 @@ teardown
 
 echo "=== SPLIT-3 (#234): mixed tick splits — state→main, source→autosync, source stays dirty ==="
 make_sandbox
-printf 'state edit\n' >> <<MACHINE_1_ID>>/state/OPEN_TASKS.md   # STATE
+printf 'state edit\n' >> workspace/state/OPEN_TASKS.md   # STATE
 printf 'source edit\n' >> file2.txt                 # SOURCE
 ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
-git show --stat HEAD 2>/dev/null | grep -q "<<MACHINE_1_ID>>/state/OPEN_TASKS.md" && r=0 || r=1
+git show --stat HEAD 2>/dev/null | grep -q "workspace/state/OPEN_TASKS.md" && r=0 || r=1
 check "state file landed on main HEAD" "$r"
 git show --stat HEAD 2>/dev/null | grep -q "file2.txt" && r=1 || r=0
 check "source file NOT on main HEAD" "$r"

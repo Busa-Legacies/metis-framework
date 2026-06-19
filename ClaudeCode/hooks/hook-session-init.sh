@@ -43,7 +43,7 @@ if [ ! -f "$metrics_file" ]; then
 fi
 
 : "${METIS_HOME:=$HOME/metis-os}"
-wc_file="$METIS_HOME/<<MACHINE_1_ID>>/memory/working-context.md"
+wc_file="$METIS_HOME/workspace/memory/working-context.md"
 [ -f "$wc_file" ] || exit 0
 
 # --- git-sync drift check (non-fatal; only surfaces output when it actually drifts) ---
@@ -160,14 +160,14 @@ if [ -f "$free_work_script" ]; then
 fi
 
 # --- stray nested .git detector (#163) ---
-# Allowlist: <<MACHINE_1_ID>>/lanes (registered submodule), .claude/worktrees (CC worktrees), and ANY
+# Allowlist: workspace/lanes (registered submodule), .claude/worktrees (CC worktrees), and ANY
 # nested .git the outer repo gitignores (a deliberate separate repo like
 # projects/polymarket-bot — invisible to outer git ops, so not a stray). Self-maintaining.
 stray_git_msg=""
 if [ -d "$METIS_HOME/.git" ]; then
   stray_git_msg=$(cd "$METIS_HOME" && find . -name ".git" \
     -not -path "./.git" \
-    -not -path "./<<MACHINE_1_ID>>/lanes/.git" \
+    -not -path "./workspace/lanes/.git" \
     -not -path "./.claude/worktrees/*" \
     2>/dev/null | sed 's|^\./||' | sort | while IFS= read -r rel; do
       git check-ignore -q "$rel" 2>/dev/null || printf '%s,' "$rel"
@@ -233,7 +233,7 @@ if orientation != "1" and len(ctx) > 3000:
     if nl > 0:
         head = head[:nl]
     ctx = head + ("\n\n[…working-context trimmed for a task-focused session — "
-                  "read <<MACHINE_1_ID>>/memory/working-context.md for the full scratchpad.]")
+                  "read workspace/memory/working-context.md for the full scratchpad.]")
 _label = "working-context.md" + ("" if orientation == "1" else " head")
 msg = "SESSION ORIENTATION (" + _label + " — auto-injected at session start):\n\n" + ctx
 if live_status.strip():

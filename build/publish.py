@@ -60,6 +60,14 @@ SCRUBS = [
     (re.compile(r"/Users/Ant"), "$HOME"),
     (re.compile(r"/Users/abusa"), "$HOME"),
     (re.compile(r":-1489674856579600455"), ""),
+    # Machine-local WORKSPACE dir (board projection + working-context + daily logs).
+    # In metis-os this dir is persona-named (Hearth/... , legacy Jay/...). A path-use
+    # of it must become a neutral, portable 'workspace/' so a fresh consumer's cold-start
+    # loop writes to a real resolvable dir — NOT an unresolved <<MACHINE_1_ID>> placeholder
+    # that render-tier1-state.py would create as a literal directory. This MUST run before
+    # the bare-persona rule below so only the PATH form is neutralized; prose mentions of
+    # the machine still scrub to the id placeholder. (#434 path-resolution sweep.)
+    (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)/(?=state|memory|lanes|AGENTS\.md|SOUL\.md|\.gitignore|HANDOFF)"), "workspace/"),
     # Machine persona names → org-neutral id placeholders. The framework ships LANE
     # role names (smith/scout/warden/...) as real vocabulary, but MACHINE names are
     # org-specific topology → placeholders resolved from config/infrastructure.json.

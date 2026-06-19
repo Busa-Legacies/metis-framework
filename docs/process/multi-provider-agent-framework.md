@@ -144,7 +144,7 @@ is not Claude-private). All drivers:
 - **Write** durable, cross-session, non-obvious lessons there using the frontmatter standard in
   `ClaudeCode/CLAUDE.md` (`name`/`description`/`metadata.type`/`tags`/`updated`), and add the
   one-line index entry to `MEMORY.md`.
-- Keep raw daily logs in `<<MACHINE_1_ID>>/memory/YYYY-MM-DD.md` (the Scribe-owned narrative layer).
+- Keep raw daily logs in `workspace/memory/YYYY-MM-DD.md` (the Scribe-owned narrative layer).
 
 Adapters wire their native memory path to this dir (Codex: `~/.codex/memories` → symlink into
 `ClaudeCode/memory/`, declared in `mirror-manifest.json`). The physical rename of the dir to a
