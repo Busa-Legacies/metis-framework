@@ -7,7 +7,7 @@ can see, at a glance, which streams are live and what is pickable under each.
 
 Usage:
   python3 scripts/session-workstreams.py            # render for this machine
-  python3 scripts/session-workstreams.py --machine antfox
+  python3 scripts/session-workstreams.py --machine <<MACHINE_1_ID>>
   python3 scripts/session-workstreams.py --width 80
 """
 from __future__ import annotations
@@ -237,7 +237,7 @@ def render(lanes: dict, held: list, rec, machine: str, width: int,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--machine", help="override detected machine (antfox/abusa)")
+    ap.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_USER>>)")
     ap.add_argument("--width", type=int, default=76, help="render width (default 76)")
     args = ap.parse_args()
     buckets = load_buckets(args.machine)

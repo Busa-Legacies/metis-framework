@@ -47,7 +47,7 @@ Why/Plan/Main files are required on every task entry. There is no "trivial" esca
 
 ```markdown
 - **#NNN `verb-noun-slug`** — one-line description
-  - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|smith|scout | machine:antfox|jarry|either | status:open
+  - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|smith|scout | machine:<<MACHINE_1_ID>>|<<MACHINE_2_ID>>|either | status:open
   - **Why:** [What triggered this — incident, observation, friction point, date if live]
   - **Plan:** [Approach direction, constraints, what to avoid. Be specific enough that a fresh session can start without asking.]
   - **Main files:** `path/to/file.py`, `path/to/other.py`
@@ -92,7 +92,7 @@ Threshold question: "Would a fresh session know what to do from the title alone?
 
 ```markdown
 - **#058 `commit-path-conflict-marker-guard`** — Stash-pop conflict markers committed + pushed to shared lease state
-  - type:bug | area:infra | priority:P1 | effort:S | agent:claude | machine:antfox | status:open
+  - type:bug | area:infra | priority:P1 | effort:S | agent:claude | machine:<<MACHINE_1_ID>> | status:open
   - **Why:** (hit live 2026-06-02) during a /checkpoint, a manual `git stash pop` racing the live auto-sync daemon left `<<<<<<< / ======= / >>>>>>>` markers in `active-checkouts.json` — which then got committed (41fef7d) **and pushed to origin/main**, corrupting lease state until repaired under lock.
   - **Plan:** Add a conflict-marker guard covering all commit paths — a `pre-commit` hook (installed via bootstrap) or a check inside `git-lock.sh run` that greps staged content for the marker triplet and aborts. Reuse the regex from #023: `^\+(<<<<<<< |=======$|>>>>>>> )`. Do NOT just add it to the daemon's sync tick (that's #023/DONE) — the bug here entered through a manual checkout path.
   - **Main files:** `scripts/git-lock.sh`, `scripts/test-git-sync-guards.sh`, tracked `pre-commit` hook
@@ -104,7 +104,7 @@ Threshold question: "Would a fresh session know what to do from the title alone?
 
 ```markdown
 - **#058 `commit-path-conflict-marker-guard`** — Fix conflict markers getting committed
-  - type:bug | area:infra | priority:P1 | effort:S | agent:claude | machine:antfox | status:open
+  - type:bug | area:infra | priority:P1 | effort:S | agent:claude | machine:<<MACHINE_1_ID>> | status:open
 ```
 
 This forces the next session to archaeology: why does this happen? Where? What did we try? What's the right fix? That's the context that was in the session that opened this task.

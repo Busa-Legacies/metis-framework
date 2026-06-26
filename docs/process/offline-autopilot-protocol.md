@@ -42,7 +42,7 @@ A task is **autopilot-eligible** only if every answer is yes:
 1. **Self-contained** — it can be finished (or moved to a clean, honest checkpoint) without an answer from Ant.
 2. **No external publish** — it does not send anything outward that can't be unwound: no Discord/email/social posts, no PR *merges*, no ClickUp/Notion writes that others act on, no live-trading flips. (Drafting these for review is fine; *sending* is not.)
 3. **No human-gated input** — it isn't blocked on a secret, credential, API key, or an Ant-only decision (`@status:blocked`, "Ant-present", "needs Ant", or a `nextDecisionPoint` that is a question for Ant).
-4. **Machine-available** — it can actually run in the current environment. A fresh web/remote clone cannot touch <<MACHINE_1_ID>>/<<MACHINE_2_ID>> LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:antfox` live-verify steps are **out of reach** from a remote clone — code can land, but mark it `needs_verification`, never `done`.
+4. **Machine-available** — it can actually run in the current environment. A fresh web/remote clone cannot touch <<MACHINE_1_ID>>/<<MACHINE_2_ID>> LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:<<MACHINE_1_ID>>` live-verify steps are **out of reach** from a remote clone — code can land, but mark it `needs_verification`, never `done`.
 5. **Reversible** — the work lands on a feature branch as commits, not on `main` and not as a destructive operation.
 
 If a task fails the test, **skip it and record why** — do not improvise around the gate.
@@ -54,7 +54,7 @@ Picking the next autopilot task?
 │
 ├── Needs an Ant answer / secret / approval?      → SKIP (note it in the report)
 ├── Sends something outward irreversibly?          → SKIP (draft only, never send)
-├── Needs <<MACHINE_1_ID>>/<<MACHINE_2_ID>>/Ollama/live dashboard/antfox?  → code only if possible →
+├── Needs <<MACHINE_1_ID>>/<<MACHINE_2_ID>>/Ollama/live dashboard/<<MACHINE_1_ID>>?  → code only if possible →
 │                                                     land as needs_verification
 ├── Self-contained code or doc on a branch?         → DO IT
 └── Nothing eligible left?                           → stop early, report honestly
@@ -108,7 +108,7 @@ Keep it scannable. Ant just got off a plane.
 
 Settled with Ant after the first run (2026-06-06):
 
-- **Verification bar — conservative (confirmed).** Only mark `done` what can be verified in-environment. Anything needing a machine the session can't reach (`@machine:antfox`, the live dashboard, Ollama) lands at `needs_verification` with the verify steps recorded. Do not stretch to `done` on faith.
+- **Verification bar — conservative (confirmed).** Only mark `done` what can be verified in-environment. Anything needing a machine the session can't reach (`@machine:<<MACHINE_1_ID>>`, the live dashboard, Ollama) lands at `needs_verification` with the verify steps recorded. Do not stretch to `done` on faith.
 - **PR shape — one draft PR per task.** Each eligible task gets its own draft PR so Ant can review and merge them independently, rather than one bundled batch PR. (The 2026-06-06 run predates this and bundled four tasks into PR #18; splitting it retroactively would mean redoing interleaved governed-state commits — attended-grade git surgery — so it was left intact as the record of that run.)
 
 ## Related docs

@@ -30,5 +30,5 @@ Pickup is **project-oriented** (#181): the default view is a ranked **project bo
 6. Ask which project/task to pick up, or proceed if Ant already named one.
 
 ## Notes
-- Machine identity auto-derived from hostname (AntFox-Macbook → antfox/<<MACHINE_1_ID>>). Override: `--machine <name>` or `FREE_WORK_MACHINE=<name>`.
+- Machine identity auto-derived from hostname (AntFox-Macbook → <<MACHINE_1_ID>>/<<MACHINE_1_ID>>). Override: `--machine <name>` or `FREE_WORK_MACHINE=<name>`.
 - Use `/next` to actually claim — `join <slug>` then `claim-next` (selects + claims inside one lock so concurrent sessions get different tasks, even within the same project).

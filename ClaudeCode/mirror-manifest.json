@@ -102,7 +102,7 @@
         {
             "link": "~/.claude/agents",
             "machine1Target": "ClaudeCode/agents/jay",
-            "machine2Target": "ClaudeCode/agents/jarry",
+            "machine2Target": "ClaudeCode/agents/<<MACHINE_2_ID>>",
             "note": "Claude Code native subagent personas (smith/scout/warden/scribe/main). Target differs per machine \u2014 each dir has machine-specific Host Machine header but same role definitions. Wired by bootstrap-claude-memory.sh."
         }
     ],

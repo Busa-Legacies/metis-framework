@@ -34,7 +34,7 @@ From the git log and working-context.md date:
 cd ~/metis-os && openclaw status 2>&1
 
 # LaunchAgent pulse
-launchctl list | grep -E 'ant\.|abusa\.' 2>/dev/null
+launchctl list | grep -E 'ant\.|<<MACHINE_2_USER>>\.' 2>/dev/null
 ```
 Interpret three-column `(PID, Status, Label)` output:
 - PID present + status 0 → running normally

@@ -59,7 +59,7 @@ Thread KEY is the `[...]` label. If exit 2 (over budget without dropping a concu
 Three outputs:
 - **Lessons learned** → route via `docs/process/correction-protocol.md`: if the lesson should change *behavior* → delta-edit the governing skill/CLAUDE.md and make the memory entry a ≤3-line breadcrumb. Durable non-behavioral lessons → `feedback_*` memory file (step 10); session-specific → Scribe summary (step 6)
 - **Suggested next steps** → highest-priority one → `## Next action`; rest → `task-queue.md` entries with Why/Plan/Main files per [task-writing-protocol.md](../../docs/process/task-writing-protocol.md)
-- **New to-dos** → `task-queue.md` + (if board-worthy) `workspace/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:antfox`
+- **New to-dos** → `task-queue.md` + (if board-worthy) `workspace/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:<<MACHINE_1_ID>>`
 
 Also: **backstop sweep for bugs fixed before committing** — these leave no git trace and the roll-up can't surface them. Recall by hand and route: reusable gotcha → `feedback_*`; design-level → DR; one-off → commit/Scribe log; trivial → nothing.
 
@@ -72,7 +72,7 @@ See `daily-log-protocol.md` in this skill directory for the full Scribe compose 
 Short form: roll up git commits → route Scribe to compose → CC writes file → run boundary advance script → assert file exists with today's date.
 
 ## Step 7 — Task dedup gate
-Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py` and skim `task-queue.md` + `OPEN_TASKS.md`. For each next-step from step 5, write it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing queued entry, or (c) completed per the step-6 git roll-up. Skip any match and state why. Prune completed entries from `task-queue.md`. Update `docs/process/live-status.md` if state changed. Each new entry must include: `Priority:` P1/P2/P3 · `Agent:` smith/scout/warden/scribe/claude · `Machine:` antfox/jarry/either · `Status:` queued/blocked/in-progress
+Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py` and skim `task-queue.md` + `OPEN_TASKS.md`. For each next-step from step 5, write it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing queued entry, or (c) completed per the step-6 git roll-up. Skip any match and state why. Prune completed entries from `task-queue.md`. Update `docs/process/live-status.md` if state changed. Each new entry must include: `Priority:` P1/P2/P3 · `Agent:` smith/scout/warden/scribe/claude · `Machine:` <<MACHINE_1_ID>>/<<MACHINE_2_ID>>/either · `Status:` queued/blocked/in-progress
 
 ## Step 8 — Cross-agent handoff
 ```bash

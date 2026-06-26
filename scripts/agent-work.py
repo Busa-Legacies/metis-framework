@@ -1548,7 +1548,7 @@ def build_parser() -> argparse.ArgumentParser:
     cn.add_argument("--agent", required=True)
     cn.add_argument("--session", default=default_session())
     cn.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
-    cn.add_argument("--machine", help="override detected machine (antfox/abusa)")
+    cn.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_USER>>)")
     cn.add_argument("--project", metavar="SLUG",
                     help="restrict candidates to this project (default: presence-derived or global)")
     cn.add_argument("--lane", metavar="LANE",

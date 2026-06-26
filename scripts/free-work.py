@@ -19,8 +19,8 @@ DRIFT (board items that disagree with, or are missing from, the governed store).
 Usage:
   python3 scripts/free-work.py
   python3 scripts/free-work.py --json
-  python3 scripts/free-work.py --machine abusa
-  FREE_WORK_MACHINE=abusa python3 scripts/free-work.py
+  python3 scripts/free-work.py --machine <<MACHINE_2_USER>>
+  FREE_WORK_MACHINE=<<MACHINE_2_USER>> python3 scripts/free-work.py
 """
 
 from __future__ import annotations
@@ -769,7 +769,7 @@ def render_project_tasks(agg: dict, slug: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Show open, unclaimed work for this machine.")
     ap.add_argument("--json", action="store_true", help="emit buckets as JSON")
-    ap.add_argument("--machine", help="override detected machine (antfox/abusa)")
+    ap.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_USER>>)")
     ap.add_argument("--project", metavar="SLUG",
                     help="show tasks for a specific project (CLAIMED/BLOCKED/FREE)")
     ap.add_argument("--project-status", metavar="SLUG",

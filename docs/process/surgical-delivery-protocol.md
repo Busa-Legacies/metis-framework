@@ -21,7 +21,7 @@ Claude sessions plus an auto-sync daemon, where a full pull/merge/reset would ha
 ## When this protocol applies
 
 Use it whenever you are writing git-tracked state onto a clone you do **not** have exclusive control of:
-- a remote machine reached over SSH (e.g. <<MACHINE_1_ID>>/antfox) that has live agent sessions
+- a remote machine reached over SSH (e.g. <<MACHINE_1_ID>>/<<MACHINE_1_ID>>) that has live agent sessions
 - any clone where the auto-sync daemon is running and committing `[auto-sync]` snapshots
 - a clone that has diverged from origin and has **uncommitted local work** in the tree
 - delivering a fix/config that must land without interrupting whatever is mid-flight

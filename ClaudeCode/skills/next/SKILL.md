@@ -47,6 +47,6 @@ Pickup is **project-oriented** (#181): join a project (shared workspace, never a
    (Or it auto-expires after the lease window and the reaper frees it.) Stay joined if continuing in the project; `leave` when switching projects or ending the session.
 
 ## Flags
-`--project <slug>` · `--machine antfox|abusa` · `--hours N` · `--allow-multi` · `--dry-run` · `--json`
+`--project <slug>` · `--machine <<MACHINE_1_ID>>|<<MACHINE_2_USER>>` · `--hours N` · `--allow-multi` · `--dry-run` · `--json`
 
 Machine + ranking come from `free-work.py` (single source of truth — `claim-next` imports its `aggregate()`), so `/next` and `/free-work` always agree on what's free and in what order.

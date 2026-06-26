@@ -25,7 +25,7 @@ Optional additions: `**Next action:**`, `**Blocked by:** #NNN`, `**Done when:**`
 ### OPEN_TASKS.md (board view) entries
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:antfox
+- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
 
 Type and area tags optional in board view; include `@type:T @area:A` when useful for filtering.
@@ -37,13 +37,13 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 | `#NNN` | 001–999 | Sequential, never reused. See counter below. |
 | `slug` | `kebab-case` | Verb-noun describing the work. No domain prefix — that's `area`. |
 | `type` | `bug` `feat` `chore` `infra` `research` `doc` | Kind of work |
-| `area` | `openclaw` `dashboard` `trading-bot` `example` `infra` `jarry` `personal` | Project domain |
+| `area` | `openclaw` `dashboard` `trading-bot` `example` `infra` `<<MACHINE_2_ID>>` `personal` | Project domain |
 | `goal` | `G1` `G2` `G3` `G4` `G5` `G6` | Active campaign this serves. See [goals.md](goals.md); life-domain vocabulary lives in [taxonomy.yaml](taxonomy.yaml). |
 | `project` | kebab-case slug | Project this belongs to. See [projects.md](projects.md). |
 | `priority` | `P1` `P2` `P3` | P1 = blocking · P2 = important · P3 = nice-to-have |
 | `effort` | `XS` `S` `M` `L` `XL` | XS <30min · S <2hr · M half-day · L 1-2d · XL 3+d |
 | `agent` | `claude` `smith` `scout` `warden` `echo` `steward` | Who executes |
-| `machine` | `antfox` `jarry` `either` | Where it runs |
+| `machine` | `<<MACHINE_1_ID>>` `<<MACHINE_2_ID>>` `either` | Where it runs |
 | `status` | `open` `in-progress` `blocked` `done` `cancelled` `needs-review` `monitoring` `partially-fixed` | Current state |
 | `blocked-by` | `#NNN` | Optional. Dependency link. |
 | `gh` | `#N` | Optional. GitHub Issue number when one exists. |

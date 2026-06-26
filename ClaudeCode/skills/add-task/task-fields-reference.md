@@ -13,7 +13,7 @@ To add this task I need a few details:
 3. **Why** — what surfaced this? (incident, friction point, observation — 1-3 sentences; include date if a live event)
 4. **How** — approach direction + what NOT to do / what was already tried
 5. **Priority**: P1 / P2 / P3
-6. **Owner machine**: antfox / jarry / either → governed `owner`
+6. **Owner machine**: <<MACHINE_1_ID>> / <<MACHINE_2_ID>> / either → governed `owner`
 7. **Agent lane** (board only): smith / scout / warden / echo / claude
 8. **Main files** — key files this touches (optional if unknown) → governed `mainFiles`
 9. **First step** (optional) — the single concrete starting action from THIS session; one line, distinct from how. Record now while intent is fresh; skip if genuinely unknown.
@@ -71,7 +71,7 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 | `title` | yes | kebab-case slug, verb-noun, no domain prefix |
 | `priority` | yes | P1 (blocking) · P2 (important) · P3 (nice-to-have) |
 | `state` | yes | `queued` for new tasks; `inbox` only for un-triaged captures |
-| `owner` | yes | antfox / jarry / either |
+| `owner` | yes | <<MACHINE_1_ID>> / <<MACHINE_2_ID>> / either |
 | `project` | yes | slug from `docs/process/state/projects.json` — write gate rejects unknown/missing (#181); `ops` is the catch-all |
 | `area` / `agent` / `machine` | yes | board-projection fields (#100) — helper rejects if absent |
 | `summary` | yes | one-line what — required by schema, helper rejects if absent |
@@ -85,7 +85,7 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 ## Board line format (Step 5)
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:antfox
+- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
 
 Section target: `## <area>` header in `workspace/state/OPEN_TASKS.md`. Create the section if none fits.

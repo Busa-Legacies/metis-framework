@@ -2,7 +2,7 @@
 # Detect when a machine's LIVE git-sync script has drifted from the canonical
 # repo-tracked copy. The 2026-05-30 corruption incident happened because hardened
 # fixes (branch guard, marker guard) were documented as "deployed" but the live
-# script on antfox was still the old unguarded version. This catches that silently.
+# script on <<MACHINE_1_ID>> was still the old unguarded version. This catches that silently.
 #
 # Usage: scripts/check-sync-drift.sh   (exit 0 = in sync, 1 = drift/missing)
 # Wire into session-start or a cron alert per machine.

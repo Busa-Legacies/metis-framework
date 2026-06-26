@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Autonomous queue runner — dispatches Agent:smith/scout tasks from task-queue.md.
-Runs on antfox (<<MACHINE_1_ID>>) via LaunchAgent every 30 min, 06:00-22:00 PT.
+Runs on <<MACHINE_1_ID>> (<<MACHINE_1_ID>>) via LaunchAgent every 30 min, 06:00-22:00 PT.
 
 Design: docs/process/queue-runner-pattern.md + cron-checkpoint-runner.md
 """
@@ -58,7 +58,7 @@ def parse_tasks(text):
             continue
         task["title"] = title_m.group(1)
 
-        # Single-line format: Priority: P2 · Agent: smith · Machine: antfox · Status: queued
+        # Single-line format: Priority: P2 · Agent: smith · Machine: <<MACHINE_1_ID>> · Status: queued
         inline_m = re.search(
             r"Priority:\s*(\w+)\s*[·•]\s*Agent:\s*(\w+)\s*[·•]\s*Machine:\s*(\w+)\s*[·•]\s*Status:\s*([\w-]+)",
             block,
@@ -69,7 +69,7 @@ def parse_tasks(text):
             task["machine"] = inline_m.group(3).lower()
             task["status"] = inline_m.group(4).lower()
         else:
-            # Pipe-tag format: type:doc | area:openclaw | priority:P3 | agent:scout | machine:antfox | status:queued
+            # Pipe-tag format: type:doc | area:openclaw | priority:P3 | agent:scout | machine:<<MACHINE_1_ID>> | status:queued
             tag_line = re.search(r"type:\w+\s*\|[^\n]+", block)
             if tag_line:
                 tl = tag_line.group(0)
@@ -515,7 +515,7 @@ Rules:
 Per-lane checks:
 - smith: is_artifact? prereq satisfied? real imports? plausible file paths? real function APIs? warden issues? safety ops?
 - scout: addresses the question? no contradictions? actionable? flag specific version/endpoint claims
-- steward: valid agents (smith/scout/warden/scribe/steward/main)? valid machines (antfox/jarry/either)? no circular deps?
+- steward: valid agents (smith/scout/warden/scribe/steward/main)? valid machines (<<MACHINE_1_ID>>/<<MACHINE_2_ID>>/either)? no circular deps?
 - scribe: starts directly with file content (e.g. '# Daily Log')? If starts with 'I have...', 'Here is...' → iterate"""
 
 

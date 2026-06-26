@@ -52,7 +52,7 @@ memory spine, and one lifecycle — and the system can prove they're in sync.
 │ ADAPTERS  (thin, per-platform — map the core to each tool's shape) │
 │  • Claude Code: ClaudeCode/skills/ · .claude/agents/ · hooks       │
 │  • Codex:       .codex/prompts/ · .codex/agents/ · instructions.md │
-│  • OpenClaw:    ClaudeCode/agents/{jay,jarry}/ · dispatch lanes     │
+│  • OpenClaw:    ClaudeCode/agents/{jay,<<MACHINE_2_ID>>}/ · dispatch lanes     │
 │  • Metis Command: projects/metis-command/ — control center         │
 │  • <new tool>:  one adapter dir, declared in the registry          │
 ├─────────────────────────────────────────────────────────────────┤
@@ -128,7 +128,7 @@ AGENT_SESSION_ID          # provider-neutral override — set by any driver/wrap
 ```
 
 Any new driver either exports `AGENT_SESSION_ID=<stable-unique-per-session>` or adds its native
-env var to this chain. The machine/agent map in `free-work.py` (`antfox`/`abusa` → known agent
+env var to this chain. The machine/agent map in `free-work.py` (`<<MACHINE_1_ID>>`/`<<MACHINE_2_USER>>` → known agent
 names incl. `codex`, `claude`) classifies which leases count as "this machine's WIP."
 
 ## 6. Unified, compounding memory
