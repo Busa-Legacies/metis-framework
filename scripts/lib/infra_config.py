@@ -77,3 +77,77 @@ def domains() -> list:
     d = load().get("domains", {}) or {}
     raw = d if isinstance(d, list) else (d.get("list") or [])
     return [x for x in raw if not _is_placeholder(x)] or ["uncategorized"]
+
+
+def model_host_machine() -> str:
+    """Machine id marked as the model/inference host (modelHost: true), else primary.
+    Lets scripts ask 'is this the host that serves local models?' without a hardcoded
+    hostname check."""
+    for m in machines():
+        if m.get("modelHost") and m.get("id"):
+            return m["id"]
+    return primary_machine()
+
+
+def detect_machine(override: str | None = None) -> str:
+    """Identify THIS machine's id from host signals, matched against the declared
+    topology — no hardcoded hostnames. Resolution order: explicit override >
+    METIS_MACHINE / FREE_WORK_MACHINE env > a machine whose id/user/hostname appears
+    in the host signals (scutil LocalHostName, $USER, $HOME, gethostname) > primary."""
+    import socket
+    import subprocess
+    if override and not _is_placeholder(override):
+        return override.lower()
+    env = os.environ.get("METIS_MACHINE") or os.environ.get("FREE_WORK_MACHINE")
+    if env:
+        return env.lower()
+    user = (os.environ.get("USER") or "").lower()
+    home = str(Path.home()).lower()
+    namesig = ""
+    try:
+        r = subprocess.run(["scutil", "--get", "LocalHostName"],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            namesig += " " + r.stdout.strip().lower()
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+    try:
+        namesig += " " + socket.gethostname().lower()
+    except OSError:
+        pass
+    ms = machines()
+    # 1. Exact unix-user match — the most reliable discriminator between hosts.
+    #    (Substring matching would misfire: a short user like 'ant' is a substring
+    #    of another host's name 'anthonys-macbook-pro'. Require an exact match.)
+    for m in ms:
+        if user and (m.get("user") or "").lower() == user:
+            return (m.get("id") or "").lower()
+    # 2. Machine id or hostname appears in the host's name signals (specific tokens).
+    for m in ms:
+        mid = (m.get("id") or "").lower()
+        host = (m.get("hostname") or "").lower()
+        if (mid and mid in namesig) or (host and host in namesig):
+            return mid
+    # 3. Home-path user component (e.g. /users/<user>/...).
+    for m in ms:
+        mu = (m.get("user") or "").lower()
+        if mu and f"/{mu}" in home:
+            return (m.get("id") or "").lower()
+    return primary_machine()
+
+
+if __name__ == "__main__":
+    # CLI shim so shell scripts can resolve topology without hardcoding personas:
+    #   python3 scripts/lib/infra_config.py detect-machine [override]
+    import sys
+    _arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    if _arg == "detect-machine":
+        print(detect_machine(sys.argv[2] if len(sys.argv) > 2 else None))
+    elif _arg == "primary-machine":
+        print(primary_machine())
+    elif _arg == "model-host":
+        print(model_host_machine())
+    elif _arg == "domains":
+        print(" ".join(domains()))
+    else:
+        sys.exit("usage: infra_config.py {detect-machine|primary-machine|model-host|domains}")
