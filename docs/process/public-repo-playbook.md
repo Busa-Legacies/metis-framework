@@ -1,5 +1,21 @@
 # Public Repo Carveout Playbook
 
+> [!IMPORTANT]
+> **Superseded (2026-06) on two points — read these first.** This playbook predates the
+> actual `metis-framework` launch and is kept for its general carveout hygiene, but two of
+> its specifics are out of date:
+> - **License.** It recommends **MIT** (§5, §License). The accepted decision is
+>   **FSL-1.1-Apache-2.0** (source-available, auto-converts to Apache-2.0 after 2 years) —
+>   see [`DR-0005`](decisions/DR-0005-fsl-1.1-license-for-public-metis-releases.md). MIT
+>   would hollow out the product boundary FSL protects; do **not** apply MIT to Metis releases.
+> - **Architecture.** It describes public repos as **tags cut from the private mono-repo**. The
+>   framework instead ships as a **standalone extracted repo** refreshed via the Model B publish
+>   pipeline (`build/publish.py`: derive-from-source + overlay + scrub) — see
+>   `PLAN-metis-os-opensrc.md` §6.
+>
+> Treat DR-0005 and the opensrc plan §6 as the current authority where they conflict with the
+> text below.
+
 How to carve a publishable project out of Metis OS.
 
 ---

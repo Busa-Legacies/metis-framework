@@ -12,7 +12,7 @@ parameterized out into [`config/infrastructure.json`](config/infrastructure.json
 It is consumed by downstream repos (e.g. an org's private operating repo) via
 **git subtree**, so the same spine stays in sync across every agent that runs it.
 
-![Metis Command cockpit: agent lanes, governed task board, assistant panel (agent-captured demo)](docs/assets/metis-cockpit-demo.gif)
+![Metis Command cockpit: agent lanes, governed task board, assistant panel (agent-captured demo)](docs/assets/metis-cockpit-demo.webp)
 
 ## A production implementation of the long-running-agent harness
 
