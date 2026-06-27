@@ -117,8 +117,8 @@ def detect_machine(override: str | None = None) -> str:
         pass
     ms = machines()
     # 1. Exact unix-user match — the most reliable discriminator between hosts.
-    #    (Substring matching would misfire: a short user like 'ant' is a substring
-    #    of another host's name 'anthonys-macbook-pro'. Require an exact match.)
+    #    (Substring matching would misfire: a short user id can be a substring of
+    #    another host's longer hostname, so require an exact user match here.)
     for m in ms:
         if user and (m.get("user") or "").lower() == user:
             return (m.get("id") or "").lower()
