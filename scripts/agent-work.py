@@ -22,7 +22,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+# Portable repo root: REPO_ROOT (per-invocation/worktree, e.g. a vendored subtree)
+# -> METIS_HOME (canonical) -> file location. Without this, a subtree copy (navore-ops/
+# metis-core) writes leases + the task counter back under the framework dir instead of
+# the host repo (#451; same doctrine as render-tier1-state.py + free-claims.py).
+ROOT = Path(os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or Path(__file__).resolve().parents[1])
 DEFAULT_STATE = ROOT / "docs/process/state/active-checkouts.json"
 DEFAULT_WORKTREES = ROOT.parent / f"{ROOT.name}-worktrees"  # self-adjusts to repo dir name
 DEFAULT_LEASE_HOURS = 4

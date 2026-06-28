@@ -37,7 +37,10 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+# Honor REPO_ROOT (per-invocation/worktree) -> METIS_HOME (canonical) -> file location,
+# so claim-next (which shells out here) reads the host repo's board in a vendored subtree
+# layout instead of the framework dir (#451).
+REPO_ROOT = Path(os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or Path(__file__).resolve().parent.parent)
 CHECKOUTS = REPO_ROOT / "docs/process/state/active-checkouts.json"
 TASKS = REPO_ROOT / "docs/process/state/tasks.json"
 OPEN_TASKS = REPO_ROOT / "workspace/state/OPEN_TASKS.md"
