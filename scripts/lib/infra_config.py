@@ -11,7 +11,18 @@ import json
 import os
 from pathlib import Path
 
-_HOME = os.environ.get("METIS_HOME") or os.environ.get("METIS_CORE") or str(Path(__file__).resolve().parents[2])
+# Resolution precedence matches the canonical ROOT order used by agent-work.py /
+# free-work.py (REPO_ROOT > METIS_HOME > file-location): a cross-repo caller that
+# pins REPO_ROOT at a consuming repo (e.g. a delegation bridge writing into another
+# org's checkout) must read THAT repo's config/infrastructure.json overlay, not the
+# vendored core template. Without REPO_ROOT honored here, state resolved to the
+# consuming repo while machine/topology detection silently read the core template.
+_HOME = (
+    os.environ.get("REPO_ROOT")
+    or os.environ.get("METIS_HOME")
+    or os.environ.get("METIS_CORE")
+    or str(Path(__file__).resolve().parents[2])
+)
 _CONFIG_PATH = Path(_HOME) / "config" / "infrastructure.json"
 
 
