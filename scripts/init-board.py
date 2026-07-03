@@ -16,7 +16,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-HOME = Path(os.environ.get("METIS_HOME") or HERE.parent)
+# REPO_ROOT (per-invocation/worktree/vendored subtree) -> METIS_HOME (canonical) ->
+# file location, matching update/render-tier1-state.py so cold-start seeds the host
+# repo's board, not the framework dir, under a REPO_ROOT-pinned layout (#434/#451).
+HOME = Path(os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or HERE.parent)
 STATE = HOME / "docs" / "process" / "state"
 
 sys.path.insert(0, str(HERE / "lib"))
