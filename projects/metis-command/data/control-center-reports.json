@@ -1,0 +1,85 @@
+{
+  "reports": [
+    {
+      "workspaceId": "ws_ovo7xlwmlk",
+      "path": "$HOME/AGENTS.md",
+      "kind": "markdown",
+      "mtime": "2026-06-03T01:36:10.882Z",
+      "sizeBytes": 18433,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_mhetnt4mmp",
+      "path": "$HOME/AGENTS.md",
+      "kind": "markdown",
+      "mtime": "2026-06-10T17:00:29.637Z",
+      "sizeBytes": 5944,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_9kte9en5p8",
+      "path": "$HOME/AGENTS.md",
+      "kind": "markdown",
+      "mtime": "2026-06-03T01:36:10.882Z",
+      "sizeBytes": 18433,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/IDENTITY.md",
+      "kind": "markdown",
+      "mtime": "2026-06-13T05:33:41.720Z",
+      "sizeBytes": 751,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/MEMORY.md",
+      "kind": "markdown",
+      "mtime": "2026-06-11T00:37:36.443Z",
+      "sizeBytes": 654,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/CLAUDE.md",
+      "kind": "markdown",
+      "mtime": "2026-06-10T22:50:42.677Z",
+      "sizeBytes": 3572,
+      "unread": true,
+      "agentId": "ag_u1hzwjb2dm"
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/AGENTS.md",
+      "kind": "markdown",
+      "mtime": "2026-06-10T17:00:29.637Z",
+      "sizeBytes": 5944,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/HEARTBEAT.md",
+      "kind": "markdown",
+      "mtime": "2026-06-10T05:04:07.416Z",
+      "sizeBytes": 1300,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/SOUL.md",
+      "kind": "markdown",
+      "mtime": "2026-06-06T18:55:48.375Z",
+      "sizeBytes": 3795,
+      "unread": true
+    },
+    {
+      "workspaceId": "ws_u054zeahoi",
+      "path": "${METIS_HOME}/README.md",
+      "kind": "markdown",
+      "mtime": "2026-06-06T18:14:04.963Z",
+      "sizeBytes": 3356,
+      "unread": true
+    }
+  ]
+}

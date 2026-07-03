@@ -1,0 +1,132 @@
+{
+    "version": 1,
+    "description": "Machine-readable registry of agent platforms (drivers/executors/engines) for Metis OS. Human companion: multi-provider-agent-framework.md. Consumed by scripts/platform-parity-check.py (read-only drift/parity report). The neutral core is the single source of truth; each platform is a thin adapter declared here. Paths are repo-relative unless prefixed with ~.",
+
+    "canonicalCommands": ["start", "next", "checkpoint", "end", "free-work"],
+
+    "neutralCore": {
+        "identity": ["AGENTS.md", "SOUL.md", "USER.md", "IDENTITY.md"],
+        "protocolScripts": [
+            "scripts/free-work.py",
+            "scripts/agent-work.py",
+            "scripts/working-context-update.py",
+            "scripts/git-lock.sh",
+            "scripts/close-push.sh",
+            "scripts/dispatch"
+        ],
+        "state": [
+            "docs/process/state/active-checkouts.json",
+            "docs/process/state/tasks.json",
+            "workspace/state/OPEN_TASKS.md"
+        ],
+        "memory": "ClaudeCode/memory",
+        "docs": "docs"
+    },
+
+    "sessionIdResolution": [
+        "AGENT_SESSION_ID",
+        "CLAUDE_CODE_SESSION_ID",
+        "CODEX_SESSION_ID",
+        "OPENCLAW_SESSION",
+        "manual"
+    ],
+
+    "packRouter": "AGENTS.md",
+    "tier1Packs": [
+        {"id": "assistant-comms", "doc": "docs/process/assistant-comms.md"},
+        {"id": "hearth-lanes", "doc": "docs/process/hearth-lanes.md"},
+        {"id": "decision-doctrine", "doc": "docs/process/decision-doctrine.md"},
+        {"id": "design-guidelines", "doc": "docs/design-guidelines.md"},
+        {"id": "task-lifecycle", "doc": "docs/process/task-pickup-and-lifecycle-standard.md"}
+    ],
+    "tier1PacksNote": "Tiered-context architecture (docs/process/tiered-context-architecture.md): the on-demand Tier-1 packs. Each must (a) have its canonical doc present and (b) be referenced by the shared neutral Router (packRouter = AGENTS.md), so every provider that reads AGENTS.md routes to the same pack set. platform-parity-check.py enforces both.",
+
+    "platforms": [
+        {
+            "id": "claude-code",
+            "roles": ["driver", "engine"],
+            "status": "live",
+            "agentName": "claude",
+            "entrypoint": "ClaudeCode/CLAUDE.md",
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": {"dir": "ClaudeCode/commands", "ext": ".md"},
+            "skillSurface": "ClaudeCode/skills",
+            "agentPersonas": ".claude/agents",
+            "memory": "ClaudeCode/memory",
+            "sessionIdEnv": "CLAUDE_CODE_SESSION_ID",
+            "lifecycle": "hooks",
+            "notes": "Reference implementation. Lifecycle enforced by settings.json hooks (session-init, prompt-guard, stop, statusline)."
+        },
+        {
+            "id": "codex-cli",
+            "roles": ["driver", "engine"],
+            "status": "live",
+            "agentName": "codex",
+            "entrypoint": "ClaudeCode/codex/instructions.md",
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": {"dir": ".codex/prompts", "ext": ".md"},
+            "skillSurface": ".agents/skills",
+            "agentPersonas": ".codex/agents",
+            "memory": "ClaudeCode/memory",
+            "sessionIdEnv": "CODEX_SESSION_ID",
+            "lifecycle": "prompts+hooks",
+            "notes": "Codex CLI custom prompts (~/.codex/prompts) provide legacy slash adapters; reusable workflows are exposed as repo skills via .agents/skills, symlinked to ClaudeCode/skills. Memory unified to ClaudeCode/memory via mirror symlink. Native Codex hooks are configured in ~/.codex/hooks.json for Metis guard/context parity; trusted command hashes live in ~/.codex/config.toml and must be re-approved when hook commands change. Repo launch policy lives in .codex/config.toml + docs/process/codex-launch-policy.md; mirror.py merges only approval_policy=never and sandbox_mode=danger-full-access into local config, and launchers should pass --sandbox danger-full-access --ask-for-approval never."
+        },
+        {
+            "id": "openclaw-lanes",
+            "roles": ["executor", "engine"],
+            "status": "live",
+            "agentName": ["smith", "scout", "warden", "scribe", "main", "arbiter", "steward"],
+            "entrypoint": "ClaudeCode/CLAUDE.md",
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": null,
+            "agentPersonas": "ClaudeCode/agents",
+            "memory": "workspace/memory",
+            "sessionIdEnv": "OPENCLAW_SESSION",
+            "lifecycle": "dispatch",
+            "notes": "Local Ollama lanes invoked via scripts/dispatch. Executor role: receives sub-tasks, returns output; does not own session lifecycle, so no command surface is required. <<MACHINE_1_ID>> is the sole Ollama host for qwen3-coder:30b; <<MACHINE_2_ID>> is secondary/on-demand and routes Ollama to <<MACHINE_1_ID>>. <<MACHINE_2_ID>> currently runs OpenClaw sandbox mode off because Docker is unavailable there, so keep <<MACHINE_2_ID>> lanes proposal-only unless sandboxing is restored and verified."
+        },
+        {
+            "id": "antigravity-cli",
+            "roles": ["driver", "engine"],
+            "status": "on-hold",
+            "agentName": "gemini",
+            "entrypoint": null,
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": {"dir": ".antigravity/prompts", "ext": ".md"},
+            "agentPersonas": ".antigravity/agents",
+            "memory": "ClaudeCode/memory",
+            "sessionIdEnv": "ANTIGRAVITY_SESSION_ID",
+            "lifecycle": "prompts",
+            "notes": "Successor to Gemini CLI, which Google is deprecating for free/Pro/Ultra individual tiers on 2026-06-18 (so do NOT build against Gemini CLI). Antigravity CLI supports skills/hooks/subagents/extensions at launch and would run on Ant's existing Google AI tier. ON-HOLD: Ant will only adopt it if usage is BUNDLED in the tier he already pays for, not metered pay-per-API — confirm the billing model before bring-up. Not open-source; expect rough edges right after the transition."
+        },
+        {
+            "id": "copilot",
+            "roles": ["driver"],
+            "status": "blocked",
+            "agentName": "copilot",
+            "entrypoint": null,
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": null,
+            "agentPersonas": null,
+            "memory": "ClaudeCode/memory",
+            "sessionIdEnv": "COPILOT_SESSION_ID",
+            "lifecycle": "cli+cloud-agent",
+            "notes": "GitHub Copilot CLI (local driver) + cloud coding agent (issue->PR in Actions); both read AGENTS.md (our neutral entrypoint), so near-zero glue, and it's the most GitHub-native fit for our issue/PR/lease flow. Cheapest paid agent at $10/mo Pro. BLOCKED: new Pro/Pro+/Max signups paused since 2026-04-20. scripts/copilot-signup-watch.py (daily via ant.copilot-signup-watch.plist) pings Discord when signups reopen or plans change; build the adapter then."
+        },
+        {
+            "id": "cursor",
+            "roles": ["driver"],
+            "status": "declined",
+            "agentName": "cursor",
+            "entrypoint": null,
+            "neutralEntrypoint": "AGENTS.md",
+            "commandSurface": null,
+            "agentPersonas": null,
+            "memory": "ClaudeCode/memory",
+            "sessionIdEnv": "CURSOR_SESSION_ID",
+            "lifecycle": "rules",
+            "notes": "$20/mo agentic IDE with a headless CLI (cursor-agent) that reads AGENTS.md. DECLINED for now: its differentiator is the editor surface, which is redundant with Claude Code + Codex CLI for a headless, multi-session framework. Revisit only if Ant wants a hands-on IDE."
+        }
+    ]
+}

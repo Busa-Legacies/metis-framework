@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+# Node
+node_modules/
+.next/
+dist/
+build/app/
+dist-app/
+release/
+out/
+*.tsbuildinfo
+# OS / editor
+.DS_Store
+# Local state (never commit machine-local values)
+config/infrastructure.local.json
+.claude/settings.local.json
+*.local.json
+.env
+*.log

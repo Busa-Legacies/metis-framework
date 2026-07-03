@@ -1,0 +1,36 @@
+name: Agent task
+about: Work item intended to be checked out by Claude, Codex, <<MACHINE_1_ID>>, <<MACHINE_2_ID>>, or a lane agent.
+title: "[Agent Task] "
+labels: ["status:ready"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What should be true when this task is done?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / files likely touched
+      description: Include expected repo paths, systems, or external dependencies.
+    validations:
+      required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checks
+      description: Commands, manual checks, or evidence required before finish/PR.
+    validations:
+      required: false

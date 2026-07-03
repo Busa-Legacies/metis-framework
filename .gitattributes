@@ -1,0 +1,21 @@
+# Auto-sync conflict avoidance for high-churn shared state (T-SYNC-07).
+# active-checkouts.json: two machines bump fenceCounter/updatedAt every ~5 min; a plain
+# 3-way merge conflicts every tick and the daemon diverges. Resolve by fenceCounter via
+# a custom driver (scripts/merge-lease-state.sh, registered by openclaw-git-sync.sh).
+docs/process/state/active-checkouts.json merge=leasestate
+# task-queue.md is append-mostly from multiple machines; union keeps both sides rather
+# than blocking the unattended daemon on an append/append overlap.
+docs/process/task-queue.md merge=union
+# tasks.json + task-counter.json: both machines mutate governed task state every session;
+# a plain 3-way merge conflicts on the same task objects / counter and stalls the daemon
+# (the #147 outage). Resolve deterministically via scripts/merge-taskstate.py: union tasks
+# by taskId keeping the higher revision, counter = max(lastAssigned). Registered by
+# openclaw-git-sync.sh alongside the leasestate driver.
+docs/process/state/tasks.json merge=taskstate
+docs/process/state/task-counter.json merge=taskstate
+docs/process/state/tasks-archive.json merge=taskstate
+# file-claims.jsonl: proactive cross-session source-edit claims (#308). Both machines
+# APPEND claims; union keeps both sides so no live claim is dropped in a merge (the
+# leasestate driver would copy one side wholesale and lose the peer's claims). Expired
+# lines are filtered on read + swept by `file-claims.py prune`.
+docs/process/state/file-claims.jsonl merge=union

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent template for scheduled Claude Code tasks (claude-task runner).
+
+  To use:
+  1. Copy this file:
+       cp scripts/launchagent-claude-task.plist.template ~/Library/LaunchAgents/ant.claude-<name>.plist
+  2. Replace all <PLACEHOLDER> values below.
+  3. Load it:
+       launchctl load ~/Library/LaunchAgents/ant.claude-<name>.plist
+
+  The claude-task script runs claude --print --permission-mode bypassPermissions with a spend cap.
+  Logs go to ~/.openclaw/logs/claude-task.log (appended by the script).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ant.claude-<TASK_NAME></string>
+
+  <!-- The prompt to run. Replace with a specific task string. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HOME/.local/bin/claude-task</string>
+    <!-- Optional: override budget -->
+    <!-- <string>--budget</string> -->
+    <!-- <string>5.00</string> -->
+    <string><YOUR PROMPT HERE — e.g. "run the heartbeat check and post to #status-log"></string>
+  </array>
+
+  <!--
+    Schedule options — pick ONE and delete the other.
+
+    Option A: Run at a fixed time each day (e.g. 09:00 and 21:00).
+    Option B: Run every N seconds (e.g. 43200 = 12 hours).
+  -->
+
+  <!-- Option A: calendar interval -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key><integer>21</integer>
+      <key>Minute</key><integer>0</integer>
+    </dict>
+  </array>
+
+  <!-- Option B: fixed interval (uncomment and remove StartCalendarInterval above)
+  <key>StartInterval</key>
+  <integer>43200</integer>
+  -->
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>$HOME/.openclaw/logs/claude-task-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>$HOME/.openclaw/logs/claude-task-launchd.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>$HOME</string>
+    <key>PATH</key>
+    <string>$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>
