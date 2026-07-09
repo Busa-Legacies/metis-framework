@@ -37,14 +37,14 @@ The following docs are the main doctrinal sources for operational behavior.
 - `docs/process/task-state-contract.md`
 
 ### <<MACHINE_2_ID>>-specific doctrine
-- `docs/process/outpost-operating-model.md`
-- `docs/process/outpost-anti-drift-contract.md`
-- `docs/process/outpost-execution-evidence-gate.md`
-- `docs/process/outpost-task-lifecycle-protocol.md`
-- `docs/process/outpost-session-continuity-and-rollover.md`
-- `docs/process/outpost-timeout-and-blocked-state-policy.md`
-- `docs/process/outpost-memory-architecture-v2.md`
-- `docs/process/outpost-recall-protocol.md`
+- `docs/process/<<MACHINE_2_ID>>-operating-model.md`
+- `docs/process/<<MACHINE_2_ID>>-anti-drift-contract.md`
+- `docs/process/<<MACHINE_2_ID>>-execution-evidence-gate.md`
+- `docs/process/<<MACHINE_2_ID>>-task-lifecycle-protocol.md`
+- `docs/process/<<MACHINE_2_ID>>-session-continuity-and-rollover.md`
+- `docs/process/<<MACHINE_2_ID>>-timeout-and-blocked-state-policy.md`
+- `docs/process/<<MACHINE_2_ID>>-memory-architecture-v2.md`
+- `docs/process/<<MACHINE_2_ID>>-recall-protocol.md`
 
 ### Supporting Tier 1 / governed-state specs
 - `docs/process/tier1-governed-state-model.md`

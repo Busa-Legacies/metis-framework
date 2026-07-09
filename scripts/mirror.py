@@ -104,6 +104,7 @@ def check_settings(m) -> list:
     for spec in m.get("merge", []):
         live_p, shared_p = expand(spec["file"]), expand(spec["shared"])
         shared = json.loads(shared_p.read_text())
+        out.extend(validate_shared_settings(shared, spec["shared"]))
         live = json.loads(live_p.read_text()) if live_p.exists() else {}
         for k, v in shared.items():
             if k.startswith("_"):
@@ -124,6 +125,39 @@ def check_settings(m) -> list:
                     (
                         "DRIFT",
                         f"settings.json key {k!r} differs [{direction}] ({hint})",
+                    )
+                )
+    return out
+
+
+def validate_shared_settings(shared: dict, source: str) -> list:
+    """Catch corrupted canonical config before mirror can spread it.
+
+    This protects against terminal-rendering artifacts being copied from a UI
+    into the repo-backed settings file (for example an ESC-stripped ANSI tail
+    like `claude-opus-4-8[0;1m`).  A bad canonical value is worse than live drift
+    because `mirror.py apply --settings` would replicate it to both machines.
+
+    NOTE: a properly-closed trailing `[1m]` is NOT corruption — it is the
+    legitimate Claude Code 1M-context model alias (e.g. `claude-opus-4-8[1m]`,
+    `claude-fable-5[1m]`).  We strip that known-good suffix before the ANSI-tail
+    check so the guard stops false-flagging valid 1M-context model ids.
+    """
+    out = []
+    model = shared.get("model")
+    if model is not None:
+        if not isinstance(model, str) or not model.strip():
+            out.append(("ERROR", f"{source} has invalid model value {model!r}"))
+        else:
+            # Peel off the legitimate 1M-context suffix before the ANSI-tail scan.
+            core = re.sub(r"\[1m\]$", "", model)
+            if any(ord(ch) < 32 or ord(ch) == 127 for ch in model) or re.search(
+                r"\[[0-9;]*m\]?$", core
+            ):
+                out.append(
+                    (
+                        "ERROR",
+                        f"{source} model {model!r} looks like terminal formatting leaked into canonical settings",
                     )
                 )
     return out
@@ -278,6 +312,11 @@ def apply_settings(m) -> list:
     for spec in m.get("merge", []):
         live_p, shared_p = expand(spec["file"]), expand(spec["shared"])
         shared = json.loads(shared_p.read_text())
+        validation = validate_shared_settings(shared, spec["shared"])
+        if validation:
+            for level, msg in validation:
+                acted.append((level, f"refusing settings merge: {msg}"))
+            continue
         live = json.loads(live_p.read_text()) if live_p.exists() else {}
         changed = []
         for k, v in shared.items():
@@ -387,7 +426,7 @@ def main():
     args.quiet = getattr(args, "quiet", False)
 
     m = load_manifest()
-    machine = "<<MACHINE_1_ID>>" if USER == "Ant" else ("<<MACHINE_2_ID>>" if USER == "abusa" else USER)
+    machine = "<<MACHINE_1_ID>>" if USER == "Ant" else ("<<MACHINE_2_ID>>" if USER == "<<MACHINE_2_USER>>" else USER)
 
     if args.cmd == "check":
         issues = run_checks(m)
@@ -414,6 +453,8 @@ def main():
             print(f"{GRN}✓ mirror apply on {machine}:{RST}")
             for level, msg in acted:
                 print(f"  [{level}] {msg}")
+        if any(level == "ERROR" for level, _ in acted):
+            return 1
         if not args.settings:
             print(
                 f"{DIM}  (settings.json not touched — re-run with --settings to merge canonical settings){RST}"

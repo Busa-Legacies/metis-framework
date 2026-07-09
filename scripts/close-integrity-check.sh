@@ -5,13 +5,25 @@
 set -euo pipefail
 . "$(dirname "$0")/lib/paths.env"
 REPO="$METIS_HOME"
-PASS=0; FAIL=0
+PASS=0; FAIL=0; WARN=0
+
+# --selftest (#352): prove the canonical checks are false-PASS-resistant (a dirty
+# fixture must FAIL) without touching live state. Used by this task's doneWhen.
+if [ "${1:-}" = "--selftest" ]; then
+  exec python3 "$REPO/scripts/lib/close_integrity_canonical.py" --selftest
+fi
 
 check() {
   local label="$1" result="$2"
   if [ "$result" = "ok" ]; then
     echo "  PASS  $label"
     PASS=$((PASS+1))
+  elif [ "${result#warn:}" != "$result" ]; then
+    # "warn:<msg>" — surfaced but non-blocking (doesn't fail the close). For
+    # conditions a session can't always resolve alone (e.g. shared-file budgets
+    # inflated by concurrent sessions' legitimate entries).
+    echo "  WARN  $label — ${result#warn:}"
+    WARN=$((WARN+1))
   else
     echo "  FAIL  $label — $result"
     FAIL=$((FAIL+1))
@@ -26,10 +38,19 @@ check "orphaned bg-task reaper" "ok"
 [ -n "$reap_out" ] && echo "  reap: $reap_out"
 
 # 1. working-context.md line count
+# Graduated budget: the 35-line target is enforced at WRITE time by
+# working-context-update.py --enforce-budget (which refuses to clobber concurrent
+# sessions' threads). When several active sessions each legitimately own threads the
+# file can sit just over 35 — that's a WARN (prune your done threads), not a hard FAIL.
+# Only a genuine runaway (>45) fails the close.
 wc_lines=$(wc -l < "$REPO/workspace/memory/working-context.md" 2>/dev/null || echo 999)
-[ "$wc_lines" -le 35 ] \
-  && check "working-context.md ≤35 lines (${wc_lines})" "ok" \
-  || check "working-context.md ≤35 lines" "${wc_lines} lines"
+if [ "$wc_lines" -le 35 ]; then
+  check "working-context.md ≤35 lines (${wc_lines})" "ok"
+elif [ "$wc_lines" -le 45 ]; then
+  check "working-context.md line budget (${wc_lines})" "warn:over the 35-line target — acceptable under concurrent multi-session load; prune your own done threads (ops-only, never clobber others')"
+else
+  check "working-context.md ≤45 lines" "${wc_lines} lines — runaway; prune completed threads (--remove, ops-only)"
+fi
 
 # 1b. dotfiles/tmux.conf parses — validate on an isolated socket (-L cfgcheck) so a
 #     bad edit can't break new claude-<N>/ccc tmux sessions and never touches the
@@ -42,18 +63,28 @@ if command -v tmux >/dev/null 2>&1 && [ -f "$REPO/dotfiles/tmux.conf" ]; then
   fi
 fi
 
-# 2. MEMORY.md — no orphaned files, no stale entries
+# 2. MEMORY.md — no orphaned files, no stale entries. The index is TIERED
+#    (reference_memory_index_lifecycle): MEMORY.md = HOT (auto-loaded), MEMORY-archive.md
+#    = COLD (recall-only). A file referenced in EITHER index is legitimately tracked —
+#    so both indexes count, and both index files are excluded from the on-disk set.
 memory_dir="$REPO/ClaudeCode/memory"
 orphans=$(python3 - "$memory_dir" <<'PYEOF'
 import os, sys, re
 d = sys.argv[1]
-index = os.path.join(d, "MEMORY.md")
-referenced = set(re.findall(r'\]\(([^)]+\.md)\)', open(index).read())) if os.path.exists(index) else set()
-on_disk = {f for f in os.listdir(d) if f.endswith('.md') and f != 'MEMORY.md'}
+INDEXES = ("MEMORY.md", "MEMORY-archive.md")
+referenced = set()
+for idx in INDEXES:
+    p = os.path.join(d, idx)
+    if os.path.exists(p):
+        text = open(p).read()
+        referenced |= set(re.findall(r'\]\(([^)]+\.md)\)', text))
+        # Compact index format (db97c4bd): "- filename.md — hook" (no markdown link)
+        referenced |= set(re.findall(r'^\s*-\s+([\w.-]+\.md)\b', text, re.M))
+on_disk = {f for f in os.listdir(d) if f.endswith('.md') and f not in INDEXES}
 orphaned = on_disk - referenced
 stale    = referenced - on_disk
 msgs = []
-if orphaned: msgs.append("orphaned files (not in MEMORY.md): " + ", ".join(sorted(orphaned)))
+if orphaned: msgs.append("orphaned files (in neither MEMORY.md nor MEMORY-archive.md): " + ", ".join(sorted(orphaned)))
 if stale:    msgs.append("stale entries (file missing): " + ", ".join(sorted(stale)))
 print("|".join(msgs))
 PYEOF
@@ -63,54 +94,16 @@ PYEOF
   || { IFS='|' read -ra issues <<< "$orphans"
        for issue in "${issues[@]}"; do check "MEMORY.md" "$issue"; done; }
 
-# 3. ID counter consistency — Last assigned counter must be >= highest #NNN across
-#    task-queue.md AND task-archive.md. Counter ahead of the highest visible id is
-#    legitimate (#089 archiving moves terminal #NNN blocks out of the queue, and
-#    alloc-id can reserve ids before a task entry is written), so only flag when the
-#    highest id EXCEEDS the counter (a true regression) or when an id is duplicated.
-id_check=$(python3 - "$REPO/docs/process/task-naming-convention.md" "$REPO/docs/process/task-queue.md" "$REPO/docs/process/task-archive.md" "$REPO/workspace/state/OPEN_TASKS.md" <<'PYEOF'
-import os, re, sys
-convention = open(sys.argv[1]).read()
-queue = open(sys.argv[2]).read()
-archive = open(sys.argv[3]).read() if os.path.exists(sys.argv[3]) else ""
-board = open(sys.argv[4]).read() if os.path.exists(sys.argv[4]) else ""
-m = re.search(r'\*\*Last assigned: #(\d+)\*\*', convention)
-if not m:
-    print("cannot parse Last assigned counter")
-    sys.exit(0)
-counter = int(m.group(1))
-ids = [int(x) for x in re.findall(r'- \*\*#(\d+)', queue + archive)]
-# OPEN_TASKS.md is a projection — sharing an id with the queue is legitimate.
-# Only duplicates WITHIN the board (one id assigned to two open items) are bugs.
-board_ids = [int(x) for x in re.findall(r'^- \[P\d\] \[[ ~]\] \*\*#(\d+)', board, re.M)]
-if not ids and not board_ids:
-    sys.exit(0)
-highest = max(ids + board_ids)
-dupes = [i for i in set(ids) if ids.count(i) > 1]
-board_dupes = [i for i in set(board_ids) if board_ids.count(i) > 1]
-msgs = []
-if highest > counter:
-    msgs.append(f"counter says #{counter} but highest task id is #{highest} — counter regressed, update task-naming-convention.md")
-if dupes:
-    msgs.append(
-        f"duplicate IDs across queue+archive: {sorted(dupes)} "
-        "— likely a concurrent-close counter race (two sessions read the same "
-        "'Last assigned' before either wrote back); renumber the later task with "
-        "update-tier1-state.py correct-state --reason, do not blind-close"
-    )
-if board_dupes:
-    msgs.append(
-        f"duplicate IDs within OPEN_TASKS.md board: {sorted(board_dupes)} "
-        "— a batch was minted without agent-work.py alloc-id; renumber the "
-        "later-added entries to fresh ids (alloc-id) and fix any @blocked-by refs"
-    )
-print("|".join(msgs))
-PYEOF
-)
-[ -z "$id_check" ] \
-  && check "ID counter matches task-queue.md (no drift, no dupes)" "ok" \
-  || { IFS='|' read -ra issues <<< "$id_check"
-       for issue in "${issues[@]}"; do check "ID counter" "$issue"; done; }
+# 3. ID counter consistency (#352) — read CANONICAL task-counter.json + tasks.json
+#    via scripts/lib/close_integrity_canonical.py, not the task-naming-convention.md
+#    mirror / task-queue.md / OPEN_TASKS.md projections. Flags: highest id > counter
+#    (regression), duplicate active ids (concurrent-alloc race), active∩archived reuse.
+id_check=$(python3 "$REPO/scripts/lib/close_integrity_canonical.py" id-counter)
+if [ -z "$id_check" ]; then
+  check "ID counter (canonical task-counter.json + tasks.json)" "ok"
+else
+  while IFS= read -r line; do check "ID counter" "$line"; done <<< "$id_check"
+fi
 
 # 4. Lane wrapper symlink smoke test — verify ~/.local/bin wrappers resolve imports
 #    correctly when invoked via their symlink path (not the canonical scripts/ copy).
@@ -149,74 +142,34 @@ else
   check "codex surface sync (.agents/skills + .codex/prompts)" "$(tr '\n' ' ' </tmp/codex-surface-check.out)"
 fi
 
-# 6. Task fields completeness — every open task must have Why:, Plan:, goal:, and project:
-missing_fields=$(python3 - "$REPO/docs/process/task-queue.md" <<'PYEOF'
-import re, sys
+# 5d. Metis Command responsive parity — if a session touched the app UI, prove
+#     the core desktop+mobile contracts still hold. When the tree is clean (the
+#     normal /end path after commit), the gate inspects the last commit.
+if bash "$REPO/scripts/metis-command-parity-gate.sh" >/tmp/metis-command-parity.out 2>&1; then
+  check "metis-command desktop/mobile parity gate" "ok"
+else
+  check "metis-command desktop/mobile parity gate" "$(tail -20 /tmp/metis-command-parity.out | tr '\n' ' ')"
+fi
 
-path = sys.argv[1]
-text = open(path).read()
-blocks = re.split(r'\n(?=- \*\*#)', text)
-bad = []
-for block in blocks:
-    fields_line = next((l for l in block.split('\n') if 'type:' in l and 'status:' in l), '')
-    if not re.search(r'status:(open|queued|in-progress|blocked|needs-review|monitoring|partially-fixed)', fields_line):
-        continue
-    header = re.search(r'- \*\*#(\d+)[^*]*\*\*', block)
-    if not header:
-        continue
-    task_id = header.group(1)
-    missing = []
-    if not re.search(r'goal:G\d', fields_line):   missing.append('goal:GN')
-    if not re.search(r'project:\S+', fields_line): missing.append('project:slug')
-    if missing:
-        bad.append(f"#{task_id}: missing {', '.join(missing)} in fields line")
-print('\n'.join(bad))
-PYEOF
-)
+# 6. Task fields completeness (#352) — every OPEN task must carry project + area,
+#    read from CANONICAL tasks.json (not the task-queue.md fields line).
+missing_fields=$(python3 "$REPO/scripts/lib/close_integrity_canonical.py" fields)
 if [ -z "$missing_fields" ]; then
-  check "task fields completeness (goal+project on all open tasks)" "ok"
+  check "task fields completeness (project+area on all open tasks, canonical)" "ok"
 else
   while IFS= read -r line; do
-    check "task fields" "$line — add per task-naming-convention.md + projects.md"
+    check "task fields" "$line — set via update-tier1-state.py task-update"
   done <<< "$missing_fields"
 fi
 
-# 7. Task body completeness — every open task must have Why: and Plan:
-missing_body=$(python3 - "$REPO/docs/process/task-queue.md" <<'PYEOF'
-import re, sys
-
-path = sys.argv[1]
-text = open(path).read()
-
-# Split into task blocks: lines starting with "- **#"
-blocks = re.split(r'\n(?=- \*\*#)', text)
-bad = []
-for block in blocks:
-    # Only check open/queued tasks — match status on the fields line only
-    fields_line = next((l for l in block.split('\n') if 'type:' in l and 'status:' in l), '')
-    if not re.search(r'status:(open|queued|in-progress|blocked|needs-review|monitoring|partially-fixed)', fields_line):
-        continue
-    header = re.search(r'- \*\*#(\d+)[^*]*\*\*\s*—\s*(.+)', block)
-    if not header:
-        continue
-    task_id = header.group(1)
-    # Accept bold (**Why:**) or plain (Why:) and common pre-protocol synonyms
-    has_why  = bool(re.search(r'\*?\*?(Why[\s(:]|Summary:)', block))
-    has_plan = bool(re.search(r'\*?\*?(Plan|Fix|Approach|Next action|Summary):', block))
-    if not has_why or not has_plan:
-        missing = []
-        if not has_why:  missing.append('Why')
-        if not has_plan: missing.append('Plan')
-        bad.append(f"#{task_id}: missing {', '.join(missing)}")
-
-print('\n'.join(bad))
-PYEOF
-)
+# 7. Task body completeness (#352) — every OPEN task must carry summary + why + how,
+#    read from CANONICAL tasks.json (not the task-queue.md body).
+missing_body=$(python3 "$REPO/scripts/lib/close_integrity_canonical.py" body)
 if [ -z "$missing_body" ]; then
-  check "task body completeness (Why+Plan on all open tasks)" "ok"
+  check "task body completeness (summary+why+how on all open tasks, canonical)" "ok"
 else
   while IFS= read -r line; do
-    check "task body" "$line — add Why:/Plan: per task-writing-protocol.md"
+    check "task body" "$line — set via update-tier1-state.py task-update"
   done <<< "$missing_body"
 fi
 
@@ -297,5 +250,9 @@ else
 fi
 
 echo ""
-echo "  $PASS passed, $FAIL failed"
+if [ "$WARN" -gt 0 ]; then
+  echo "  $PASS passed, $WARN warned, $FAIL failed"
+else
+  echo "  $PASS passed, $FAIL failed"
+fi
 [ "$FAIL" -eq 0 ]

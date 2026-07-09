@@ -34,7 +34,7 @@
     "packRouter": "AGENTS.md",
     "tier1Packs": [
         {"id": "assistant-comms", "doc": "docs/process/assistant-comms.md"},
-        {"id": "hearth-lanes", "doc": "docs/process/hearth-lanes.md"},
+        {"id": "jay-lanes", "doc": "docs/process/hearth-lanes.md"},
         {"id": "decision-doctrine", "doc": "docs/process/decision-doctrine.md"},
         {"id": "design-guidelines", "doc": "docs/design-guidelines.md"},
         {"id": "task-lifecycle", "doc": "docs/process/task-pickup-and-lifecycle-standard.md"}

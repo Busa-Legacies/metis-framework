@@ -8,8 +8,12 @@
 # from:claude-code is injected automatically if absent.
 # Exits 0 always — <<MACHINE_1_ID>> unreachable is non-blocking.
 
-. "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/lib/network.env"
-JAY_ENDPOINT="http://${JAY_IP}:8080/api/handoff"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+JAY_ENDPOINT="$("$SCRIPT_DIR/service-url.py" get dashboard.api --context tailnet --path api/handoff 2>/dev/null || true)"
+if [ -z "$JAY_ENDPOINT" ]; then
+  . "$SCRIPT_DIR/lib/network.env"
+  JAY_ENDPOINT="http://${JAY_IP}:8080/api/handoff"
+fi
 
 payload="${1:-$(cat 2>/dev/null)}"
 [[ -z "$payload" ]] && { echo "send-handoff: no payload (pass JSON arg or pipe)"; exit 1; }

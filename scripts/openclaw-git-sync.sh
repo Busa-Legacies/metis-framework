@@ -20,9 +20,29 @@ REPO="$METIS_HOME"
 LOG="$HOME/.openclaw/logs/git-sync.log"
 BRANCH="main"
 
+# Resolve a yaml-capable python for state rendering (#437 sync-integrity, 2026-06-22).
+# The daemon's PATH python (/opt/homebrew on <<MACHINE_2_ID>>) lacks PyYAML, so
+# render-tier1-state.py threw ModuleNotFoundError every tick and the Tier-1 projections
+# (task-queue.md / OPEN_TASKS.md / live-status / projects.md) never refreshed — leaving
+# stale projections and spamming the log. Prefer $METIS_PYTHON, else the first candidate
+# that can import yaml, else bare python3 (fail-soft — render step is already fail-soft).
+_resolve_pybin() {
+  local c
+  for c in "${METIS_PYTHON:-}" /usr/bin/python3 /Library/Developer/CommandLineTools/usr/bin/python3 python3; do
+    [ -n "$c" ] || continue
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c "import yaml" >/dev/null 2>&1; then echo "$c"; return; fi
+  done
+  echo python3
+}
+PYBIN="$(_resolve_pybin)"
+
 # Abort an auto-commit if it would delete more than this many tracked files in one tick.
 # A normal sync rarely deletes >a handful; a partial-tree wipe deletes dozens. Tune via env.
 DELETE_LIMIT="${OPENCLAW_SYNC_DELETE_LIMIT:-5}"
+
+# Cap on the daemon's OWN pre-pull stashes (#354). A stranded auto-sync stash from a
+# failed pop must not accumulate and re-wedge future ticks; keep only the newest few.
+AUTOSYNC_STASH_KEEP="${OPENCLAW_SYNC_STASH_KEEP:-5}"
 
 # Paths that auto-sync must NEVER delete — if staging marks any of these deleted, it is a
 # partial-tree fault, not an intentional removal. (Critical shared state + the guard config.)
@@ -37,10 +57,13 @@ PROTECTED=(
 # Everything else is SOURCE, durably snapshotted to autosync/<machine> (see below) and
 # left dirty in the working tree for a human to commit with intent (#311 close gate).
 # Phased rollout: the autosync/<machine> source snapshot is ALWAYS-ON (additive, can't
-# change `main`). OPENCLAW_SPLIT_LANES gates the actual `main` behavior flip and defaults
-# to 0 (legacy blanket-add) so landing this script does NOT flip every machine on the next
-# tick — flip to 1 deliberately once the durability branch is proven. Kill-switch = set 0.
-OPENCLAW_SPLIT_LANES="${OPENCLAW_SPLIT_LANES:-0}"
+# change `main`). OPENCLAW_SPLIT_LANES gates the actual `main` behavior flip. Defaulted to
+# 1 (lane split ON) on 2026-06-14 after the durability branch (autosync/<machine>) was
+# proven live on <<MACHINE_1_ID>> and SPLIT-1..4 + 66/66 guards passed — source no longer auto-commits
+# to `main`, eliminating the phantom-conflict / silent-clobber class (#234, cloud-session
+# PR fix). Machines self-redeploy this script, so each picks up the flip on its next sync.
+# Kill-switch: set OPENCLAW_SPLIT_LANES=0 (env on the daemon) to revert to legacy blanket-add.
+OPENCLAW_SPLIT_LANES="${OPENCLAW_SPLIT_LANES:-1}"
 STATE_PATHSPECS=(
   'docs/process/state'
   'docs/process/task-queue.md'
@@ -69,10 +92,10 @@ if [ -z "$SYNC_MACHINE" ]; then
   _sync_host=$(scutil --get LocalHostName 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
   _sync_user=$(id -un 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
   _sync_home=$(printf '%s' "${HOME:-}" | tr '[:upper:]' '[:lower:]')
-  if printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "abusa\|anthony"; then
-    SYNC_MACHINE="abusa"
-  elif printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "antfox\|/users/ant"; then
-    SYNC_MACHINE="antfox"
+  if printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "<<MACHINE_2_USER>>\|anthony"; then
+    SYNC_MACHINE="<<MACHINE_2_USER>>"
+  elif printf '%s %s %s' "$_sync_host" "$_sync_user" "$_sync_home" | grep -q "<<MACHINE_1_ID>>\|/users/ant"; then
+    SYNC_MACHINE="<<MACHINE_1_ID>>"
   else
     SYNC_MACHINE="${_sync_user:-unknown}"
   fi
@@ -109,7 +132,7 @@ if [ -f "$CANONICAL" ] && [ -f "$DEPLOYED" ] && ! diff -q "$DEPLOYED" "$CANONICA
   exec "$DEPLOYED" "$@"
 fi
 
-LOCK_DIR="$HOME/.openclaw/locks"
+LOCK_DIR="${OPENCLAW_LOCK_DIR:-$HOME/.openclaw/locks}"   # override: isolate the lock for tests (#452)
 LOCK="$LOCK_DIR/git-sync.lock.d"   # directory lock — portable; macOS ships no flock(1)
 LOCK_TTL="${OPENCLAW_SYNC_LOCK_TTL:-120}"   # seconds; reclaim a pid-less lock older than this
 mkdir -p "$LOCK_DIR"
@@ -133,6 +156,13 @@ on_fail_edge() {
   alert_discord "🔴 git-sync FAILING on $(hostname -s) — $(tail -n1 "$LOG" 2>/dev/null). Repo may diverge; see $LOG"
 }
 
+# Shared lock-holder helper (#452): recognize a leaked orphan (bare `sleep`
+# reparented to PID 1 after a SIGKILLed holder) so an alive-but-leaked holder is
+# reclaimed instead of wedging sync. Sourced via $REPO so the ~/.local/bin copy
+# picks it up too; degrades to legacy behavior if the lib is somehow absent.
+_LOCK_LIB="$REPO/scripts/lib/git-sync-lock.sh"
+[ -f "$_LOCK_LIB" ] && . "$_LOCK_LIB"
+
 # Atomic mkdir lock with stale-holder reclaim. Replaces the old flock(1) lock,
 # which silently no-op'd on macOS (no flock binary under the LaunchAgent PATH) and
 # made `! flock -n 9` true on every run — the sync skipped every tick (T-SYNC-06
@@ -143,8 +173,17 @@ acquire_lock() {
   local holder mtime now age
   holder=$(cat "$LOCK/pid" 2>/dev/null)
   if [ -n "$holder" ]; then
-    kill -0 "$holder" 2>/dev/null && return 1   # live holder → genuinely locked
-    rm -rf "$LOCK"                              # named but dead → stale, reclaim
+    if kill -0 "$holder" 2>/dev/null; then      # holder pid is alive...
+      # ...but reclaim it if it's a leaked orphan (#452); else genuinely locked.
+      if command -v holder_is_leaked >/dev/null 2>&1 && holder_is_leaked "$holder"; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] reclaimed leaked orphan lock holder $holder (bare sleep, PPID=1)" >> "$LOG"
+        rm -rf "$LOCK"
+      else
+        return 1                                 # live, legitimate holder → locked
+      fi
+    else
+      rm -rf "$LOCK"                            # named but dead → stale, reclaim
+    fi
   else
     # no pid yet: mid-creation race or a crashed acquire. Honor TTL before stealing.
     mtime=$(stat -f %m "$LOCK" 2>/dev/null || echo 0); now=$(date +%s); age=$(( now - mtime ))
@@ -169,6 +208,61 @@ cd "$REPO" || exit 1
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 log() { echo "[$TIMESTAMP] $1" >> "$LOG"; }
 
+# --- robust pre-pull stash restore (#354) -------------------------------------
+# The daemon stashes tree changes the commit step can't capture (workspace/lanes
+# exclusions, skipped bulk deletes) before pulling, then restores them after.
+# Two hard rules, learned from an ~8h wedge (2026-06-13, a stale stash that
+# conflicted on every bare pop):
+#   1. Restore ONLY the stash THIS tick created — never a bare `git stash pop`,
+#      which pops stash@{0} and can clobber a foreign/older stash.
+#   2. On a pop conflict, abort to a clean tree (no conflict markers reach the
+#      working tree) and PRESERVE the stash, so the next tick's marker guard
+#      doesn't wedge every cycle. Local edits stay safe in the stash.
+# STASH_SHA (the stash commit's stable hash, captured at push) is the identity;
+# stash@{N} positions shift as stashes are added/dropped and must not be trusted.
+restore_stash() {
+  [ -n "${STASH_SHA:-}" ] || return 0
+  local ref
+  ref=$(git stash list --format='%gd %H' 2>/dev/null | awk -v s="$STASH_SHA" '$2==s{print $1; exit}')
+  if [ -z "$ref" ]; then
+    log "stash restore: our stash (${STASH_SHA:0:8}) is no longer present — nothing to restore"
+    STASH_SHA=""
+    return 0
+  fi
+  if git stash pop "$ref" >> "$LOG" 2>&1; then
+    log "restored stashed edits after pull ($ref)"
+    STASH_SHA=""
+    return 0
+  fi
+  # Pop conflicted: discard the half-applied result so NO markers reach the working
+  # tree (the wedge), and keep the stash so the edits aren't lost. HEAD (incl. any
+  # merge commit from the pull) is retained — only the stash application is undone.
+  git reset --hard HEAD >> "$LOG" 2>&1 || true
+  log "WARNING: stash pop conflict after pull — restored clean tree; local edits preserved in stash ($ref). Resolve with 'git stash pop $ref' then push."
+  return 1
+}
+
+# Cap the daemon's OWN pre-pull stashes (#354) so a stranded one (failed pop,
+# interrupted tick) can't accumulate and re-wedge future ticks. Keeps the newest
+# AUTOSYNC_STASH_KEEP auto-sync stashes and drops older ones — they hold only
+# ephemeral, commit-excluded content (workspace/lanes working files). Foreign stashes
+# (any without our message) are never touched. Drops by SHA, re-resolving the
+# selector each time because stash@{N} positions shift as entries are dropped.
+prune_autosync_stashes() {
+  local shas=() drop_sha ref count i
+  while IFS= read -r line; do
+    [ -n "$line" ] && shas+=( "${line%% *}" )
+  done < <(git stash list --format='%H %gs' 2>/dev/null | grep -F 'auto-sync pre-pull stash')
+  count=${#shas[@]}
+  [ "$count" -gt "$AUTOSYNC_STASH_KEEP" ] || return 0
+  for (( i=AUTOSYNC_STASH_KEEP; i<count; i++ )); do
+    drop_sha="${shas[$i]}"
+    ref=$(git stash list --format='%gd %H' 2>/dev/null | awk -v s="$drop_sha" '$2==s{print $1; exit}')
+    [ -n "$ref" ] && git stash drop "$ref" >> "$LOG" 2>&1 || true
+  done
+  log "pruned $(( count - AUTOSYNC_STASH_KEEP )) stale auto-sync stash(es) (kept newest $AUTOSYNC_STASH_KEEP)"
+}
+
 heal_index_lock() {
   local index_lock lock_owner
   index_lock=$(git rev-parse --git-path index.lock 2>/dev/null || true)
@@ -183,6 +277,40 @@ heal_index_lock() {
 
   rm -f "$index_lock"
   log "removed stale index.lock at $index_lock before git operation"
+  return 0
+}
+
+# T-SYNC-13: a stale orphaned .git/HEAD.lock (left by a killed `git commit`/`git merge`
+# or a wedged ai-merge) blocks EVERY commit and merge, so the daemon trips on it silently
+# each cycle without ever advancing. Reclaim it — but only when provably orphaned:
+#   - the file exists,
+#   - NO live process holds it (lsof on the specific file — more precise than `pgrep git`,
+#     which false-matches unrelated git processes in other repos), AND
+#   - it is older than the grace window (a fresh lock likely belongs to an in-flight op
+#     that lsof can miss between fd operations — so never yank a young one).
+# Otherwise stay out of the way this cycle (return 1) exactly like heal_index_lock.
+heal_head_lock() {
+  local head_lock lock_owner now mtime age grace="${HEADLOCK_GRACE:-60}"
+  head_lock=$(git rev-parse --git-path HEAD.lock 2>/dev/null || true)
+  [ -n "$head_lock" ] || return 0
+  [ -f "$head_lock" ] || return 0
+
+  lock_owner=$(lsof "$head_lock" 2>/dev/null | awk 'NR>1{print $2; exit}')
+  if [ -n "$lock_owner" ]; then
+    log "HEAD.lock held by live pid $lock_owner at $head_lock — skip this cycle"
+    return 1
+  fi
+
+  now=$(date +%s)
+  mtime=$(stat -f %m "$head_lock" 2>/dev/null || stat -c %Y "$head_lock" 2>/dev/null || echo "$now")
+  age=$(( now - mtime ))
+  if [ "$age" -lt "$grace" ]; then
+    log "HEAD.lock at $head_lock is fresh (${age}s < ${grace}s) — leaving for in-flight op, skip this cycle"
+    return 1
+  fi
+
+  rm -f "$head_lock"
+  log "reclaimed stale orphaned HEAD.lock at $head_lock (age ${age}s, no live holder) before git operation"
   return 0
 }
 
@@ -209,6 +337,20 @@ TASKSTATE_DRIVER="$REPO/scripts/merge-taskstate.py"
 if [ -x "$TASKSTATE_DRIVER" ]; then
   git config merge.taskstate.name "governed task-state revision-wins merge" 2>/dev/null || true
   git config merge.taskstate.driver "python3 $TASKSTATE_DRIVER %O %A %B %P" 2>/dev/null || true
+fi
+
+# --- self-register the health-checks merge driver (idempotent) -----------------
+# health-checks.json is high-churn self-heal state both machines rewrite (per-check
+# `added` stamps, top-level updatedAt, ordering). It was the one governed-state file
+# with NO merge driver, so every cross-machine pull aborted on it and local main
+# diverged unboundedly (#437 sync-integrity, 2026-06-22: <<MACHINE_2_ID>> hit 16-ahead/34-behind;
+# the Tier-3 AI resolver excludes governed .json by design, expecting this driver).
+# Maps to merge=healthchecks in .gitattributes; resolves deterministically (union
+# checks[] by name keeping newer `added`; gaps unioned; updatedAt = newer).
+HEALTHCHECKS_DRIVER="$REPO/scripts/merge-healthchecks.py"
+if [ -x "$HEALTHCHECKS_DRIVER" ]; then
+  git config merge.healthchecks.name "self-heal health-checks newer-wins merge" 2>/dev/null || true
+  git config merge.healthchecks.driver "python3 $HEALTHCHECKS_DRIVER %O %A %B %P" 2>/dev/null || true
 fi
 
 # --- self-register: ignore dirty submodule content (idempotent) ----------------
@@ -266,6 +408,24 @@ fi
 if ! heal_index_lock; then
   exit 0
 fi
+# Same for a stale HEAD.lock (T-SYNC-13): an orphaned one blocks every commit/merge
+# this tick, so reclaim it up front or step aside if a live op still holds it.
+if ! heal_head_lock; then
+  exit 0
+fi
+
+# --- keep Tier-1 projections fresh before staging ----------------------------
+# Root-cause guard for the stale-projection class (#350): a session can mutate
+# canonical tasks.json and commit without re-rendering task-queue.md / OPEN_TASKS
+# / live-status / projects. The daemon would then push that inconsistent state to
+# main. Re-rendering here every tick means any drift becomes a tracked change this
+# tick (staged + committed below) and is self-healing for drift already on main.
+# Idempotent and fail-soft: an invalid or mid-write tasks.json must never block a
+# sync tick — CI (render diff --exit-code) and pre-merge-check remain the backstops.
+if [ -f "$REPO/scripts/render-tier1-state.py" ]; then
+  "$PYBIN" "$REPO/scripts/render-tier1-state.py" write >> "$LOG" 2>&1 \
+    || log "render-tier1-state failed — skipping projection refresh this tick"
+fi
 
 # --- stage + commit local changes ---------------------------------------------
 # Use `git status --porcelain` (not `git diff --quiet`) so a brand-new UNTRACKED
@@ -299,12 +459,18 @@ if [ -n "$(git status --porcelain)" ]; then
     # uncommitted bulk deletion sat in the tree. Ephemeral test-results churn (19
     # tracked Playwright artifacts deleted on disk) tripped this every tick and
     # stranded ~42 local commits unpushed (local 42-ahead/32-behind, "sync dead").
-    # Fix: unstage, skip ONLY the commit, fall through to pull+push so committed
-    # work still reconciles. The deletions stay in the working tree (stashed across
-    # the pull) for a human to commit deliberately.
-    log "REFUSING auto-commit: $DELETED_COUNT files staged for deletion (> $DELETE_LIMIT) — looks like a partial-tree wipe. Unstaging; SKIPPING COMMIT ONLY (pull+push of committed work continues). Commit bulk deletes manually."
-    git reset >> "$LOG" 2>&1 || true
-    SKIP_COMMIT=1
+    #
+    # #448: unstage ONLY the deletions — NOT everything. The old `git reset` (whole
+    # index) also threw away legit governed-state ADDITIONS/MODIFICATIONS staged in the
+    # same tick (e.g. a freshly created task), reopening the exact clobber window #447
+    # closed at the caller. Now the additions/mods still commit; only the suspicious
+    # deletions are held back (left deleted-but-unstaged in the working tree) for a
+    # human to commit deliberately. Wipe protection is preserved (deletions never
+    # auto-commit); durability is too (no staged addition is ever silently discarded).
+    log "REFUSING auto-commit of $DELETED_COUNT staged deletions (> $DELETE_LIMIT) — looks like a partial-tree wipe. Unstaging the DELETIONS ONLY; additions/modifications still commit. Commit bulk deletes manually."
+    printf '%s\n' "$DELETED" | grep . | while IFS= read -r _del; do
+      git reset -q -- "$_del" >> "$LOG" 2>&1 || true
+    done
   fi
 
   # belt-and-suspenders: catch leftover conflict markers in staged ADDED lines.
@@ -343,13 +509,16 @@ fi
 # restores the edits intact afterward.  On stash-pop conflict the daemon exits
 # without pushing, leaving resolution to the human.
 STASH_REF=""
+STASH_SHA=""
+prune_autosync_stashes   # clear strays from prior failed pops before adding a new one
 DIRTY_AFTER_COMMIT=$(git status --porcelain)
 if [ -n "$DIRTY_AFTER_COMMIT" ]; then
   STASH_MSG="auto-sync pre-pull stash $TIMESTAMP"
   if git stash push --include-untracked -m "$STASH_MSG" >> "$LOG" 2>&1; then
     STASH_REF=$(git stash list | head -1 | cut -d: -f1)   # e.g. stash@{0}
+    STASH_SHA=$(git rev-parse "$STASH_REF" 2>/dev/null)   # stable identity for restore
     DIRTY_COUNT=$(printf '%s\n' "$DIRTY_AFTER_COMMIT" | grep -c .)
-    log "stashed $DIRTY_COUNT file(s) before pull (ref: $STASH_REF)"
+    log "stashed $DIRTY_COUNT file(s) before pull (ref: $STASH_REF, sha: ${STASH_SHA:0:8})"
   else
     log "WARNING: stash push failed — pulling with dirty tree"
   fi
@@ -381,9 +550,22 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
       fi
     else
       log "pull blocked by live index.lock holder — skipping this cycle, will retry next tick"
-      if [ -n "$STASH_REF" ]; then
-        git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"
+      restore_stash || true
+      rm -f "$PULL_OUT"
+      exit 0
+    fi
+  fi
+  if [ -f "$PULL_OUT" ] && grep -q 'HEAD.lock' "$PULL_OUT"; then
+    if heal_head_lock; then
+      log "pull hit stale HEAD.lock — retrying once after cleanup"
+      if git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
+        rm -f "$PULL_OUT"
+      else
+        cat "$PULL_OUT" >> "$LOG"
       fi
+    else
+      log "pull blocked by live HEAD.lock holder — skipping this cycle, will retry next tick"
+      restore_stash || true
       rm -f "$PULL_OUT"
       exit 0
     fi
@@ -391,9 +573,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
   if [ -f "$PULL_OUT" ] && [ -s "$PULL_OUT" ]; then
     if grep -qiE 'could not resolve host|could not read from remote|unable to access|connection (refused|timed out)|operation timed out|network is (unreachable|down)|temporary failure in name resolution' "$PULL_OUT"; then
       log "remote unreachable (offline) — skipping this cycle, will retry next tick"
-      if [ -n "$STASH_REF" ]; then
-        git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"
-      fi
+      restore_stash || true
       rm -f "$PULL_OUT"
       exit 0
     fi
@@ -415,7 +595,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
       if git diff --cached -U0 | grep -qE '^\+(<<<<<<< |>>>>>>> )'; then
         log "rerere recovery: replayed resolution still contains conflict markers — aborting merge, manual fix needed"
         git merge --abort >> "$LOG" 2>&1 || true
-        [ -n "$STASH_REF" ] && { git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"; }
+        restore_stash || true
         rm -f "$PULL_OUT"
         exit 1
       fi
@@ -425,7 +605,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
       else
         log "rerere recovery: merge commit failed — aborting to clean tree"
         git merge --abort >> "$LOG" 2>&1 || true
-        [ -n "$STASH_REF" ] && { git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"; }
+        restore_stash || true
         rm -f "$PULL_OUT"
         exit 1
       fi
@@ -452,9 +632,7 @@ if ! git pull --no-rebase origin "$BRANCH" > "$PULL_OUT" 2>&1; then
         if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
           git merge --abort >> "$LOG" 2>&1 || true
         fi
-        if [ -n "$STASH_REF" ]; then
-          git stash pop >> "$LOG" 2>&1 || log "WARNING: stash restore failed ($STASH_REF) — run 'git stash pop' manually"
-        fi
+        restore_stash || true
         rm -f "$PULL_OUT" "$AI_SUMMARY"
         exit 1
       fi
@@ -483,13 +661,9 @@ if [ "$MERGE_DELETED_COUNT" -gt "$DELETE_LIMIT" ]; then
 fi
 
 # --- restore stashed edits after a successful pull ----------------------------
-if [ -n "$STASH_REF" ]; then
-  if ! git stash pop >> "$LOG" 2>&1; then
-    log "WARNING: stash pop conflict after pull — local edits preserved in stash ($STASH_REF); resolve with 'git stash pop' manually, then push"
-    exit 1   # don't push — manual resolution needed
-  fi
-  log "restored stashed edits after pull"
-fi
+# restore_stash pops ONLY our own stash by SHA; on conflict it leaves a CLEAN tree
+# (no markers to wedge the next tick's guard) and preserves the stash, returning 1.
+restore_stash || exit 1   # don't push — manual resolution needed, tree left clean
 
 # --- #234 source durability snapshot → autosync/<machine> (never main) ---------
 # Always-on + additive: snapshots the working tree's SOURCE changes (everything outside
@@ -523,6 +697,21 @@ if [ "${OPENCLAW_SOURCE_SNAPSHOT:-1}" = "1" ]; then
   else
     rm -f "$_src_idx"
     log "source-snap: scratch-index staging failed — skipping source snapshot this tick"
+  fi
+fi
+
+# --- #471 pre-push gate: never auto-push a RED tree to main ---------------------
+# The daemon pushes to main OUTSIDE PR CI, so a stale projection / untagged memory / red
+# test that rides this path lands unverified (#438 left two reds on main that blocked every
+# cloud merge until hand-repaired). Run the FAST mirror of the gating CI jobs and REFUSE the
+# push on red — alerting once per incident like any other sync failure (the recovery ping
+# below clears it on the next clean push). Kill-switch: OPENCLAW_SYNC_PREPUSH_GATE=0.
+if [ "${OPENCLAW_SYNC_PREPUSH_GATE:-1}" = "1" ]; then
+  if ! GATE_BRANCH="$BRANCH" PYBIN="$PYBIN" METIS_HOME="$REPO" \
+       "$PYBIN" "$REPO/scripts/autosync_prepush_gate.py" >> "$LOG" 2>&1; then
+    log "ERROR: pre-push gate RED — refusing to push $BRANCH (see gate output above)"
+    on_fail_edge
+    exit 1
   fi
 fi
 

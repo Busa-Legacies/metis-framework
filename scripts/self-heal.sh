@@ -89,9 +89,18 @@ for m in r["meters"]:
     icon = "✅" if m["status"]=="PASS" else "📋"
     L.append(f"### {icon} {m['name']} — {m['status']}  (score {m.get('score','-')}, target {m.get('threshold','-')})")
     L.append(m["detail"])
+    # Samples are meter-specific: signoff-compliance emits dicts ({session, tail, ...});
+    # taxonomy / inbox-quality / arbiter-format emit plain strings. Format by shape so a
+    # single string-sample meter in ALERT can't crash the whole report renderer — this
+    # mirrors the isinstance guard already in self-heal.py's _worklist_from_meter (the
+    # prior code assumed every sample was a signoff dict and died Jun 13–17 on the
+    # arbiter-format ALERT with `AttributeError: 'str' object has no attribute 'get'`).
     for s in m.get("samples", []):
-        L.append(f"- FP-candidate `{s.get('session','')}` header={s.get('header_match')} "
-                 f"fields={s.get('fields_match')} — tail: `{s.get('tail','')[-160:]}`")
+        if isinstance(s, dict):
+            L.append(f"- FP-candidate `{s.get('session','')}` header={s.get('header_match')} "
+                     f"fields={s.get('fields_match')} — tail: `{s.get('tail','')[-160:]}`")
+        else:
+            L.append(f"- `{str(s)[-200:]}`")
     L.append("")
 if r.get("worklist_cleared"):
     L.append("## Auto-cleared since last run\n")

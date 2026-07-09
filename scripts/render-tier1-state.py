@@ -43,13 +43,15 @@ STATE_ORDER = [
     "blocked",
     "failed",
     "done",
+    "dropped",
 ]
 
 # tasks.json is the single source of truth. The governed anchors render every
 # NON-TERMINAL state (inbox -> failed) so no live section of task-queue.md is
-# hand-maintained. done is excluded here — terminal tasks live in tasks.json
-# (the complete record) and project to the separate Done Archive (#089).
-GOVERNED_STATE_ORDER = [s for s in STATE_ORDER if s != "done"]
+# hand-maintained. The TERMINAL states (done, dropped) are excluded here — they
+# live in tasks.json (the complete record); done projects to the Done Archive
+# (#089), dropped = triaged-and-discarded suggestions that leave the board (#417).
+GOVERNED_STATE_ORDER = [s for s in STATE_ORDER if s not in ("done", "dropped")]
 
 STATE_HEADERS = {
     "inbox": "Inbox",
@@ -207,6 +209,8 @@ def render_queue(tasks_doc):
                 out.append(f"  - How: {task['how']}\n")
             if task.get("firstStep"):
                 out.append(f"  - First step: {task['firstStep']}\n")
+            if task.get("planRef"):
+                out.append(f"  - Plan ref: `{task['planRef']}`\n")
 
             for label, key in [
                 ("Current step", "currentStep"),
@@ -404,7 +408,9 @@ def render_projects(projects_doc) -> str:
             name = proj.get("name", slug)
             status = proj.get("status", "active")
             priority = proj.get("priority", "P3")
-            goal = proj.get("goal", "?")
+            # goal=None is legitimate (#645): a project with no active campaign
+            # rolls up to its life domain directly instead of borrowing one.
+            goal = proj.get("goal") or "none (rolls up to domain)"
             campaign_name = (campaigns.get(goal) or {}).get("name")
             domain = project_domain.get(slug) or (campaigns.get(goal) or {}).get("domain") or "unmapped"
             domain_label = domains.get(domain, "")
@@ -454,6 +460,11 @@ def main():
         choices=["check", "diff", "write"],
         help="check validates only; diff shows markdown changes; write updates markdown files",
     )
+    parser.add_argument(
+        "--exit-code",
+        action="store_true",
+        help="with `diff`: exit 1 if any projection is stale (git-diff style), for use as a CI/commit gate",
+    )
     args = parser.parse_args()
 
     tasks_doc = load_json(TASKS_PATH)
@@ -497,6 +508,13 @@ def main():
                 print(d, end="" if d.endswith("\n") else "\n")
         if not any_diff:
             print("No projection changes.")
+        elif args.exit_code:
+            print(
+                "\nProjections are stale vs canonical tasks.json. "
+                "Run `python3 scripts/render-tier1-state.py write` and commit.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         return
 
     print("Rendered:")

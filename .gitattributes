@@ -14,8 +14,32 @@ docs/process/task-queue.md merge=union
 docs/process/state/tasks.json merge=taskstate
 docs/process/state/task-counter.json merge=taskstate
 docs/process/state/tasks-archive.json merge=taskstate
+# health-checks.json: high-churn self-heal state both machines rewrite (per-check `added`
+# stamps, top-level updatedAt, ordering). It was the one governed-state file WITHOUT a driver,
+# so every cross-machine pull aborted on it and local main diverged unboundedly (#437
+# sync-integrity, 2026-06-22). Resolve via scripts/merge-healthchecks.py: union checks[] by
+# name keeping newer `added`, union gaps, updatedAt = newer. Registered by openclaw-git-sync.sh.
+docs/process/state/health-checks.json merge=healthchecks
 # file-claims.jsonl: proactive cross-session source-edit claims (#308). Both machines
 # APPEND claims; union keeps both sides so no live claim is dropped in a merge (the
 # leasestate driver would copy one side wholesale and lose the peer's claims). Expired
 # lines are filtered on read + swept by `file-claims.py prune`.
 docs/process/state/file-claims.jsonl merge=union
+# Append-only JSONL ledgers (one record per line, written from multiple sessions/machines):
+# union keeps both sides so no appended row is clobbered when a merge overlaps. eval-corpus.jsonl
+# is the agent-output evaluation corpus (PLAN-eval-pipeline.md); pr-ledger.jsonl is the merged-PR
+# work ledger (#286). Both are append-only — never edited in place — so union is always safe.
+docs/process/state/eval-corpus.jsonl merge=union
+docs/process/state/pr-ledger.jsonl merge=union
+# cloud-sessions.jsonl: ephemeral cloud/web sessions self-register here (append-only,
+# one row per start/heartbeat/end) so Hearth's dashboard can surface them in the
+# Sessions panel — the repo is the only medium the ephemeral container and Hearth share.
+# Written from many parallel cloud sessions; union keeps every row on a merge.
+docs/process/state/cloud-sessions.jsonl merge=union
+Hearth/state/gpu-oom-incidents.jsonl merge=union
+# voice-deltas.jsonl: Writing studio appends one row per meaningful edit-session
+# (#8, before->after body diff) so writing-voice-synthesize.py can propose voice-
+# profile deltas. Append-only, may be written from either machine — union keeps
+# every captured edit on a merge.
+projects/writing/voice-deltas.jsonl merge=union
+Hearth/memory/mindset-ledger.jsonl merge=union

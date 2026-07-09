@@ -5,8 +5,14 @@ version: 1.0.0
 description: "Reconcile drift between task-queue.md and OPEN_TASKS.md — mark done items complete, surface orphans and missing entries."
 ---
 
+> **Governed-model note (#514):** `OPEN_TASKS.md` and `task-queue.md` are now **read-only
+> projections** auto-rendered from `docs/process/state/tasks.json` (`render-tier1-state.py`).
+> The real fix for a mismatch between them is re-rendering, not hand-editing either file — so
+> this reconcile is largely superseded. Change task state via `update-tier1-state.py` and let
+> the projections re-render. (Deprecation/rewrite tracked as a follow-up task.)
+
 ## What this fixes
-OPEN_TASKS.md and task-queue.md drift apart over time: tasks get marked done in one but not the other, or disappear from the queue without being closed on the board.
+Legacy pre-governed-model drift: `OPEN_TASKS.md` and `task-queue.md` could drift apart when they were hand-maintained — tasks marked done in one but not the other, or dropped from the queue without being closed on the board. Under the governed model both re-render from `tasks.json`.
 
 ## Step 1 — Read both files
 ```bash
@@ -36,7 +42,7 @@ For each match found with `[ ]` (open) in OPEN_TASKS.md: change `[ ]` → `[x]`.
 Scan task-queue.md for `status:open` / `status:queued` / `status:in-progress` entries. Check if each has a corresponding entry in OPEN_TASKS.md. Report missing ones — do NOT auto-add (may be intentionally absent), just list them.
 
 ## Step 4 — Find board entries with no queue record
-Scan OPEN_TASKS.md for `[ ]` entries with no corresponding task-queue.md entry. List them for the user to decide whether to add to the queue.
+Both markdown files are **projections** of `tasks.json`, so a board `[ ]` entry with no matching `task-queue.md` record means the render is stale — re-run `render-tier1-state.py` rather than hand-adding. List any such mismatch for the user; never hand-edit the projections.
 
 ## Step 5 — Report and apply
 Print summary before changes:

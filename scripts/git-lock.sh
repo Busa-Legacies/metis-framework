@@ -18,9 +18,14 @@
 #   source scripts/git-lock.sh acquire   # hold for a shell session of manual git ops
 #   scripts/git-lock.sh run git rebase -i HEAD~3
 
-LOCK_DIR="$HOME/.openclaw/locks"
+LOCK_DIR="${OPENCLAW_LOCK_DIR:-$HOME/.openclaw/locks}"   # override: isolate the lock for tests (#452)
 LOCK="$LOCK_DIR/git-sync.lock.d"
 mkdir -p "$LOCK_DIR"
+
+# Shared lock-holder helper (#452): lets us reclaim a leaked orphan (bare `sleep`
+# reparented to PID 1 after a SIGKILLed holder) instead of blocking on it forever.
+_LOCK_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/git-sync-lock.sh"
+[ -f "$_LOCK_LIB" ] && . "$_LOCK_LIB"
 
 # Blocking acquire with stale-holder reclaim. Stores $$ as the holder PID — when
 # sourced, $$ is the interactive shell, so the lock lives as long as that shell.
@@ -29,7 +34,12 @@ _acquire_blocking() {
     if mkdir "$LOCK" 2>/dev/null; then echo $$ > "$LOCK/pid"; return 0; fi
     local holder; holder=$(cat "$LOCK/pid" 2>/dev/null)
     if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
-      sleep 1; continue          # live holder — wait
+      # Alive holder: wait — UNLESS it's a leaked orphan (#452), then reclaim it.
+      if command -v holder_is_leaked >/dev/null 2>&1 && holder_is_leaked "$holder"; then
+        echo "[git-lock] reclaimed leaked orphan lock holder $holder (bare sleep, PPID=1)" >&2
+        rm -rf "$LOCK"; continue
+      fi
+      sleep 1; continue          # live legitimate holder — wait
     fi
     rm -rf "$LOCK"               # dead/unknown holder — reclaim and retry
   done

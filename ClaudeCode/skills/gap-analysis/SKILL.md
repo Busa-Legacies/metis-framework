@@ -50,7 +50,7 @@ Emit one table:
 | # | Slug (proposed)             | Goal | Priority | Origin | Agent-runnable? |
 |---|-----------------------------|------|----------|--------|-----------------|
 | 1 | queue-runner-v1             | G1   | P1       | gap/goals.md | yes |
-| 2 | example-grant-tracker   | G3   | P2       | gap/example/strategy/README.md | yes |
+| 2 | example-grant-tracker   | G3   | P2       | NavoreMarket/Example-Ops:director-workspace/strategy/README.md | yes |
 ...
 ```
 

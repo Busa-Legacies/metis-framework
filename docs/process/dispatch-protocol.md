@@ -1,7 +1,7 @@
 # Dispatch Protocol
 
 > Status: **active** · Created 2026-06-06 · Derived from: agent workbench learnings
-> Related: [`lane-entity-standard.md`](./lane-entity-standard.md) · [`hearth-lanes.md`](./hearth-lanes.md)
+> Related: [`lane-entity-standard.md`](./lane-entity-standard.md) · [`jay-lanes.md`](./jay-lanes.md)
 
 ## Why this exists
 
@@ -57,7 +57,7 @@ It gives the lane:
 - `expected_output` — the artifact shape the caller expects
 - `verification` — reminder that lane output is not task completion evidence by itself
 
-Local Ollama lanes should produce bounded artifacts. Claude/Codex remain responsible
+Local lanes (MLX-LM served) should produce bounded artifacts. Claude/Codex remain responsible
 for judgment, applying changes to the real tree, and verification unless a future
 route explicitly grants a stronger execution surface.
 
@@ -177,6 +177,34 @@ Escalation is conservative: queue-runner passes accumulated local failure/reject
 signals into `dispatch --local-failures`. At two local failures, low/medium local
 routes escalate through the dispatch policy to mini Codex; high/critical approval
 gates still apply.
+
+## Apply-time off-target gate (#404)
+
+An `approve` verdict means the artifact is **proposed**, not applied — a separate
+apply step writes it to the tree (`scripts/apply-lane-output.sh`, or a session hand-
+applying from `docs/process/lane-outputs/`). #332 keeps an off-target draft from
+*scoring* approve at curator time; this gate keeps an off-target draft from being
+*applied*. They are complementary — #067 burned **7 state flips** because the second
+gate didn't exist.
+
+**The rule — before applying ANY lane artifact:** verify it patches the task's
+declared target file(s) against their current content, not a from-scratch rewrite of
+some other existing file. If the artifact rewrites an existing repo file the task
+never declared (or restates a plan instead of patching), **do not apply** — flip to
+blocked/needs-review and re-dispatch through the grounding gates (#332).
+
+Mechanically enforced by `scripts/check-off-target.py` (shares detection logic with
+the curator gate via `scripts/lib/target_grounding.py`):
+
+```
+python3 scripts/check-off-target.py --task-id '#NNN' --artifact <path>
+# exit 0 GROUNDED   — declared and/or net-new files; safe to apply
+# exit 2 NO-TARGET  — no file blocks; plan/prose, route to needs-review (don't apply)
+# exit 3 OFF-TARGET — rewrites an existing undeclared file; DO NOT apply, re-dispatch
+```
+
+`apply-lane-output.sh` runs this as a mandatory pre-apply step. Manual applies must
+run it too before writing anything.
 
 ## What this protocol does NOT replace
 

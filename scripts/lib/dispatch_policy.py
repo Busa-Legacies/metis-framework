@@ -185,16 +185,19 @@ def resolve_default_engine(
 
     if rk == "high" or mut in {"external", "live-runtime"}:
         # No-Claude ceiling: high-risk non-security normally goes to Sonnet; when
-        # Claude is barred (unattended daemon), use deep Codex — same high-judgment
-        # intent, different (ChatGPT) quota.
-        high_engine = SONNET_ENGINE if claude_ok else DEEP_CODEX_ENGINE
+        # Claude is barred (unattended daemon) it drops to STANDARD Codex (5.4) —
+        # still a strong non-local route, but premium DEEP Codex (5.5) is RESERVED
+        # for genuinely high-judgment work: security + critical only. (Before, every
+        # autonomous high-risk task defaulted to 5.5-deep — the invisible overnight
+        # burn: 448/545 dispatches on 2026-07-03.)
+        high_engine = SONNET_ENGINE if claude_ok else STANDARD_CODEX_ENGINE
         return DispatchPolicyDecision(
             engine=DEEP_CODEX_ENGINE if wt == "security" else high_engine,
             work_type=wt,
             risk=rk,
             mutation=mut,
             reason="high-risk/security/external scope is not local-model default"
-            + ("" if claude_ok else " (no-Claude ceiling → Codex)"),
+            + ("" if claude_ok else " (no-Claude ceiling → Codex; 5.5-deep reserved for security/critical)"),
             # Engine still escalates on inferred risk; the human gate applies
             # only to routes that can execute (mutate/external/live-runtime).
             requires_approval=(mut in {"mutates", "external", "live-runtime"}),
@@ -202,6 +205,21 @@ def resolve_default_engine(
         )
 
     if wt in IMPLEMENTATION_WORK or mut == "mutates":
+        # When Claude is barred (autonomous daemon), bounded low/medium implementation
+        # defaults to FREE local Qwen instead of paid Codex — the `local_failures >= 2`
+        # escalation above is the quality net (2 local misses → Codex). Paid Codex is
+        # reserved for work local can't do OR external/live-runtime scope. When Claude
+        # IS allowed (interactive/attended), keep the Codex-grade code route unchanged.
+        if not claude_ok and rk in {"low", "medium"} and mut not in {"external", "live-runtime"}:
+            return DispatchPolicyDecision(
+                engine=LOCAL_ENGINE,
+                work_type=wt,
+                risk=max(rk, "medium", key=["low", "medium", "high", "critical"].index),
+                mutation=mut,
+                reason="autonomous implementation defaults to free local Qwen (no-Claude ceiling); escalates to Codex on repeated local failure",
+                requires_approval=False,
+                proposal_only=True,
+            )
         return DispatchPolicyDecision(
             engine=STANDARD_CODEX_ENGINE,
             work_type=wt,
