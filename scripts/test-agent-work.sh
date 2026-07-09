@@ -57,13 +57,13 @@ scripts/agent-work.py --state "$STATE" renew 999003 --fence-token "$CUR_TOK" --h
 # Two concurrent claim-next calls must select DIFFERENT free tasks (the lock
 # serialises select+claim, killing the read-then-claim race). Skip gracefully
 # if the live free list has <2 items so the test never goes flaky.
-CN_FREE=$(scripts/free-work.py --machine antfox --json 2>/dev/null | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["free"]))')
+CN_FREE=$(scripts/free-work.py --machine <<MACHINE_1_ID>> --json 2>/dev/null | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["free"]))')
 if [ "$CN_FREE" -ge 2 ]; then
   CNSTATE="$(mktemp "${TMPDIR:-/tmp}/agent-work-cn-state.XXXXXX")"
   printf '{"version":1,"updatedAt":null,"checkouts":[]}\n' > "$CNSTATE"
-  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t1 --session sessA --machine antfox --allow-multi --json >/tmp/agent-work-cn-a.out 2>/dev/null &
+  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t1 --session sessA --machine <<MACHINE_1_ID>> --allow-multi --json >/tmp/agent-work-cn-a.out 2>/dev/null &
   CN_P1=$!
-  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t2 --session sessB --machine antfox --allow-multi --json >/tmp/agent-work-cn-b.out 2>/dev/null &
+  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t2 --session sessB --machine <<MACHINE_1_ID>> --allow-multi --json >/tmp/agent-work-cn-b.out 2>/dev/null &
   CN_P2=$!
   wait "$CN_P1" "$CN_P2"
   python3 - "$CNSTATE" <<'PY'
@@ -76,16 +76,16 @@ live = [c for c in json.load(open(sys.argv[1]))['checkouts'] if c['status'] == '
 assert len(live) == 2, f"expected 2 live claims after two claim-next, got {len(live)}"
 PY
   # WIP guard: a further claim from the SAME session (no --allow-multi) must refuse.
-  if scripts/agent-work.py --state "$CNSTATE" claim-next --agent t1 --session sessA --machine antfox >/tmp/agent-work-dupe.out 2>/tmp/agent-work-dupe.err; then
+  if scripts/agent-work.py --state "$CNSTATE" claim-next --agent t1 --session sessA --machine <<MACHINE_1_ID>> >/tmp/agent-work-dupe.out 2>/tmp/agent-work-dupe.err; then
     echo "claim-next WIP guard unexpectedly passed" >&2; exit 1
   fi
   grep -q "already holds" /tmp/agent-work-dupe.err
   # ...but a different session CAN still claim (multi-terminal flow must work).
-  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t3 --session sessC --machine antfox --json >/dev/null 2>&1 || {
+  scripts/agent-work.py --state "$CNSTATE" claim-next --agent t3 --session sessC --machine <<MACHINE_1_ID>> --json >/dev/null 2>&1 || {
     echo "claim-next wrongly blocked a distinct session" >&2; exit 1; }
   rm -f "$CNSTATE" "$CNSTATE.lock" /tmp/agent-work-cn-a.out /tmp/agent-work-cn-b.out
 else
-  echo "claim-next concurrency test SKIPPED — <2 free items for antfox" >&2
+  echo "claim-next concurrency test SKIPPED — <2 free items for <<MACHINE_1_ID>>" >&2
 fi
 
 echo "agent-work tests passed"

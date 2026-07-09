@@ -260,7 +260,8 @@ def mechanical_ok(repo: Path, files: list[str]) -> bool:
             except Exception as e:
                 log(f"json parse FAIL {f}: {e}"); return False
     # Governance + self-heal self-tests (cheap, no live state).
-    for t in ("test-governance-core.py", "test-self-heal.py"):
+    for t in ("test-governance-core.py", "test-self-heal.py", "test-prd-intake.py",
+              "test-tasks-lock-race.py"):
         tp = repo / "scripts" / t
         if tp.exists():
             r = run([sys.executable, str(tp)], repo)

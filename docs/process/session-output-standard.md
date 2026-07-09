@@ -93,7 +93,7 @@ the message:
   you've merged or cleaned the tree"). Maintenance already governed by a standard — worktree
   cleanup, commit/push mechanics, lease/board hygiene, memory trims — executes without
   narration and without its own Done bullet. Surface only outcomes Ant acts on, deviations,
-  or failures. Show your reasoning only for judgment-call or destructive-edge actions.
+  or failures. State your rationale only for judgment-call or destructive-edge actions.
 
 ### When it fires
 

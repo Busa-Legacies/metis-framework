@@ -235,6 +235,6 @@ To bring up `<tool>` as a first-class driver:
 - [`platform-registry.json`](./platform-registry.json) — machine-readable registry
 - [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md) — engine ladder + <<MACHINE_1_ID>>-lane routing
 - [`../../ClaudeCode/codex/instructions.md`](../../ClaudeCode/codex/instructions.md) — Codex entrypoint
-- [`./hearth-lanes.md`](./hearth-lanes.md) — the executor lanes (dispatch)
+- [`./hearth-lanes.md`](./hearth-lanes.md) — the executor lanes (dispatch; formerly jay-lanes)
 - [`../../ClaudeCode/mirror-manifest.json`](../../ClaudeCode/mirror-manifest.json) — two-machine sync contract
 - [`../../AGENTS.md`](../../AGENTS.md) — the neutral identity/workspace entrypoint every driver reads

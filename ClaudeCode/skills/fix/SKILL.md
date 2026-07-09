@@ -18,6 +18,7 @@ If the bug maps to a governed task `#NNN`, note it — the lesson-routing in Ste
 Establish a deterministic trigger before changing anything:
 - Run the exact failing command / path. Capture the error text, exit code, and wrong output verbatim — this is your before/after baseline.
 - **Rule out flaky tooling before assuming a defect.** Garbled or truncated tool output is a transport fault, not data — re-run and confirm the failure is real and repeatable. Never debug a phantom or fabricate a cause from one noisy run.
+- **For remote-access failures, prove the failing layer before changing trust boundaries.** Check the client prerequisite first (VPN/Tailscale on, correct network, DNS/IP reachable) and compare from both sides (client → service and host-local → service). Do not widen a bind address, CORS/auth policy, firewall, or LaunchAgent environment unless host-local success plus client-side failure proves the server exposure is the root cause; otherwise log the client/network finding and leave the service posture unchanged.
 - If genuinely unreproducible: say so, capture what you tried, and stop — do not "fix" by guessing. An unreproducible bug becomes a logged task with repro attempts, not a speculative patch.
 
 ## Step 2 — Investigate the root cause (trace every layer)

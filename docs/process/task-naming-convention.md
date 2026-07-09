@@ -24,6 +24,9 @@ Optional additions: `**Next action:**`, `**Blocked by:** #NNN`, `**Done when:**`
 
 ### OPEN_TASKS.md (board view) entries
 
+`OPEN_TASKS.md` is a **read-only projection** auto-rendered from `tasks.json`
+(`render-tier1-state.py`) — never hand-write a board line. Its rendered shape, for reference:
+
 ```
 - [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
@@ -34,7 +37,7 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 | Field | Values | Notes |
 |---|---|---|
-| `#NNN` | 001–999 | Sequential, never reused. See counter below. |
+| `#NNN` | 001–999 | Sequential, never reused. **Stored canonically with the leading `#`** — the `taskId` field in `tasks.json` is `"#361"`, never `"361"`. See counter + canonical-form note below. |
 | `slug` | `kebab-case` | Verb-noun describing the work. No domain prefix — that's `area`. |
 | `type` | `bug` `feat` `chore` `infra` `research` `doc` | Kind of work |
 | `area` | `openclaw` `dashboard` `trading-bot` `example` `infra` `<<MACHINE_2_ID>>` `personal` | Project domain |
@@ -50,14 +53,25 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 ## ID Counter
 
-**Last assigned: #356**
-**Next available: #357**
+The counter is **canonical in `docs/process/state/task-counter.json`** (field
+`lastAssigned`) — there is no markdown mirror (#352 removed it; the duplicated
+line raced two concurrent allocs into a merge conflict). Allocate atomically with
+`scripts/agent-work.py alloc-id` (used by `/add-task`); never hand-edit the counter.
+`alloc-id --peek` shows the next id without consuming it; `update-tier1-state.py
+schema` prints the next available id. IDs are never reused, even for cancelled tasks.
+The close gate verifies the counter against canonical state via
+`scripts/lib/close_integrity_canonical.py id-counter`.
 
-These two lines are a **human-readable mirror** — the canonical, race-safe counter lives in
-`docs/process/state/task-counter.json` and is allocated atomically by
-`scripts/agent-work.py alloc-id` (used by `/add-task`). Do **not** hand-edit to claim an id;
-run `alloc-id` so two concurrent sessions can't stamp the same `#NNN`. IDs are never reused,
-even for cancelled tasks. (`alloc-id --peek` shows the next id without consuming it.)
+### Canonical `taskId` form — leading `#` is mandatory
+
+The stored `taskId` is always `"#NNN"` **with** the hash (e.g. `"#361"`). Note that
+`alloc-id` prints the **bare** number (`361`) — callers must prepend `#` before writing it.
+A prefix-less id (`"361"`) is a bug: it collides on number with a real `#NNN` task and
+misses every `#NNN` exact-match lookup (e.g. the born-governed commit-reference guard).
+`update-tier1-state.py create-task` enforces this: a bare-numeric `taskId` is coerced to
+`#NNN` and anything that isn't `#` + digits is rejected. (Historical lapse: a batch created
+2026-06-14 stored bare ids `356`–`365`, three of which collided with the `#363`–`#365`
+eval-pipeline tasks; normalized + re-IDed 2026-06-15.)
 
 ## Scope Notes
 

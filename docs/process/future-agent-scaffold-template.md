@@ -44,12 +44,12 @@ A future agent should explicitly inherit the shared doctrine from:
 - `docs/process/task-state-contract.md`
 
 Depending on the role, it may also need to read or reference:
-- `docs/process/outpost-task-lifecycle-protocol.md`
-- `docs/process/outpost-execution-evidence-gate.md`
-- `docs/process/outpost-session-continuity-and-rollover.md`
-- `docs/process/outpost-timeout-and-blocked-state-policy.md`
-- `docs/process/outpost-memory-architecture-v2.md`
-- `docs/process/outpost-recall-protocol.md`
+- `docs/process/<<MACHINE_2_ID>>-task-lifecycle-protocol.md`
+- `docs/process/<<MACHINE_2_ID>>-execution-evidence-gate.md`
+- `docs/process/<<MACHINE_2_ID>>-session-continuity-and-rollover.md`
+- `docs/process/<<MACHINE_2_ID>>-timeout-and-blocked-state-policy.md`
+- `docs/process/<<MACHINE_2_ID>>-memory-architecture-v2.md`
+- `docs/process/<<MACHINE_2_ID>>-recall-protocol.md`
 
 Interpretation rule:
 - shared docs define the reusable operational semantics

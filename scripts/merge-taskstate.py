@@ -16,6 +16,7 @@ Exits 0 (resolved) on success. Exits 1 only if neither side is parseable JSON, s
 genuinely corrupt file surfaces instead of being silently overwritten.
 """
 import json
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -69,6 +70,21 @@ def _pick_task(a, b):
     return _newer_updatedat(a, b)
 
 
+def _is_id_collision(a, b):
+    """True when two tasks share a taskId but are DIFFERENT tasks — i.e. two
+    concurrent sessions allocated the same id from diverged counters. Discriminate
+    by createdAt (stamped once at create, immutable per #285): same id + different
+    createdAt = collision. Conservative: if either createdAt is missing we can't be
+    sure, so treat as the same task (normal revision merge) and never renumber."""
+    ca, cb = a.get("createdAt"), b.get("createdAt")
+    return bool(ca) and bool(cb) and ca != cb
+
+
+def _next_free_id(existing):
+    nums = [int(t[1:]) for t in existing if re.fullmatch(r"#\d+", str(t))]
+    return f"#{(max(nums) + 1) if nums else 1}"
+
+
 def _merge_tasks(ours, theirs):
     out = dict(ours or theirs or {})
     oi = {t["taskId"]: t for t in (ours or {}).get("tasks", [])}
@@ -79,7 +95,32 @@ def _merge_tasks(ours, theirs):
     # archiving converges across machines even though tasks[] is unioned by id (see
     # scripts/archive-done-tasks.py). archivedIds itself is unioned and never shrinks.
     archived = set((ours or {}).get("archivedIds", [])) | set((theirs or {}).get("archivedIds", []))
-    out["tasks"] = [_pick_task(oi.get(tid), ti.get(tid)) for tid in order if tid not in archived]
+    # Task-id collision guard (#469): two concurrent sessions can allocate the SAME id
+    # for DIFFERENT tasks (diverged counters). Without this, _pick_task silently keeps
+    # one and the other is lost. Instead: keep the earlier-created task at the id, and
+    # PRESERVE the later one by renumbering it to a fresh id (never silently drop work).
+    existing_ids = set(oi) | set(ti)
+    primary, renumbered = [], []
+    for tid in order:
+        if tid in archived:
+            continue
+        a, b = oi.get(tid), ti.get(tid)
+        if a is not None and b is not None and _is_id_collision(a, b):
+            keep, move = (a, b) if a.get("createdAt", "") <= b.get("createdAt", "") else (b, a)
+            new_id = _next_free_id(existing_ids)
+            existing_ids.add(new_id)
+            moved = dict(move)
+            moved["taskId"] = new_id
+            moved["idCollisionRenumberedFrom"] = tid
+            renumbered.append(moved)
+            primary.append(keep)
+            sys.stderr.write(
+                f"[taskstate-merge] id collision on {tid}: two distinct tasks — kept "
+                f"{keep.get('title','')[:40]!r} at {tid}, renumbered {move.get('title','')[:40]!r} "
+                f"-> {new_id} (no work dropped; #469)\n")
+        else:
+            primary.append(_pick_task(a, b))
+    out["tasks"] = primary + renumbered
     if archived:
         out["archivedIds"] = sorted(archived)
     out["version"] = max((ours or {}).get("version", 1), (theirs or {}).get("version", 1))

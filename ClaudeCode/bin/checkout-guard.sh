@@ -132,7 +132,7 @@ main() {
             [.checkouts[] |
              select(.status != "done" and .status != "released" and .status != "blocked" and .status != "expired" and .status != "stolen") |
              select((.leaseExpiresAt | fromdateiso8601) > ($now | tonumber)) |
-             "\(.agent) on #\(.issue) (\(.branch))"
+             "\(.agent) on \(.taskId // (if .issue then "#\(.issue)" else null end) // .title // "unknown-task")\(if .branch then " (\(.branch))" else "" end)"
             ] | join(", ")
         ' "$STATE_FILE" 2>/dev/null || echo "unknown")
 

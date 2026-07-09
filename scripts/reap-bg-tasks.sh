@@ -145,10 +145,52 @@ while IFS= read -r marker; do
     fi
 done < <(find /private/tmp -maxdepth 1 -name "claude-session-*.init" 2>/dev/null)
 
+# ── Pass 3: reap detached, long-idle claude-<N> tmux sessions ─────────────────
+# The 5-hour rate-limit pool is SHARED across every live Claude session on this
+# machine. A pileup of persistent `claude-tmux.sh` sessions (claude-1..N) that
+# nobody is using and that have sat idle for hours is both window-burn risk (if
+# anything re-invokes them) and the "managing all these terminal sessions is
+# exhausting" clutter. Reversible: the transcript persists on disk and the
+# session resumes via `claude --resume`, so reaping only costs a reconnect.
+#
+# Two tiers, chosen so an operator briefly away is never killed out from under:
+#   • DETACHED (no client) + idle > REAP_HOURS (4h)          → reap
+#   • ATTACHED  + idle > REAP_ATTACHED_HOURS (16h)           → reap
+# The attached tier exists because a dead ttyd/mobile client leaves the session
+# marked attached forever; 16h with zero pane activity is a provably dead client,
+# not someone thinking. Detached uses the shorter bar since nobody's watching.
+REAP_HOURS="${REAP_HOURS:-4}"
+REAP_ATTACHED_HOURS="${REAP_ATTACHED_HOURS:-16}"
+tmux_sessions_reaped=0
+if command -v tmux >/dev/null 2>&1; then
+    now_ts=$(date +%s)
+    reap_detached_secs=$(( REAP_HOURS * 3600 ))
+    reap_attached_secs=$(( REAP_ATTACHED_HOURS * 3600 ))
+    while IFS='|' read -r sname sact sattached; do
+        [[ "$sname" == claude-* ]] || continue
+        idle_secs=$(( now_ts - sact ))
+        if [[ "${sattached:-0}" -eq 0 ]]; then
+            [[ $idle_secs -ge $reap_detached_secs ]] || continue
+            why="detached"
+        else
+            [[ $idle_secs -ge $reap_attached_secs ]] || continue
+            why="stale-attached"
+        fi
+        idle_h=$(( idle_secs / 3600 ))
+        if [[ $DRY_RUN -eq 1 ]]; then
+            log "DRY RUN — would reap tmux $sname ($why, idle ${idle_h}h)"
+        else
+            tmux kill-session -t "$sname" 2>/dev/null \
+                && { log "reaped tmux $sname ($why, idle ${idle_h}h)"; tmux_sessions_reaped=$((tmux_sessions_reaped + 1)); } \
+                || log "WARN: could not reap tmux $sname"
+        fi
+    done < <(tmux list-sessions -F "#{session_name}|#{session_activity}|#{session_attached}" 2>/dev/null)
+fi
+
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 if [[ $DRY_RUN -eq 1 ]]; then
     log "dry-run complete — pass --kill to act. stale markers: $stale_markers"
 else
-    log "done — killed: $killed  stale markers cleaned: $stale_markers"
+    log "done — killed: $killed  stale markers cleaned: $stale_markers  tmux sessions reaped: $tmux_sessions_reaped"
 fi

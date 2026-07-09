@@ -41,8 +41,8 @@ from network import JARRY_IP  # canonical, env-overridable (scripts/lib/network.
 HOME = os.path.expanduser("~")
 REPO = os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCAL_TRANSCRIPTS = os.path.join(HOME, ".claude", "projects")
-JARRY_MIRROR = os.path.join(HOME, ".claude", "projects-jarry")
-JARRY_SSH = f"abusa@{JARRY_IP}"
+JARRY_MIRROR = os.path.join(HOME, ".claude", "projects-<<MACHINE_2_ID>>")
+JARRY_SSH = f"<<MACHINE_2_USER>>@{JARRY_IP}"
 JARRY_KEY = os.path.join(HOME, ".ssh", "jarry_access")
 DIGEST_DIR = os.path.join(REPO, "<<MACHINE_1_ID>>", "state", "self-review")
 LEDGER = os.path.join(DIGEST_DIR, "ledger.json")
@@ -59,7 +59,7 @@ SYSTEM_CONTEXT = (
     "Ant's system: Claude Code is an orchestrator that should ROUTE codegen/research "
     "to free local Ollama lanes (smith/scout/warden/echo) to save Claude quota; it has "
     "a session 'end' protocol, a governed tasks.json pipeline, LaunchAgent automations, "
-    "and dashboards. Two machines: <<MACHINE_1_ID>> (antfox) and <<MACHINE_2_ID>>. Fixes are things like hooks, "
+    "and dashboards. Two machines: <<MACHINE_1_ID>> (<<MACHINE_1_ID>>) and <<MACHINE_2_ID>>. Fixes are things like hooks, "
     "CLAUDE.md rules, LaunchAgents, or habit changes."
 )
 
@@ -322,7 +322,7 @@ def pull_jarry():
 
 
 def discover(days, latest):
-    roots = [(LOCAL_TRANSCRIPTS, "jay"), (JARRY_MIRROR, "jarry")]
+    roots = [(LOCAL_TRANSCRIPTS, "jay"), (JARRY_MIRROR, "<<MACHINE_2_ID>>")]
     files = []
     for root, machine in roots:
         for f in glob.glob(os.path.join(root, "**", "*.jsonl"), recursive=True):
@@ -585,7 +585,7 @@ def write_board(led):
             persist = f" ⚠️persists×{f['occurrences']}" if f.get("occurrences", 1) > 1 else ""
             lines.append(
                 f"- [{f.get('priority', 'P3')}] [ ] **{f['title']}** ({f['taskId']}){persist} "
-                f"— {f.get('fix', '')[:120]} @agent:{f.get('owner', 'claude')} @machine:antfox"
+                f"— {f.get('fix', '')[:120]} @agent:{f.get('owner', 'claude')} @machine:<<MACHINE_1_ID>>"
             )
     lines.append(BOARD_END)
     block = "\n".join(lines)
@@ -692,7 +692,7 @@ def main():
     if not args.latest and not args.no_pull:
         n = pull_jarry()
         if n:
-            machines.append("jarry")
+            machines.append("<<MACHINE_2_ID>>")
 
     files = discover(None if args.latest else args.days, args.latest)
     cands = []

@@ -37,7 +37,7 @@ Two structural problems, not just verbosity:
 - **Enforce, don't hope.** When a rule's detail is on-demand, adherence is guaranteed by (a) the kernel
   always *naming* the rule, and (b) a hook that *blocks* the non-compliant action — not by trusting the
   agent to have read prose. This is the answer to "how do we ensure adherence without always-on."
-- **Isolate verbose work.** Research/log-heavy/throwaway work runs in subagents or free Ollama lanes so
+- **Isolate verbose work.** Research/log-heavy/throwaway work runs in subagents or free local lanes (MLX-LM) so
   its tokens never enter the main window.
 
 ## 3. The tier model
@@ -59,7 +59,7 @@ Pulled when the triggering activity begins. Each is ONE canonical doc/skill, pro
 |---|---|---|
 | Decision doctrine (full) | `docs/process/decision-doctrine.md` | rarely — kernel holds the 6 guardrails |
 | Session lifecycle | `skills/{start,checkpoint,end,next}` (already skills ✓) | start / checkpoint / close |
-| Agent routing + lanes | `docs/process/hearth-lanes.md` | delegating to a lane |
+| Agent routing + lanes | `docs/process/jay-lanes.md` | delegating to a lane |
 | Design guidelines | `docs/design-guidelines.md` | any UI/frontend work |
 | Memory standard | `docs/process/memory-standard.md` (extract) | writing a memory file |
 | Task lifecycle | `docs/process/task-pickup-and-lifecycle-standard.md` | claim / close a task |
@@ -101,7 +101,7 @@ mechanically enforced or genuinely judgment-shaped (you can't hook-block "should
 | Rate-limit / plan-mode nudges | mechanical (advisory) | `hook-prompt-guard.sh`, `hook-plan-nudge.sh` (UserPromptSubmit) |
 | Act-vs-ask decision doctrine | judgment | kernel names the 6 guardrails; full doctrine on demand |
 | Design guidelines | judgment | path-scoped `.claude/rules/design.md` (auto-loads on UI files) |
-| Lane routing | judgment | kernel Router → `hearth-lanes.md` |
+| Lane routing | judgment | kernel Router → `jay-lanes.md` |
 | **Redaction (money never logged)** | **mechanical** | `hook-redaction-guard.sh` (PreToolUse Edit\|Write — denies). Tightly scoped to personal-log / `#personal` memory writes, so code edits with `$` are untouched; high-confidence money patterns ($-amounts, k/m/bn, money words, comma-grouped thousands) → `deny` with a redact-and-retry reason. |
 
 Every protocol is now either mechanically enforced or genuinely judgment-shaped — no on-demand
