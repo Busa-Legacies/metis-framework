@@ -136,9 +136,17 @@ evidence is recorded. Then, in order:
    `python3 scripts/agent-work.py unclaim <claim-id>` (claim-backed). Finishing a
    stolen/terminal lease is rejected by design — if it fences you out, your work was
    superseded; reconcile, don't force.
-2. **Set canonical state:** `tasks.json` → `state: done` (or `needs_verification` if
-   review is pending), fill `evidence_refs`. Update the `OPEN_TASKS.md` projection to
-   match (check the box / move it).
+2. **Advance canonical state via the mutator** — never hand-edit `tasks.json` or the
+   projections (`scripts/render-tier1-state.py` regenerates `OPEN_TASKS.md`; #350
+   auto-render overwrites hand edits). The forward-only graph is
+   `in_progress → execution_finished → needs_verification → done` (there is **no**
+   `in_progress → done` — the mutator rejects it). Use
+   `python3 scripts/update-tier1-state.py task-update --task-id <id> --expected-revision N
+   --actor <you> --commit --patch '{"state": "execution_finished", ...}'`, then advance to
+   `needs_verification`, then to `done` once the verification method passed. The **verifier**
+   moves the `needs_verification → done` gate; a self-verified task may walk all three steps.
+   Fill `evidence_refs` on the way. (`correct-state` is only for audited data fixes, not the
+   normal path.)
 3. **Commit + push under the lock** with a descriptive message (this is the record).
    Tag a milestone (`git tag -a <name>-v1`) when the work is a coherent shippable unit.
 4. **Memory only if durable + cross-session + non-obvious + not-already-in-git** —
@@ -184,7 +192,9 @@ scripts/git-lock.sh run sh -c "git add <paths> workspace/memory/working-context.
 # 4. Close out (with evidence)
 scripts/agent-finish <issue> --fence-token <N> --push --pr       # issue-backed
 python3 scripts/agent-work.py unclaim <claim-id>                 # claim-backed
-#   -> tasks.json state=done + evidence_refs; OPEN_TASKS.md checked
+#   -> advance state via the mutator (task-update), never hand-edit tasks.json/projections:
+#      in_progress -> execution_finished -> needs_verification -> done (+ evidence_refs).
+#      OPEN_TASKS.md re-renders from tasks.json (render-tier1-state.py) — don't touch it.
 
 # 5. Choose next
 python3 scripts/free-work.py                                     # re-assess, never trust stale view
@@ -195,7 +205,7 @@ python3 scripts/free-work.py                                     # re-assess, ne
 - [`agent-operating-loop.md`](agent-operating-loop.md) — the abstract loop this implements.
 - [`task-state-contract.md`](task-state-contract.md) — the durable fields/states referenced throughout.
 - [`agent-checkout-protocol.md`](agent-checkout-protocol.md) — claim/checkout/fence mechanics.
-- [`outpost-task-lifecycle-protocol.md`](outpost-task-lifecycle-protocol.md) — the <<MACHINE_2_ID>>-side counterpart.
+- [`<<MACHINE_2_ID>>-task-lifecycle-protocol.md`](<<MACHINE_2_ID>>-task-lifecycle-protocol.md) — the <<MACHINE_2_ID>>-side counterpart.
 - `~/.claude/CLAUDE.md` — Session Start (free-work + claim), `/checkpoint`, `/end`, and lane routing.
 
 ## Success criteria

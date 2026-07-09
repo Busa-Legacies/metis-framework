@@ -6,6 +6,132 @@
 
 ---
 
+## 0. Metis Command — Reinvisioned Design Language (2026-06, #437) — CANONICAL
+
+> **This section supersedes §§1–9 for the Control Center.** Sections 1–9 document the legacy
+> dark "command surface" identity (dark-only, monospace-everything, grid/scanline) that shipped
+> through mid-2026. The #437 reinvision replaces it. Where §0 conflicts with §§1–9 for the
+> Control Center, **§0 wins.** Legacy sections stay until the Three-Rooms refactor (W2/W7) removes
+> the surfaces they describe. Reference: `docs/plans/PLAN-metis-command-reinvision.md`,
+> `docs/reviews/metis-os-ux-reinvision-audit-2026-06-22.md`.
+
+**Direction locked (2026-06-23): "d1 — Console."** Ant picked d1 of the three W1 directions — the cleanest
+balance of actionable-insight density with minimal clutter. The tokens and layout below are d1's *actual*
+values (source: `docs/plans/w1-design-directions/d1-console.html`), now canonical.
+
+**Aesthetic: "Calm Focus" — light, airy, editorial.** A surface Ant *wants to live in*, not a dense
+console he tolerates. The metric is adoption, not decoration: the UI's job is to tell him what's
+happening, what needs him, and how to act — with as little friction as possible, on desktop and phone.
+
+**The attention principle (the one rule everything else serves).** The base is calm neutral (slate on
+near-white); **color is signal, never decoration.** Two layers carry it in d1: (1) each needs-you item is
+**typed by action color** (the §0.2 taxonomy — Decide=amber, Review=blue, Unblock=rose…), so the color
+tells Ant *how* to act, not just *that* something waits; (2) the **rose `#e11d48` count badge** on a room
+icon is the at-a-glance "something needs you here." When nothing needs him: no badges, no warm color — the
+surface rests ("All systems nominal"). *(This refines the earlier single-coral-accent draft to match what
+d1 actually does — flag if you'd rather a single global accent instead of typed action-colors.)*
+
+### 0.1 Color tokens *(d1 actual values)*
+| Token | Value | Use |
+|---|---|---|
+| `--rail` / `--rail-2` | `#0f172a` / `#1e293b` | **dark slate nav rail** + active-item bg (the console contrast) |
+| `--canvas` | `#f6f8fb` | app canvas (cool near-white) |
+| `--card` | `#ffffff` | cards, rows, table |
+| `--ink` / `--ink-2` / `--ink-3` | `#0f172a` / `#475569` / `#94a3b8` | primary / secondary / tertiary text (slate) |
+| `--line` | `#e6ebf2` | hairline borders + dividers |
+| `--blue` / `--blue-soft` | `#2563eb` / `#eff4ff` | primary action · Review |
+| `--amber` / `--amber-soft` | `#d97706` / `#fef3e2` | Decide · waiting |
+| `--rose` / `--rose-soft` | `#e11d48` / `#fdeef1` | **needs-you badge** · Blocked / Unblock |
+| `--green` / `--green-soft` | `#16a34a` / `#e9f7ef` | system-healthy |
+| `--brand-grad` | `linear-gradient(135deg,#3b82f6,#22d3ee)` | logo + progress bars (the one ornament) |
+| `--radius` | `14px` | cards; buttons 8px, pills/badges 6px |
+
+The signature is **dark rail + light canvas** — not all-light. Light content is the default and the norm
+(overrides §1's "dark only"); the rail is the one dark surface. A full dark theme may come later as an
+option, not the base.
+
+### 0.2 Action-type taxonomy (new reusable primitive)
+Every item that needs Ant is **typed by the interaction it wants**, and renders the matching control
+inline. This is the core component of the reinvision — used in the Watch briefing, inbox, and anywhere
+work surfaces to Ant. Knowing *that* something needs him is useless without knowing *how* to act.
+
+| Mode | What it asks for | Inline control | Color |
+|---|---|---|---|
+| **Decide** | pick one of N | option chips | amber `#b8780f` / `#fdf3e0` |
+| **Answer** | type a reply | text field + Send | indigo `#5160d6` / `#eef0fc` |
+| **Approve** | yes / no | Approve · Reject | violet `#8b5cf6` / `#f4effe` |
+| **Direct** | open-ended steer | "Give direction →" (opens prompt) | blue `#2563eb` / `#eef4ff` |
+| **Run** | run a command | command + ▶ Run on `<host>` / Open terminal (mobile: live terminal) | teal `#0e8a7a` / `#e6f6f3` |
+| **Review** | read & edit | Review → · Approve as-is | sage `#5b7a6b` / `#eef3f0` |
+| **Unblock** | grant access/scope/credential | Unblock (states what's needed) | rose `#d6455f` / `#fdecef` |
+
+Each item shows: a **mode tag** (color-coded), a one-line *"what you need to do,"* and the affordance.
+Mode colors are for the tag/control only — they do not compete with `--attn` for the eye.
+
+### 0.3 Typography *(d1 scale)*
+System/`Inter` sans for all UI text (this overrides §1's monospace mandate). Monospace
+(`ui-monospace`, `SFMono`, `Menlo`) is reserved for **code, terminals, task IDs, and lane/model names**.
+d1 scale: body 13–14px / line-height 1.5; **briefing H1 22px** (slightly tight, `-.01em`); card section
+headers 11–12px **uppercase, .1em tracked, `--ink-3`**; real hierarchy without sprawl. Let text breathe.
+
+### 0.4 Spacing & density
+Airy by default. Card padding 16–20px; 12–24px gaps between sections; max content width ~1080px so lines
+don't sprawl. White space is a feature — never pack to fill.
+
+### 0.5 Layout *(d1)*
+- **Front door = a briefing** (the Watch room), never an empty terminal. d1's briefing leads with a
+  greeting + "since you were away" line, then System chips, a Dispatch field, Needs-you, Goal progress,
+  and Active agents — answering "is it running / what needs me / what's next" above the fold.
+- **Slim dark rail** (`--rail`, ~212px desktop) with two labeled groups — **Rooms** (Watch · Steer · Plan ·
+  **Studio**) then **Context** (the **Personal ↔ Example** toggle — the existing binary `workspace` context,
+  surfaced here instead of buried in Settings) — plus Settings and a foot status line
+  (`● All systems nominal`). Mobile: bottom tab bar. A rose count badge on a room icon = needs-you there.
+- **⌘K command palette is global** (any room), the fast path for navigation + dispatch; a search field
+  ("⌕ Search anything… ⌘K") also sits in the top bar.
+- Status is always visible (this §1 rule survives), but calm — a quiet health row, not a dense HUD.
+
+### 0.6 Components
+- **Cards/rows:** white on `--bg`, `--line` border, 14–16px radius, no heavy shadows (at most `0 1px 2px rgba(0,0,0,.03)`).
+- **Buttons:** neutral outline default; the *primary action of a typed item* uses that mode's color;
+  the global attention/CTA uses `--attn`. Max one filled button per row.
+- **Action Queue:** the §0.2 primitive — the canonical way work is presented to Ant.
+- **Confirms:** in-app `ConfirmActionButton`, never `window.confirm()` (which also breaks the aesthetic).
+- **Back affordance (#450):** every drill-in surface (Studio inner screens, detail panes, line/task
+  detail) returns via the ONE shared `<BackButton>` — an arrow **plus the named destination**
+  ("← Studios", never a bare arrow), pinned to the **fixed left** of the header so it never scrolls
+  off on a phone, with a ≥44px touch target there. Never bury it at the end of a scrolling toolbar.
+- **Progressive disclosure (#450):** a surface leads with its **primary action**; secondary and rare
+  controls collapse behind a single overflow ("⋮") rather than a wall of unlabeled icons. Decorative,
+  label-less icons are noise — drop them (especially on mobile). On a phone the header's action cluster
+  must **wrap or collapse to overflow** — it may never run off the viewport edge.
+- **Drill-in by default — every tile/card/panel is clickable (#458, CANONICAL):** progressive
+  disclosure is not just header layout — it is the **core navigation contract of the OS**. Any tile,
+  stat card, or panel that summarizes something with a richer view **must be clickable as a whole** to
+  open that view: the *entire* card is the target (it renders as a real `<button>` carrying an
+  `actionHint` like "Open Ops"), never a buried "details →" link. **Mechanism:** pass
+  `onClick={() => nav.goto('<mode>'[, opts])}` to the shared `StatusCard`/panel primitive — the
+  hover/focus affordance + `actionHint` tooltip come for free; bespoke cards must replicate the same
+  button semantics. A surface stays non-clickable **only when it is a genuine leaf** (no deeper view
+  exists) — that is the rare, self-evident exception, not the default. This rule is **retroactive
+  (audit and fix existing tiles), present, and binding on all future UI.** Constraints: a button can't
+  nest buttons — when a card needs inner row-level actions, make the card *header/body* the nav target
+  and keep row actions as sibling affordances (see OverviewSummary "Active Work"). Keyboard/touch: real
+  button → Enter/Space activatable, ≥44px target. Pair with the Back affordance above so every drill-in
+  returns cleanly.
+
+### 0.7 Motion
+Restrained and quick (≤150ms ease) — fades and small slides for state changes; the attention accent may
+use a single subtle pulse when a *new* needs-you item arrives, then rest. No ambient/looping motion in
+the workspace. (Marketing/public surfaces are out of scope here — see `feedback_motion_context_scope`.)
+
+### 0.8 Mobile (full parity)
+Bottom tab bar (Watch/Steer/Plan/Studio) with the context toggle + Settings under a "You"/overflow;
+thumb-sized targets (≥44px); the Action Queue stacks vertically; **full live terminals** on mobile
+(xterm.js + a keyboard toolbar: Tab/Ctrl-C/Esc/arrows). The phone is a first-class surface, not a
+read-only companion.
+
+---
+
 ## 1. Aesthetic Direction
 
 **OS-grade command surface.** Metis OS is an operating environment for multi-agent work — the aesthetic should feel like a beautifully designed mission control surface. Not corporate SaaS, not consumer app, not a generic dev tool. Think: a NASA ground control terminal that was also designed by someone who loves craft.
@@ -450,6 +576,12 @@ Before shipping any UI work:
 - [ ] Workspace cards show health (agents, tasks, git) at a glance
 - [ ] Evidence gate visible before done state is reachable
 - [ ] High-risk actions show lane plan before execution
+
+**Metis Command responsive parity:**
+- [ ] Desktop and mobile both have a reachable path to the changed behavior, or the single-surface exception is explicit
+- [ ] Shared-first implementation: viewport branches only encode layout/interaction differences
+- [ ] `cd projects/metis-command && npm run verify:parity` passes for changes under `app/`, `components/`, or `lib/`
+- [ ] New behavior adds/updates a parity e2e assertion when it changes a cross-surface contract
 
 ---
 

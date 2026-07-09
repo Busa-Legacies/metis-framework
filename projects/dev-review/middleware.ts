@@ -26,12 +26,37 @@ export function middleware(req: NextRequest) {
   if (APP_PATHS.test(pathname)) return NextResponse.next()
 
   const target = req.cookies.get('dr-target')?.value
-  if (!target || !/^https?:\/\/[\w.-]+(:\d+)?$/.test(target)) {
+  if (!target || !/^https?:\/\//.test(target)) {
+    return NextResponse.next()
+  }
+
+  // Extract credentials from target URL (http://user:pass@host:port) so
+  // auth-gated local targets (e.g. Metis Command :3747) work in the proxy.
+  let targetOrigin = target
+  let authHeader: string | null = null
+  try {
+    const u = new URL(target)
+    if (u.username) {
+      authHeader = 'Basic ' + Buffer.from(`${u.username}:${u.password}`).toString('base64')
+      u.username = ''
+      u.password = ''
+      targetOrigin = u.origin
+    }
+  } catch { /* invalid URL — fall through */ }
+
+  if (!/^https?:\/\/[\w.-]+(:\d+)?$/.test(targetOrigin)) {
     return NextResponse.next()
   }
 
   const path = pathname === '/__preview' ? '/' : pathname
-  return NextResponse.rewrite(new URL(`${target}${path}${search}`))
+  const destUrl = new URL(`${targetOrigin}${path}${search}`)
+
+  if (authHeader) {
+    const headers = new Headers(req.headers)
+    headers.set('authorization', authHeader)
+    return NextResponse.rewrite(destUrl, { request: { headers } })
+  }
+  return NextResponse.rewrite(destUrl)
 }
 
 export const config = {

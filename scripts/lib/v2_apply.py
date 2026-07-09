@@ -62,13 +62,15 @@ class ApplyResult:
         self.check_output = ""
         self.worktree = ""        # path to the isolated worktree (until cleaned up)
         self.commit_sha = ""      # worktree commit, landable on green
+        self.no_change = False    # lane output matched base byte-for-byte (#692)
         self.error = ""
 
     def __repr__(self):
         return (
             f"ApplyResult(applied={self.applied}, files={self.files}, "
             f"check_ran={self.check_ran}, check_passed={self.check_passed}, "
-            f"commit_sha={self.commit_sha[:8]!r}, error={self.error!r})"
+            f"commit_sha={self.commit_sha[:8]!r}, no_change={self.no_change}, "
+            f"error={self.error!r})"
         )
 
 
@@ -209,11 +211,23 @@ def apply_and_verify(repo, base_ref, taskid, artifact_text, done_when, worktree_
             return res
     # acceptance-only (no runnable check): arbiter judges; commit so it's landable.
 
+    # #692: gate the commit on an ACTUAL diff. A lane that reproduced the base
+    # byte-for-byte used to fall into `git commit` failing with a misleading
+    # "commit failed" — surface it as a typed no-op instead, and never mint an
+    # empty "applied lane output" commit. A green check on a no-op means the
+    # current tree already satisfies doneWhen (worth saying explicitly).
+    if not _git(["status", "--porcelain"], cwd=dest).stdout.strip():
+        res.no_change = True
+        if res.check_ran and res.check_passed:
+            res.error = "no-op: lane output matches base and doneWhen check is already green on the current tree"
+        else:
+            res.error = "no-op: lane output matches base byte-for-byte — nothing to commit"
+        return res
+
     try:
         res.commit_sha = commit_worktree(dest, f"{taskid}: queue-runner-v2 applied lane output")
     except subprocess.CalledProcessError as e:
-        # Most common cause: lane output reproduced the file byte-for-byte (no diff).
-        res.error = f"nothing to commit / commit failed: {e.stderr.strip() if e.stderr else e}"
+        res.error = f"commit failed: {e.stderr.strip() if e.stderr else e}"
     return res
 
 

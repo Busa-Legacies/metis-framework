@@ -58,13 +58,16 @@ Thread KEY is the `[...]` label. If exit 2 (over budget without dropping a concu
 ## Step 5 — Reflect & extract
 Three outputs:
 - **Lessons learned** → route via `docs/process/correction-protocol.md`: if the lesson should change *behavior* → delta-edit the governing skill/CLAUDE.md and make the memory entry a ≤3-line breadcrumb. Durable non-behavioral lessons → `feedback_*` memory file (step 10); session-specific → Scribe summary (step 6)
-- **Suggested next steps** → highest-priority one → `## Next action`; rest → `task-queue.md` entries with Why/Plan/Main files per [task-writing-protocol.md](../../docs/process/task-writing-protocol.md)
-- **New to-dos** → `task-queue.md` + (if board-worthy) `workspace/state/OPEN_TASKS.md`: `- [P2] [ ] **#NNN slug** — note @agent:smith @machine:<<MACHINE_1_ID>>`
+- **Suggested next steps / new to-dos** → mint each as a **governed task** via the mutator — never hand-edit `task-queue.md` or `workspace/state/OPEN_TASKS.md` (both are projections that `scripts/render-tier1-state.py` regenerates from `tasks.json`; #350 auto-render overwrites hand edits). `python3 scripts/update-tier1-state.py create-task --actor claude --patch '{...}'` (run `update-tier1-state.py schema` for the required-field contract; carry Why/How per [task-writing-protocol.md](../../docs/process/task-writing-protocol.md)). The highest-priority one also lands in `## Next action`. Dedup first — see Step 7.
 
 Also: **backstop sweep for bugs fixed before committing** — these leave no git trace and the roll-up can't surface them. Recall by hand and route: reusable gotcha → `feedback_*`; design-level → DR; one-off → commit/Scribe log; trivial → nothing.
 
 ## Step 5b — Pre-close suggestions
-Surface 2–3 concrete improvement ideas (friction points, missing automation). Present briefly and **pause** — ask Ant if any are worth acting on before continuing. If yes, handle inline; if no, log actionable ones to `task-queue.md`.
+Note 2–3 concrete improvement ideas (friction points, missing automation) that surfaced this session. **Don't pause the close to pitch them** — a mid-protocol stop-and-ask contradicts stop discipline (a turn ends only for input-needed / banked / blocked). Mint the actionable ones as governed tasks (create-task, per Step 5, deduped in Step 7); the close continues without interruption.
+
+## Step 5c — Spec reconcile (durable intended-state)
+*(Skip if no `planRef`-linked task reached `done` this session, or there's no spec for its area yet.)*
+For each task that reached **done** this session and carries a `planRef`, check whether the change moved the **intended end-state** of its area. If so, **reconcile** `docs/specs/<area>.md` — rewrite the affected lines to current truth (spec = "is"), bump `updated`, add the task to `sources`. Don't append a changelog; the spec stays ≤80 lines. If no spec exists for that area yet, only create one when the subsystem is load-bearing and worth the upkeep (see `docs/specs/README.md`). This is the Tier-1 manual reconcile from `PLAN-spec-base.md` §3.
 
 ## Step 6 — Daily log
 See `daily-log-protocol.md` in this skill directory for the full Scribe compose + CC write + boundary advance procedure.
@@ -72,7 +75,7 @@ See `daily-log-protocol.md` in this skill directory for the full Scribe compose 
 Short form: roll up git commits → route Scribe to compose → CC writes file → run boundary advance script → assert file exists with today's date.
 
 ## Step 7 — Task dedup gate
-Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py` and skim `task-queue.md` + `OPEN_TASKS.md`. For each next-step from step 5, write it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing queued entry, or (c) completed per the step-6 git roll-up. Skip any match and state why. Prune completed entries from `task-queue.md`. Update `docs/process/live-status.md` if state changed. Each new entry must include: `Priority:` P1/P2/P3 · `Agent:` smith/scout/warden/scribe/claude · `Machine:` <<MACHINE_1_ID>>/<<MACHINE_2_ID>>/either · `Status:` queued/blocked/in-progress
+Hard gate: never log a followup already owned or finished. Run `python3 scripts/free-work.py`. For each next-step from Step 5, mint it ONLY if not already: (a) CLAIMED/WIP under an active lease, (b) an existing `queued` task in `tasks.json`, or (c) completed per the step-6 git roll-up. Skip any match and state why. Mint via the **create-task mutator** (never hand-edit `task-queue.md`/`OPEN_TASKS.md` — they re-render from `tasks.json`); `update-tier1-state.py schema` prints the required-field contract (`taskId, title, priority, state, owner, summary, why, how, project`). Update `docs/process/live-status.md` only if a multi-session workstream changed.
 
 ## Step 8 — Cross-agent handoff
 ```bash
@@ -89,6 +92,8 @@ Run `/rename <short-descriptive-name>` matching the primary work done.
 **Ownership:** Claude Code owns `ClaudeCode/memory/` writes, inline. Scribe owns only `workspace/memory/`, `working-context.md`, and daily logs — no overlap.
 
 Write to `ClaudeCode/memory/` using the frontmatter standard in `~/.claude/CLAUDE.md`. Filter test: **durable + cross-session + non-obvious + not already in code/git/commit message**. Update/extend an existing file rather than creating a near-duplicate. Refresh its `MEMORY.md` line.
+
+**Draft-then-keep (curation assist — don't rely on recall):** before deciding what to write, *draft* the candidates first — scan THIS session and list the durable lessons as short candidate entries (draft inline, or have the `echo` lane draft them from the session). Then apply the filter test to each and keep only those that pass. Drafting first closes the "forgot to write the memory at /end" gap; the filter test + the `correction-protocol.md` graduation table are still the gate — a *behavioral* lesson graduates to a skill/CLAUDE.md (with a ≤3-line breadcrumb), never a standalone memory file. **Auto-*draft*, human-*approve*; never auto-store.**
 
 **Prune sweep (run each /end):** Scan MEMORY.md for ~5 entries that are `#resolved`, superseded, or stale. For each candidate:
 - Delete the memory file if the fact is already captured in code, docs, or commit history.
@@ -109,7 +114,7 @@ scripts/close-lock.sh release
 ```
 
 ## Step 13 — Session sign-off
-Close the turn with the final-output block per [session-output-standard.md](../../docs/process/session-output-standard.md): `**<area> › <#id slug>** — <status>` header, then `Done` / `Verify` / `Next` / `Asks`. This is the last thing Ant reads — it must carry project + task context so the hand-back is self-explanatory.
+Close the turn with the sign-off block per [session-output-standard.md](../../docs/process/session-output-standard.md): `**<area> › <#id slug>** — <done|banked|blocked|in-progress>` header, then the applicable fields `Done:` / `Verified:` (MY evidence, never a chore for Ant) / `Check:` (only if Ant must eyeball it) / `Next:` / `Asks:`. This is the last thing Ant reads — it must carry project + task context so the hand-back is self-explanatory.
 
 ## Run-all gate
 Run all steps 6–11 whenever: files were edited, OR tasks were discussed, OR the session was 3+ turns. Skip only when ALL three are false. Step 10 may additionally be skipped if nothing durable and non-obvious surfaced.

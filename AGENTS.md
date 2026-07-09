@@ -89,6 +89,7 @@ Full async-handoff protocol (Discord thread-bound) + spawn config: `docs/process
 | Operating as the Discord/chat assistant, or handling a heartbeat | `docs/process/assistant-comms.md` |
 | Running a session lifecycle verb | `/start` `/next` `/checkpoint` `/end` (skills / `.codex/prompts/`) |
 | Delegating to a <<MACHINE_1_ID>> lane | `docs/process/hearth-lanes.md` |
+| Choosing a model / effort depth | `docs/process/model-effort-and-routing-standard.md` |
 | Doing UI/frontend work | `.claude/rules/design.md` (auto, path-scoped) · `docs/design-guidelines.md` |
 | Writing a memory file | frontmatter standard in `ClaudeCode/CLAUDE.md` |
 | Claiming / closing a task | `docs/process/task-pickup-and-lifecycle-standard.md` |

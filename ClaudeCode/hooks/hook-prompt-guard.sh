@@ -70,7 +70,7 @@ source "$metrics_file"
 # API returns fractional percentages like 14.0000002) would make every bash
 # `[ -ge ]` test error under 2>/dev/null and silently no-op — disabling the whole
 # limiter (the #125 root bug). Truncate any decimal; non-numeric becomes 0.
-_int() { local v="${1%%.*}"; case "$v" in ''|*[!0-9]*) scribe 0;; *) echo "$v";; esac; }
+_int() { local v="${1%%.*}"; case "$v" in ''|*[!0-9]*) echo 0;; *) echo "$v";; esac; }
 r5=$(_int "${RATE_5H_PCT:-0}")
 r7=$(_int "${RATE_7D_PCT:-0}")
 cpct=$(_int "${CTX_PCT:-0}")

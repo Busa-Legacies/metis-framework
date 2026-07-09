@@ -73,4 +73,4 @@ Quality bar:
 | Nav taxonomy | orchestrator · lanes · memory · surfaces | farms · shop · mission · impact |
 | Voice | precise, technical, confident | warm, community, fresh |
 
-*New deck? Copy this protocol's brief, fill it in, then `cp -r decks/example decks/<new>` and reskin.*
+*New deck? Copy this protocol's brief, fill it in, then copy an existing deck under `decks/` to `decks/<new>` and reskin.*

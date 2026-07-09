@@ -98,11 +98,11 @@ link_file "$REPO_ROOT/ClaudeCode/commands" "$HOME/.claude/commands"
 #      Skills take precedence over same-name commands, enabling progressive disclosure.
 link_file "$REPO_ROOT/ClaudeCode/skills" "$HOME/.claude/skills"
 
-# 2c. Claude Code subagent personas — per-machine target (jay vs jarry identity headers differ).
+# 2c. Claude Code subagent personas — per-machine target (jay vs <<MACHINE_2_ID>> identity headers differ).
 MACHINE_AGENTS_DIR=""
 case "$(id -un)" in
   Ant)   MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/hearth" ;;
-  abusa) MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/outpost" ;;
+  <<MACHINE_2_USER>>) MACHINE_AGENTS_DIR="$REPO_ROOT/ClaudeCode/agents/outpost" ;;
 esac
 if [[ -n "$MACHINE_AGENTS_DIR" ]]; then
     link_file "$MACHINE_AGENTS_DIR" "$HOME/.claude/agents"
@@ -133,7 +133,7 @@ link_file "$REPO_ROOT/dotfiles/tmux.conf" "$HOME/.tmux.conf"
 
 # 3. Hook + statusline scripts — machine-local Claude Code config, now repo-backed
 #    so behavioral wiring (e.g. the git-sync drift check) is shared and version-tracked.
-for hook in hook-alerts.sh hook-prompt-guard.sh hook-session-init.sh hook-plan-nudge.sh hook-redaction-guard.sh hook-signoff-gate.sh restart-stop-hook.sh statusline.sh; do
+for hook in hook-alerts.sh hook-prompt-guard.sh hook-session-init.sh hook-plan-nudge.sh hook-redaction-guard.sh hook-docs-index-nudge.sh hook-signoff-gate.sh restart-stop-hook.sh statusline.sh; do
     link_file "$REPO_ROOT/ClaudeCode/hooks/$hook" "$HOME/.claude/$hook"
 done
 

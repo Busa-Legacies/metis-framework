@@ -5,6 +5,12 @@ versions are semver. Pre-1.0: the public contract (config schema, skill/protocol
 names, script CLIs) may still shift between minor versions.
 
 ## [Unreleased]
+
+_Nothing yet._
+
+## [0.1.0] — 2026-07-08
+
+Launch release: the repo went public (source-available, FSL-1.1-Apache-2.0).
 ### Added
 - `scripts/ai-merge-resolver.py` + `docs/process/sync-merge-boundary.md` — Tier-3
   AI author-intent resolver for genuine CODE merge conflicts in the auto-sync

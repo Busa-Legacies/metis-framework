@@ -34,6 +34,11 @@ make_sandbox() {
   printf 'seed\n' > workspace/state/OPEN_TASKS.md
   printf 'seed\n' > workspace/.gitignore
   for i in 1 2 3 4 5 6 7 8; do printf 'f%s\n' "$i" > "file$i.txt"; done
+  # The daemon resolves its repo as $METIS_HOME (= this sandbox) and sources the
+  # shared lock helper from $REPO/scripts/lib (#452). Production's REPO always has
+  # it; mirror that here so the sandbox daemon can find holder_is_leaked.
+  mkdir -p scripts/lib
+  cp "$SCRIPT_DIR/lib/git-sync-lock.sh" scripts/lib/git-sync-lock.sh
   git add -A; git commit -qm seed; git push -q origin HEAD:main 2>/dev/null
   git branch -q -M main 2>/dev/null || true
   # Point the bare origin's HEAD at main. Without this it stays on the init-default
@@ -121,6 +126,21 @@ make_sandbox
 rm -f workspace/memory/working-context.md
 ec=$(run_sync)
 log_has "protected path staged for deletion" && r=0 || r=1; check "protected-path deletion refused" "$r"
+teardown
+
+echo "=== #448: a bulk deletion must NOT strand a coincident state addition ==="
+# Regression for the clobber class: the old guard-4 did `git reset` (whole index) on a
+# >LIMIT deletion, throwing away legit additions/modifications staged the same tick — so
+# a freshly created task could vanish if unrelated churn tripped the delete limit. The fix
+# unstages ONLY the deletions; the addition must still commit. Wipe protection is intact
+# (the deletions are NOT auto-committed). Complements the #447 caller-side atomic commit.
+make_sandbox
+rm -f file1.txt file2.txt file3.txt file4.txt file5.txt file6.txt   # 6 > limit → held back
+printf 'TASK_ADDITION_MARKER\n' >> file7.txt                        # legit change (e.g. a new task)
+ec=$(run_sync)
+log_has "Unstaging the DELETIONS ONLY" && r=0 || r=1; check "#448 bulk deletion holds deletions only (not whole index)" "$r"
+git show HEAD:file7.txt 2>/dev/null | grep -q TASK_ADDITION_MARKER && r=0 || r=1; check "#448 coincident modification IS committed (not stranded)" "$r"
+git cat-file -e HEAD:file1.txt 2>/dev/null && r=0 || r=1; check "#448 bulk deletion NOT auto-committed (wipe protection intact)" "$r"
 teardown
 
 echo "=== T-SYNC-11: a pull-merge that deletes >LIMIT source files is refused (clobber guard) ==="
@@ -229,10 +249,17 @@ git clone -q "$SBX/origin.git" "$SBX/pusher122b"
 ( cd "$SBX/pusher122b"; git config user.email t@t; git config user.name t; git config commit.gpgsign false
   printf 'origin-novel\n' > file1.txt; git commit -qam o122b; git push -q origin HEAD:main )
 printf 'local-novel\n' > file1.txt   # conflicts, but rerere has NEVER seen this preimage
-ec=$(run_sync)
-# Daemon now routes a novel conflict through the Tier-3 AI resolver before the soft
-# abort; when rerere has no replay AND Tier-3 declines/fails it logs "unresolved
-# conflict" (line 440). Grep the stable substring, not the retired "(no rerere" wording.
+# (#342) Pin METIS_AI_MERGE=0 so Tier-3 is deterministically OFF for this scenario.
+# This guard asserts the FAIL-SOFT floor: no rerere record + no AI ⇒ exit 1, clean tree.
+# Without the pin the daemon inherits METIS_AI_MERGE=1 and routes file1.txt (a .txt, an
+# AI-RESOLVABLE_EXT) through the smith lane via `dispatch` — so the result flipped on
+# whether <<MACHINE_1_ID>>'s lane happened to be reachable and resolved the trivial conflict
+# (→ "Tier-3 AI-resolved", exit 0, test FAILS) vs. declined (→ exit 1, test passes).
+# That env-dependence is the #342 flake. Tier-3's success path is its own concern;
+# this scenario is the deterministic no-regression floor, so we hold Tier-3 out of it.
+ec=$(METIS_AI_MERGE=0 run_sync)
+# With Tier-3 off, rerere has no replay either, so the daemon logs the stable
+# "unresolved conflict" substring (not the retired "(no rerere" wording).
 log_has "unresolved conflict" && r=0 || r=1; check "novel conflict logged as unresolved (no rerere/Tier-3 replay)" "$r"
 [ "$ec" = "1" ] && r=0 || r=1; check "novel conflict still exits 1 (fail-soft, no regression)" "$r"
 teardown
@@ -325,15 +352,15 @@ make_sandbox
 FC="$SCRIPT_DIR/file-claims.py"
 FCGUARD="$SCRIPT_DIR/git-hooks/pre-commit-fileclaim-guard.sh"
 printf 'export const A = 1\n' > src1.ts; git add src1.ts; git commit -qm seed-src
-# Machine A (antfox, session sessA) claims src1.ts
-METIS_HOME="$PWD" python3 "$FC" claim src1.ts --machine antfox --session sessA --agent claude --quiet
-# Machine B (jarry, session sessB) stages an edit to the SAME file and runs the guard
+# Machine A (<<MACHINE_1_ID>>, session sessA) claims src1.ts
+METIS_HOME="$PWD" python3 "$FC" claim src1.ts --machine <<MACHINE_1_ID>> --session sessA --agent claude --quiet
+# Machine B (<<MACHINE_2_ID>>, session sessB) stages an edit to the SAME file and runs the guard
 printf 'export const A = 2\n' > src1.ts; git add src1.ts
-out=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=jarry bash "$FCGUARD" 2>&1); rc=$?
+out=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=<<MACHINE_2_ID>> bash "$FCGUARD" 2>&1); rc=$?
 r=0
 printf '%s' "$out" | grep -q "FILE-CLAIM WARNING" || r=1   # warned
 printf '%s' "$out" | grep -q "src1.ts" || r=1              # named the file
-printf '%s' "$out" | grep -q "antfox" || r=1              # named the peer machine
+printf '%s' "$out" | grep -q "<<MACHINE_1_ID>>" || r=1              # named the peer machine
 [ "$rc" -eq 0 ] || r=1                                     # advisory: never blocks the commit
 check "cross-session same-file edit warns pre-merge (T-SYNC-14)" "$r"
 # the guard claimed src1.ts for sessB too (union keeps both -> A is warned next)
@@ -342,7 +369,7 @@ check "T-SYNC-14 committing session also records its own claim" "$r"
 # no false positive: an unclaimed file draws no warning
 git reset -q 2>/dev/null
 printf 'export const B = 1\n' > src2.ts; git add src2.ts
-out2=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=jarry bash "$FCGUARD" 2>&1)
+out2=$(METIS_HOME="$PWD" CLAUDE_CODE_SESSION_ID=sessB METIS_MACHINE=<<MACHINE_2_ID>> bash "$FCGUARD" 2>&1)
 printf '%s' "$out2" | grep -q "FILE-CLAIM WARNING" && r=1 || r=0
 check "T-SYNC-14 no false warning on an unclaimed file" "$r"
 teardown
@@ -355,7 +382,7 @@ teardown
 echo "=== SPLIT-1 (#234): state-only change is committed to main ==="
 make_sandbox
 printf 'state edit\n' >> workspace/memory/working-context.md   # STATE path
-ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+ec=$(TEST_SPLIT=1 TEST_MACHINE=<<MACHINE_1_ID>>; run_sync)
 log_has "sync complete" && r=0 || r=1; check "state-only tick completes" "$r"
 git show --stat HEAD 2>/dev/null | grep -q "workspace/memory/working-context.md" && r=0 || r=1
 check "state file landed on main HEAD" "$r"
@@ -366,15 +393,15 @@ echo "=== SPLIT-2 (#234): source-only change does NOT hit main, lands on autosyn
 make_sandbox
 printf 'source edit\n' >> file1.txt   # SOURCE path (root file, not in allowlist)
 PRE=$(git rev-parse HEAD)
-ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+ec=$(TEST_SPLIT=1 TEST_MACHINE=<<MACHINE_1_ID>>; run_sync)
 log_has "source-only tick" && r=0 || r=1; check "source-only tick logged (nothing staged for main)" "$r"
 [ "$(git rev-parse HEAD)" = "$PRE" ] && r=0 || r=1; check "main HEAD unchanged (source kept off main)" "$r"
-git rev-parse --verify refs/heads/autosync/antfox >/dev/null 2>&1 && r=0 || r=1
-check "autosync/antfox branch created" "$r"
-git show autosync/antfox:file1.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
-check "source change captured on autosync/antfox" "$r"
-git ls-remote "$SBX/origin.git" refs/heads/autosync/antfox 2>/dev/null | grep -q . && r=0 || r=1
-check "autosync/antfox pushed to origin" "$r"
+git rev-parse --verify refs/heads/autosync/<<MACHINE_1_ID>> >/dev/null 2>&1 && r=0 || r=1
+check "autosync/<<MACHINE_1_ID>> branch created" "$r"
+git show autosync/<<MACHINE_1_ID>>:file1.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
+check "source change captured on autosync/<<MACHINE_1_ID>>" "$r"
+git ls-remote "$SBX/origin.git" refs/heads/autosync/<<MACHINE_1_ID>> 2>/dev/null | grep -q . && r=0 || r=1
+check "autosync/<<MACHINE_1_ID>> pushed to origin" "$r"
 grep -q "source edit" file1.txt && r=0 || r=1; check "source left dirty in working tree (checkpointable)" "$r"
 unset TEST_SPLIT TEST_MACHINE
 teardown
@@ -383,13 +410,13 @@ echo "=== SPLIT-3 (#234): mixed tick splits — state→main, source→autosync,
 make_sandbox
 printf 'state edit\n' >> workspace/state/OPEN_TASKS.md   # STATE
 printf 'source edit\n' >> file2.txt                 # SOURCE
-ec=$(TEST_SPLIT=1 TEST_MACHINE=antfox; run_sync)
+ec=$(TEST_SPLIT=1 TEST_MACHINE=<<MACHINE_1_ID>>; run_sync)
 git show --stat HEAD 2>/dev/null | grep -q "workspace/state/OPEN_TASKS.md" && r=0 || r=1
 check "state file landed on main HEAD" "$r"
 git show --stat HEAD 2>/dev/null | grep -q "file2.txt" && r=1 || r=0
 check "source file NOT on main HEAD" "$r"
-git show autosync/antfox:file2.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
-check "source change on autosync/antfox" "$r"
+git show autosync/<<MACHINE_1_ID>>:file2.txt 2>/dev/null | grep -q "source edit" && r=0 || r=1
+check "source change on autosync/<<MACHINE_1_ID>>" "$r"
 git status --porcelain 2>/dev/null | grep -q "file2.txt" && r=0 || r=1
 check "source still dirty in working tree after the split tick" "$r"
 unset TEST_SPLIT TEST_MACHINE
@@ -398,7 +425,7 @@ teardown
 echo "=== SPLIT-4 (#234): kill-switch (SPLIT=0) → legacy blanket-add puts source on main ==="
 make_sandbox
 printf 'source edit\n' >> file3.txt
-ec=$(TEST_SPLIT=0 TEST_MACHINE=antfox; run_sync)
+ec=$(TEST_SPLIT=0 TEST_MACHINE=<<MACHINE_1_ID>>; run_sync)
 log_has "sync complete" && r=0 || r=1; check "legacy tick completes" "$r"
 git show --stat HEAD 2>/dev/null | grep -q "file3.txt" && r=0 || r=1
 check "kill-switch keeps source on main (legacy behavior intact)" "$r"
@@ -411,6 +438,168 @@ printf 'tick\n' >> file1.txt
 run_sync >/dev/null
 [ "$(git config --get diff.ignoreSubmodules)" = "dirty" ] && r=0 || r=1
 check "daemon self-registered diff.ignoreSubmodules=dirty (orphaned-gitlink wedge fix)" "$r"
+teardown
+
+# ================================================================================
+# #354: pre-pull stash robustness — pop by ref, abort-clean on conflict, cap strays.
+# workspace/lanes is excluded from the daemon's commit, so a modified tracked file there
+# stays dirty after commit and is exactly what gets stashed before the pull.
+echo "=== #354: stash-pop conflict leaves a CLEAN tree + preserves the stash (no wedge) ==="
+make_sandbox
+mkdir -p workspace/lanes
+printf 'base\n' > workspace/lanes/work.txt
+git add -A; git commit -qm "add lane file"; git push -q origin HEAD:main
+# origin advances the SAME excluded file from another clone (will conflict on pop)
+git clone -q "$SBX/origin.git" "$SBX/pusher354" 2>/dev/null
+( cd "$SBX/pusher354"; git config user.email t@t; git config user.name t; git config commit.gpgsign false
+  printf 'origin-side\n' > workspace/lanes/work.txt; git commit -qam o354; git push -q origin HEAD:main ) 2>/dev/null
+# local: conflicting edit to the excluded file (gets stashed) + a committable change
+printf 'local-side\n' > workspace/lanes/work.txt
+printf 'tick\n' >> file1.txt
+ec=$(run_sync)
+log_has "stash pop conflict" && r=0 || r=1; check "pop conflict detected + logged" "$r"
+git grep -I -l -e '<<<<<<<' -e '>>>>>>>' >/dev/null 2>&1 && r=1 || r=0
+check "NO conflict markers left in the working tree (wedge fixed)" "$r"
+git stash list | grep -q "auto-sync pre-pull stash" && r=0 || r=1
+check "local edits preserved in the stash (not lost)" "$r"
+[ "$ec" = "1" ] && r=0 || r=1; check "pop conflict exits 1 (does not push)" "$r"
+teardown
+
+echo "=== #354: daemon caps its OWN pre-pull stashes; never prunes a foreign stash ==="
+make_sandbox
+# plant 7 stale auto-sync stashes (cap default is 5) — each needs a real change
+for i in 1 2 3 4 5 6 7; do
+  printf 'stale %s\n' "$i" >> file8.txt
+  git stash push -m "auto-sync pre-pull stash 2026-06-13 0$i:00:00" -- file8.txt >/dev/null 2>&1
+done
+# a foreign stash that must NEVER be pruned
+printf 'precious\n' >> file7.txt
+git stash push -m "human keep — do not touch" -- file7.txt >/dev/null 2>&1
+printf 'tick\n' >> file1.txt   # committable change drives a normal tick (runs prune)
+run_sync >/dev/null
+n=$(git stash list | grep -c "auto-sync pre-pull stash")
+[ "$n" -le 5 ] && r=0 || r=1; check "auto-sync stashes capped to <=5 (kept newest)" "$r"
+git stash list | grep -q "human keep" && r=0 || r=1; check "foreign stash never pruned" "$r"
+teardown
+
+echo "=== #354: a committable-only tick strands no auto-sync stash ==="
+make_sandbox
+printf 'committable\n' >> file1.txt
+run_sync >/dev/null
+git stash list | grep -q "auto-sync pre-pull stash" && r=1 || r=0
+check "no auto-sync stash lingers after a clean commit tick" "$r"
+teardown
+
+# ================================================================================
+# #452: leaked-orphan lock reclaim. A bare `sleep` reparented to PID 1 (the orphaned
+# child of a SIGKILLed lock holder) stays ALIVE, so pid-liveness reclaim never fires
+# and it wedges auto-sync for up to its sleep duration. holder_is_leaked() must catch
+# it WITHOUT false-stealing a live, legitimate holder.
+echo "=== #452: holder_is_leaked() classifies lock holders (both directions) ==="
+. "$SCRIPT_DIR/lib/git-sync-lock.sh"   # pure-function lib — safe to source directly
+
+# orphan-maker: background a cmd in a sub-bash that exits, so the child reparents to PID 1
+orphan_sleep=$(bash -c 'sleep 300 >/dev/null 2>&1 & echo $!')
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  pp=$(ps -o ppid= -p "$orphan_sleep" 2>/dev/null | awk '{print $1}')
+  [ "$pp" = "1" ] && break; sleep 0.2
+done
+holder_is_leaked "$orphan_sleep" && r=0 || r=1
+check "orphaned bare sleep (PPID=1) detected as leaked" "$r"
+
+sleep 300 & live_sleep=$!   # alive, but parent (this shell) is alive -> PPID != 1
+holder_is_leaked "$live_sleep" && r=1 || r=0
+check "live sleep with a living parent is NOT leaked (no false steal)" "$r"
+kill "$live_sleep" 2>/dev/null
+
+orphan_tail=$(bash -c 'tail -f /dev/null >/dev/null 2>&1 & echo $!')
+for _ in 1 2 3 4 5; do
+  pp=$(ps -o ppid= -p "$orphan_tail" 2>/dev/null | awk '{print $1}')
+  [ "$pp" = "1" ] && break; sleep 0.2
+done
+holder_is_leaked "$orphan_tail" && r=1 || r=0
+check "orphaned NON-sleep process is NOT reclaimed (conservative)" "$r"
+kill "$orphan_tail" 2>/dev/null
+
+holder_is_leaked 999999 && r=1 || r=0
+check "non-existent pid is NOT leaked (dead-pid path owns that case)" "$r"
+
+echo "=== #452: daemon RECLAIMS a leaked-orphan lock and completes the sync ==="
+make_sandbox
+orphan=$(bash -c 'sleep 300 >/dev/null 2>&1 & echo $!')
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  pp=$(ps -o ppid= -p "$orphan" 2>/dev/null | awk '{print $1}')
+  [ "$pp" = "1" ] && break; sleep 0.2
+done
+mkdir -p "$SBX/.openclaw/locks/git-sync.lock.d"
+echo "$orphan" > "$SBX/.openclaw/locks/git-sync.lock.d/pid"
+printf 'tick\n' >> file1.txt   # committable change so a successful tick really commits
+run_sync >/dev/null
+log_has "reclaimed leaked orphan lock holder" && r=0 || r=1
+check "daemon logs the leaked-orphan reclaim" "$r"
+log_has "lock held by another process" && r=1 || r=0
+check "daemon did NOT skip on the leaked lock" "$r"
+# origin must have ADVANCED past the seed (>=2 commits) — proves the tick really pushed
+oc=$(git -C "$SBX/origin.git" rev-list --count main 2>/dev/null || echo 0)
+[ "${oc:-0}" -ge 2 ] && r=0 || r=1
+check "daemon pushed its tick after reclaiming the leaked lock (origin advanced)" "$r"
+kill "$orphan" 2>/dev/null
+teardown
+
+echo "=== #452: daemon still SKIPS for a live legitimate (non-leaked) holder ==="
+make_sandbox
+sleep 300 & live=$!   # living parent -> genuine holder, must NOT be stolen
+mkdir -p "$SBX/.openclaw/locks/git-sync.lock.d"
+echo "$live" > "$SBX/.openclaw/locks/git-sync.lock.d/pid"
+printf 'tick\n' >> file1.txt
+run_sync >/dev/null
+log_has "lock held by another process" && r=0 || r=1
+check "daemon skips (does NOT steal) a live legitimate holder" "$r"
+kill "$live" 2>/dev/null
+teardown
+
+echo "=== T-SYNC-13: a STALE orphaned HEAD.lock is reclaimed so the tick still syncs ==="
+make_sandbox
+: > .git/HEAD.lock                        # orphaned lock, nothing holding it
+touch -t 202001010000 .git/HEAD.lock      # backdate well past the 60s grace floor
+printf 'tick\n' >> file1.txt              # a real tracked change to drive a full tick
+run_sync >/dev/null
+log_has "reclaimed stale orphaned HEAD.lock" && r=0 || r=1
+check "daemon reclaims a stale orphaned HEAD.lock" "$r"
+[ ! -f .git/HEAD.lock ] && r=0 || r=1
+check "stale HEAD.lock is gone after the tick" "$r"
+# Assert the tick COMMITTED (local HEAD advanced), not that it pushed: the sandbox
+# fixture omits autosync_prepush_gate.py so the push step is environmentally RED here
+# for every scenario. A local commit proves the reclaim actually unblocked git.
+lc=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+[ "${lc:-0}" -ge 2 ] && r=0 || r=1
+check "tick committed locally after reclaiming HEAD.lock (HEAD advanced)" "$r"
+teardown
+
+echo "=== T-SYNC-13: a FRESH HEAD.lock (< grace) is left for the presumed in-flight op ==="
+make_sandbox
+: > .git/HEAD.lock                        # just created -> younger than the grace floor
+printf 'tick\n' >> file1.txt
+run_sync >/dev/null
+log_has "is fresh" && r=0 || r=1
+check "daemon leaves a fresh HEAD.lock alone (skips the cycle)" "$r"
+[ -f .git/HEAD.lock ] && r=0 || r=1
+check "fresh HEAD.lock is NOT removed" "$r"
+rm -f .git/HEAD.lock
+teardown
+
+echo "=== T-SYNC-13: an OLD but live-HELD HEAD.lock is NOT stolen (lsof holder wins) ==="
+make_sandbox
+: > .git/HEAD.lock
+touch -t 202001010000 .git/HEAD.lock      # old enough to clear the grace floor...
+sleep 300 < .git/HEAD.lock & holder=$!     # ...but a live process holds an fd on it
+run_sync >/dev/null
+log_has "HEAD.lock held by live pid" && r=0 || r=1
+check "daemon does NOT steal an old lock a live process still holds" "$r"
+[ -f .git/HEAD.lock ] && r=0 || r=1
+check "live-held HEAD.lock is preserved" "$r"
+kill "$holder" 2>/dev/null
+rm -f .git/HEAD.lock
 teardown
 
 echo ""

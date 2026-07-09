@@ -225,6 +225,17 @@ check(A.active({"status": "in_progress"}, now) is False,
 recs = {"checkouts": [{"issue": 7}, {"issue": "bad"}, {"issue": 7}, {"issue": 8}]}
 check(len(A.find_records(recs, 7)) == 2, "find_records: should return only matching issue rows")
 
+# Titles must stand alone — a "#NNN" task-number reference in a title is rejected at
+# create time (Ant 2026-06-29); clean and hashtag-free titles pass.
+check(raises(S.validate_title, "x", {"title": "follow-up to #434 config seam"}),
+      "title: a '#NNN' task-number reference should be rejected")
+check(raises(S.validate_title, "x", {"title": "#367 arbiter decoder JSON"}),
+      "title: a leading '#NNN' self-number should be rejected")
+check(not raises(S.validate_title, "x", {"title": "migrate live persona-named artifacts + enable CI guard"}),
+      "title: a self-descriptive title should pass")
+check(not raises(S.validate_title, "x", {"title": "top 100 producers dashboard"}),
+      "title: a bare number (no '#') is fine — only '#NNN' refs are rejected")
+
 
 # ---------------------------------------------------------------------------
 if fails:

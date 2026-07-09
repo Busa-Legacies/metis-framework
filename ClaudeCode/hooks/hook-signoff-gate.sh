@@ -29,6 +29,12 @@ INPUT=$(cat)
 # /restart pending → restart-stop-hook.sh is about to respawn the pane; don't fight it.
 [[ -f "$HOME/.openclaw/pending-restart" ]] && exit 0
 
+# Headless/lane/cron sessions (claude-task.sh, system-audit, insights, scheduled
+# `claude -p`) have no Ant on the other end and often a JSON/markdown-only output
+# contract — blocking them burns a turn and corrupts their output (30 headless
+# blocks observed, #512). Callers export METIS_HEADLESS=1; hooks inherit the env.
+[[ -n "${METIS_HEADLESS:-}" ]] && exit 0
+
 python3 - "$INPUT" <<'PYEOF'
 import json, re, sys, time, os, datetime
 

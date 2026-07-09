@@ -127,6 +127,9 @@ process_range() {
 
 while IFS=" " read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$ZERO" ] && continue  # branch deletion, nothing to scan
+    case "$remote_ref" in
+        refs/heads/autosync/*) continue ;;  # source-snapshot branches are durability mirrors; main remains guarded
+    esac
     process_range "$remote_sha" "$local_sha"
 done
 

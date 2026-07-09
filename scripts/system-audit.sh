@@ -26,6 +26,14 @@ REPORT="$AUDIT_DIR/system-audit-$DATE.md"
 LOG_DIR="${LOG_DIR:-$HOME/.openclaw/logs}"
 LOG="$LOG_DIR/system-audit.log"
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
+# Headless jobs must PIN their model — an unpinned `claude -p` inherits the
+# interactive default from ~/.claude/settings.json, which can silently jump to a
+# premium tier (2026-07-04: fable-5[1m] default made this audit + its subagent
+# fan-out eat ~75% of a 5h window before Ant woke). Sonnet is the routing-standard
+# tier for headless workhorse jobs (model-effort-and-routing-standard.md).
+AUDIT_MODEL="${AUDIT_MODEL:-sonnet}"
+# Gate the sign-off Stop hook off for this unattended session (#512).
+export METIS_HEADLESS=1
 CURL_BIN="${CURL_BIN:-curl}"
 OPENCLAW_JSON="${OPENCLAW_JSON:-$HOME/.openclaw/openclaw.json}"
 DISCORD_CHANNEL="${DISCORD_CHANNEL}"
@@ -122,8 +130,12 @@ TEMP_OUTPUT=$(mktemp)
 HEARTBEAT_FILE="${HEARTBEAT_FILE:-/tmp/system-audit-last-run}"
 
 AUDIT_EXIT=0
+# #415: deliberately NOT isolated with --setting-sources '' (unlike insights/claude-task).
+# This is a semantic audit of whether the standards are actually followed — it must see the
+# same inherited CLAUDE.md context a real session does. Output is a human-read report, so a
+# trailing sign-off block is harmless. See docs/process/claude-code-background-task-policy.md §6.
 run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
-  "$CLAUDE_BIN" -p "$AUDIT_PROMPT" \
+  "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --model "$AUDIT_MODEL" \
   --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
   || AUDIT_EXIT=$?
 
@@ -132,7 +144,7 @@ if [ "$AUDIT_EXIT" -eq 124 ]; then
   discord_post "⏱️ System audit timed out — retrying with reduced scope (max-turns 10)"
   RETRY_EXIT=0
   run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
-    "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --max-turns 10 \
+    "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --model "$AUDIT_MODEL" --max-turns 10 \
     --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
     || RETRY_EXIT=$?
   if [ "$RETRY_EXIT" -ne 0 ]; then

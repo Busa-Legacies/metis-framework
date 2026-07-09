@@ -247,6 +247,22 @@ def ensure_user_skill_links(
 
 def sync_prompts(expected: dict[str, Workflow], check: bool, force: bool, actions: list[str], errors: list[str]) -> None:
     CODEX_PROMPTS.mkdir(parents=True, exist_ok=True)
+    expected_names = {f"{slug}.md" for slug in expected}
+
+    # Guard against stale nested/root-surface symlinks. A previous manual mirror
+    # left `.codex/prompts/prompts -> $HOME/...`, which made <<MACHINE_2_ID>>'s
+    # prompt surface machine-specific even though the repo prompt directory
+    # should contain only per-command markdown adapters.
+    for path in sorted(CODEX_PROMPTS.iterdir()):
+        if path.name in expected_names:
+            continue
+        if path.is_symlink():
+            if check:
+                errors.append(f"{rel(path)} stale symlink in prompt surface")
+                continue
+            path.unlink()
+            actions.append(f"PRUNE {rel(path)}")
+
     for slug, workflow in expected.items():
         path = CODEX_PROMPTS / f"{slug}.md"
         desired = prompt_body(workflow)
@@ -265,7 +281,6 @@ def sync_prompts(expected: dict[str, Workflow], check: bool, force: bool, action
         path.write_text(desired)
         actions.append(f"WRITE {rel(path)}")
 
-    expected_names = {f"{slug}.md" for slug in expected}
     for path in sorted(CODEX_PROMPTS.glob("*.md")):
         if path.name in expected_names:
             continue

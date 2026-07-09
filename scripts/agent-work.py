@@ -23,9 +23,11 @@ from pathlib import Path
 from typing import Any
 
 # Portable repo root: REPO_ROOT (per-invocation/worktree, e.g. a vendored subtree)
-# -> METIS_HOME (canonical) -> file location. Without this, a subtree copy (navore-ops/
+# -> METIS_HOME (canonical) -> file location. Without this, a subtree copy (example-ops/
 # metis-core) writes leases + the task counter back under the framework dir instead of
 # the host repo (#451; same doctrine as render-tier1-state.py + free-claims.py).
+# Kept identical to the framework copy so publish (agent-work.py is DERIVED) stays
+# byte-reproducible and never reverts the #451 fix.
 ROOT = Path(os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or Path(__file__).resolve().parents[1])
 DEFAULT_STATE = ROOT / "docs/process/state/active-checkouts.json"
 DEFAULT_WORKTREES = ROOT.parent / f"{ROOT.name}-worktrees"  # self-adjusts to repo dir name
@@ -33,7 +35,6 @@ DEFAULT_LEASE_HOURS = 4
 TERMINAL = {"done", "released", "blocked", "expired", "stolen"}
 AUTOSYNC_PLIST = Path.home() / "Library/LaunchAgents/ant.openclaw-git-sync.plist"
 TASK_COUNTER = ROOT / "docs/process/state/task-counter.json"
-NAMING_DOC = ROOT / "docs/process/task-naming-convention.md"
 
 
 def utcnow() -> dt.datetime:
@@ -1360,35 +1361,38 @@ def _counter_from_json() -> int:
         return 0
 
 
-def _counter_from_doc() -> int:
-    if not NAMING_DOC.exists():
+def _max_existing_task_id() -> int:
+    """Highest #NNN already present in tasks.json (active + archived). #469 prevention:
+    a cross-machine merge can leave task-counter.json STALE relative to tasks.json (the
+    counter merges by max lastAssigned, but another machine's higher-id tasks can arrive
+    without our counter catching up). Allocating from the bare counter then re-hands-out
+    a live id → a silent same-id collision. Flooring alloc at the real max id closes that."""
+    try:
+        doc = json.loads((ROOT / "docs/process/state/tasks.json").read_text() or "{}")
+    except Exception:
         return 0
-    m = re.search(r"Last assigned:\s*#(\d+)", NAMING_DOC.read_text())
-    return int(m.group(1)) if m else 0
+    ids = [t.get("taskId", "") for t in doc.get("tasks", [])] + list(doc.get("archivedIds", []))
+    nums = [int(m.group(1)) for tid in ids if (m := re.match(r"#(\d+)$", str(tid)))]
+    return max(nums, default=0)
 
 
 def _current_counter() -> int:
-    # Canonical source is the JSON, but never regress below the human-readable
-    # markdown counter — a hand-edit (or an older state file) must not hand out a
-    # previously-used id. Same anti-regression rule as the fence counter.
-    return max(_counter_from_json(), _counter_from_doc())
+    # task-counter.json is the single source of truth for id allocation (#352 dropped
+    # the task-naming-convention.md mirror, which raced under concurrent allocs).
+    # _counter_from_json returns 0 on a missing/garbled file, so a fresh checkout
+    # still starts clean. Floor at the highest existing task id so a stale counter
+    # can't re-issue a live id (#469 collision prevention).
+    return max(_counter_from_json(), _max_existing_task_id())
 
 
 def _persist_counter(value: int) -> None:
+    # task-counter.json is canonical; no markdown mirror to keep in sync (#352).
     TASK_COUNTER.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix="task-counter", dir=str(TASK_COUNTER.parent))
     with os.fdopen(fd, "w") as f:
         json.dump({"lastAssigned": value, "updatedAt": iso(utcnow())}, f, indent=2)
         f.write("\n")
     os.replace(tmp, TASK_COUNTER)
-    # Mirror the new value into the naming doc so the human-readable counter stays
-    # in sync (display only; the JSON above is canonical).
-    if NAMING_DOC.exists():
-        text = NAMING_DOC.read_text()
-        new_text = re.sub(r"(Last assigned: #)\d+", rf"\g<1>{value:03d}", text)
-        new_text = re.sub(r"(Next available: #)\d+", rf"\g<1>{value + 1:03d}", new_text)
-        if new_text != text:
-            NAMING_DOC.write_text(new_text)
 
 
 def cmd_alloc_id(args: argparse.Namespace) -> None:
@@ -1552,7 +1556,7 @@ def build_parser() -> argparse.ArgumentParser:
     cn.add_argument("--agent", required=True)
     cn.add_argument("--session", default=default_session())
     cn.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
-    cn.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_USER>>)")
+    cn.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_ID>>)")
     cn.add_argument("--project", metavar="SLUG",
                     help="restrict candidates to this project (default: presence-derived or global)")
     cn.add_argument("--lane", metavar="LANE",

@@ -81,14 +81,17 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 | `originRef` | no | free-text backlink to specific trigger (strategy doc path, "chat YYYY-MM-DD", incident ref) |
 | `firstStep` | no | capture while intent is fresh; omit if genuinely unknown |
 | `mainFiles` | no | array of paths; omit if unknown |
+| `planRef` | no | the planning/spec doc this task derives from (`docs/plans/PLAN-*.md` slug or a research/spec doc path) — makes the PLAN↔task link queryable instead of freeform prose; rendered in the queue projection |
 
-## Board line format (Step 5)
+## Board line format (reference only — auto-rendered)
+
+`workspace/state/OPEN_TASKS.md` is a **read-only projection** of `tasks.json`
+(`render-tier1-state.py` owns it — never hand-edit). Create tasks via the governed mutator
+(`update-tier1-state.py create-task`) and the board line renders itself. Its rendered shape:
 
 ```
 - [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
-
-Section target: `## <area>` header in `workspace/state/OPEN_TASKS.md`. Create the section if none fits.
 
 ## Goals and projects reference
 
@@ -99,7 +102,7 @@ Goals:
 - G4 — Financial systems (trading + finances)
 - G5 — Public presence (portfolio + social)
 
-Projects (add `project:slug` to any non-governed task entry in task-queue.md):
+Projects (`project` is a required governed field on every task — the mutator rejects a task without one):
 - P01 `queue-runner` (G1) · P02 `agent-coordination` (G1) · P03 `lane-reliability` (G1) · P04 `sync-integrity` (G1)
 - P05 `dashboard-core` (G2) · P06 `partner-brief` (G3) · P07 `finances-panel` (G4) · P08 `trading-bot` (G4)
 - P09 `portfolio-site` (G5) · P10 `portfolio-social` (G5)

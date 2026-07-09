@@ -42,6 +42,15 @@ export default function ReviewShell() {
     ptyApi.health().then(() => setPtyUp(true)).catch(() => setPtyUp(false))
   }, [])
 
+  // Pre-seed from ?targetUrl= so `open "http://localhost:3760/?targetUrl=<encoded>"`
+  // drops directly into the review with the target loaded (terminal-to-Metis standard).
+  const setUrl = useReviewStore((s) => s.setUrl)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    const tv = sp.get('targetUrl')
+    if (tv) setUrl(decodeURIComponent(tv))
+  }, [setUrl])
+
   useEffect(() => { if (url) void hydrate(url) }, [url, hydrate])
 
   const spawnAgent = useCallback(async () => {

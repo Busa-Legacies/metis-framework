@@ -22,7 +22,7 @@ Run modes:
   --apply     perform the safe auto-heals (default for the scheduled run)
   --json      emit machine-readable JSON only (no human summary on stderr)
 """
-import argparse, json, os, re, subprocess, sys, glob, datetime
+import argparse, json, os, re, subprocess, sys, glob, datetime, time
 
 REPO = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 HOME = os.path.expanduser("~")
@@ -51,6 +51,26 @@ AUTO, AGENT, ANT = "auto", "agent", "ant"
 # for findings that genuinely match the bar, e.g. a future leaked-secret meter).
 DEFAULT_TIER = AGENT
 
+LANE_TMUX_SESSIONS = {
+    "hub",
+    "g1-workforce",
+    "g2-dashboard",
+    "g3-example",
+    "g4-trading",
+    "g5-brand",
+    "g6-life",
+}
+TMUX_ACTIVE_MARKERS = (
+    "press esc to interrupt",
+    "esc to interrupt",
+    "ctrl+c to interrupt",
+    "running…",
+    "running...",
+    "thinking…",
+    "thinking...",
+    "tool_use",
+)
+
 
 def sh(cmd, timeout=60):
     # METIS_PYTHON pins children to the interpreter running this harness. Needed
@@ -65,6 +85,93 @@ def sh(cmd, timeout=60):
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except Exception as e:
         return 1, str(e)
+
+
+def _tmux_reaper_threshold_s() -> int:
+    raw = os.environ.get("METIS_TMUX_REAPER_MAX_AGE_HOURS", "48")
+    try:
+        hours = float(raw)
+    except ValueError:
+        hours = 48.0
+    return max(1, int(hours * 3600))
+
+
+def _tmux_mock_sessions():
+    """Optional test hook. Shape:
+    {"sessions":[{"name":"claude-1","attached":false,"last_activity":0,"pane":"..."}]}"""
+    path = os.environ.get("METIS_TMUX_REAPER_MOCK")
+    if not path:
+        return None
+    data = json.load(open(path))
+    out = []
+    for row in data.get("sessions", []):
+        name = str(row.get("name", ""))
+        out.append({
+            "name": name,
+            "attached": bool(row.get("attached", False)),
+            "last_activity": int(row.get("last_activity", 0) or 0),
+            "pane": str(row.get("pane", "")),
+        })
+    return out
+
+
+def _tmux_live_sessions():
+    rc, out = sh(["bash", "-lc", "tmux list-sessions -F '#{session_name}|#{session_attached}|#{session_activity}' 2>/dev/null"])
+    if rc != 0:
+        return []
+    sessions = []
+    for line in out.splitlines():
+        parts = line.split("|", 2)
+        if len(parts) != 3:
+            continue
+        name, attached, activity = parts
+        pane = ""
+        # Capture a bounded tail from the first pane in the session. Fail closed:
+        # if we cannot inspect it, treat it as active and skip reaping.
+        prc, pout = sh(["bash", "-lc", f"tmux capture-pane -p -S -80 -t ={name}: 2>/dev/null"], timeout=10)
+        if prc != 0:
+            pane = "press esc to interrupt"
+        else:
+            pane = pout[-12000:]
+        try:
+            last_activity = int(activity)
+        except ValueError:
+            last_activity = int(time.time())
+        sessions.append({
+            "name": name,
+            "attached": attached == "1",
+            "last_activity": last_activity,
+            "pane": pane,
+        })
+    return sessions
+
+
+def _tmux_reap_plan(sessions, now=None, threshold_s=None):
+    now = int(time.time() if now is None else now)
+    threshold_s = _tmux_reaper_threshold_s() if threshold_s is None else threshold_s
+    plan = []
+    for s in sessions:
+        name = s.get("name", "")
+        pane = (s.get("pane") or "").lower()
+        last_activity = int(s.get("last_activity") or 0)
+        age_s = max(0, now - last_activity)
+        reason = None
+        reap = False
+        if not re.match(r"^claude-[0-9]+$", name):
+            reason = "protected: not a numbered claude session"
+        elif name in LANE_TMUX_SESSIONS or name == "ccc":
+            reason = "protected: lane/mobile session"
+        elif s.get("attached"):
+            reason = "protected: attached"
+        elif any(marker in pane for marker in TMUX_ACTIVE_MARKERS):
+            reason = "protected: active pane marker"
+        elif age_s < threshold_s:
+            reason = f"protected: age {age_s}s below threshold {threshold_s}s"
+        else:
+            reap = True
+            reason = f"detached idle {age_s}s >= threshold {threshold_s}s"
+        plan.append({**s, "age_s": age_s, "reap": reap, "reason": reason})
+    return plan
 
 
 # ───────────────────────── LAYER A — mechanical heal ─────────────────────────
@@ -180,10 +287,25 @@ def check_stray_git(apply):
 
 def check_gitsync_drift(apply):
     """Live git-sync script vs canonical + heartbeat (the 2026-05-30 corruption class).
-    Detection only — which side is canonical is a judgment call → agent worklist."""
+    Script/heartbeat drift stays detection-only — which side is canonical is a
+    judgment call.  Orphaned daemon stashes are different: the reconciler archives
+    risky content before dropping, so daily --apply can clear that mechanical class
+    before it accumulates into another sync wedge."""
     rc, out = sh(["bash", os.path.join(REPO, "scripts", "check-sync-drift.sh")])
     if rc == 0:
         return {"name": "gitsync-drift", "status": OK, "detail": "live git-sync matches canonical + healthy", "actions": []}
+    if apply and "STASH:" in out:
+        r2, o2 = sh([sys.executable, os.path.join(REPO, "scripts", "reconcile-daemon-stashes.py"), "--apply"], timeout=180)
+        rc3, out3 = sh(["bash", os.path.join(REPO, "scripts", "check-sync-drift.sh")])
+        if r2 == 0 and rc3 == 0:
+            actions = [l.strip() for l in o2.splitlines() if "archived " in l or "dropped " in l or "wrote inventory" in l]
+            return {"name": "gitsync-drift", "status": HEALED,
+                    "detail": "auto-reconciled orphaned daemon stashes; git-sync healthy",
+                    "actions": actions[:6] or ["ran reconcile-daemon-stashes.py --apply"]}
+        lines = [l.strip() for l in (o2 + "\n" + out3).splitlines() if l.strip()]
+        return {"name": "gitsync-drift", "status": NEEDS_HUMAN,
+                "detail": "daemon stash auto-reconcile failed",
+                "actions": lines[-5:] or ["run scripts/reconcile-daemon-stashes.py manually"]}
     lines = [l.strip() for l in out.splitlines() if l.strip() and not l.startswith("OK")]
     return {"name": "gitsync-drift", "status": NEEDS_HUMAN,
             "detail": "git-sync script drift or stale heartbeat",
@@ -212,6 +334,78 @@ def heal_autosync(apply):
             "actions": [f"reload: launchctl load -w {plist}"]}
 
 
+def heal_poller(apply):
+    """Notion run-poller liveness — the ONLY autonomous channel that runs registry
+    keys from a Command Center card. Found silent 4h+ on 2026-06-17 with no recovery.
+    Mirrors heal_autosync: read-only in dry-run; in apply mode delegates the reload
+    to ensure-poller-loaded.sh (which self-alerts on failure)."""
+    label = "ant.notion-run-poller"
+    plist = os.path.join(HOME, "Library", "LaunchAgents", f"{label}.plist")
+    rc, _ = sh(["bash", "-lc", f"launchctl list 2>/dev/null | grep -q {label}"])
+    loaded = (rc == 0)
+    if loaded:
+        return {"name": "notion-run-poller", "status": OK, "detail": "poller loaded", "actions": []}
+    if not os.path.exists(plist):
+        return {"name": "notion-run-poller", "status": OK, "detail": "poller not installed on this machine", "actions": []}
+    if apply:
+        _, o2 = sh(["bash", os.path.join(REPO, "scripts", "ensure-poller-loaded.sh")])
+        if "reload FAILED" in o2 or "RELOAD FAILED" in o2:
+            return {"name": "notion-run-poller", "status": NEEDS_HUMAN, "detail": "poller unloaded; reload FAILED",
+                    "actions": [f"reload manually: launchctl load -w {plist}"]}
+        return {"name": "notion-run-poller", "status": HEALED, "detail": "poller was unloaded — reloaded", "actions": ["reloaded ant.notion-run-poller"]}
+    return {"name": "notion-run-poller", "status": NEEDS_HUMAN, "detail": "poller UNLOADED (run-on-<<MACHINE_1_ID>> relay dead)",
+            "actions": [f"reload: launchctl load -w {plist}"]}
+
+
+def heal_relay_poller(apply):
+    """Git-relay poller liveness (#444) — its OWN meter, because heal_poller/heartbeat
+    only fire the reload guard when the *Notion* poller drops. <<MACHINE_1_ID>> runs
+    ant.relay-poller (cloud→<<MACHINE_1_ID>> requests); <<MACHINE_2_ID>> runs <<MACHINE_2_USER>>.relay-poller (the
+    dark-<<MACHINE_1_ID>> FAILOVER half, whose entire value is surviving a down <<MACHINE_1_ID>>, so it
+    must self-heal independently). Machine-aware: guards whichever relay plist is
+    installed here. Delegates the reload to the (machine-aware) ensure-poller-loaded.sh."""
+    label = next((l for l in ("ant.relay-poller", "<<MACHINE_2_USER>>.relay-poller")
+                  if os.path.exists(os.path.join(HOME, "Library", "LaunchAgents", f"{l}.plist"))), None)
+    if label is None:
+        return {"name": "relay-poller", "status": OK, "detail": "relay poller not installed on this machine", "actions": []}
+    plist = os.path.join(HOME, "Library", "LaunchAgents", f"{label}.plist")
+    loaded = lambda: sh(["bash", "-lc", f"launchctl list 2>/dev/null | grep -q {label}"])[0] == 0
+    if loaded():
+        return {"name": "relay-poller", "status": OK, "detail": f"{label} loaded", "actions": []}
+    if apply:
+        _, o2 = sh(["bash", os.path.join(REPO, "scripts", "ensure-poller-loaded.sh")])
+        if not loaded() or "reload FAILED" in o2 or "RELOAD FAILED" in o2:
+            return {"name": "relay-poller", "status": NEEDS_HUMAN, "detail": f"{label} unloaded; reload FAILED",
+                    "actions": [f"reload manually: launchctl load -w {plist}"]}
+        return {"name": "relay-poller", "status": HEALED, "detail": f"{label} was unloaded — reloaded", "actions": [f"reloaded {label}"]}
+    return {"name": "relay-poller", "status": NEEDS_HUMAN, "detail": f"{label} UNLOADED (#444 git relay dead)",
+            "actions": [f"reload: launchctl load -w {plist}"]}
+
+
+def heal_tag_intake(apply):
+    """#438 tag-to-task intake agent liveness. Mirrors heal_poller: the lane only
+    runs if its LaunchAgent is loaded, so this is the zero-touch relay that brings
+    it live (and re-loads it if it ever drops) on <<MACHINE_1_ID>>'s session-init pass —
+    no Command Center card needed. In apply mode delegates to the idempotent
+    load-tag-intake-agent.sh (which self-alerts on failure)."""
+    label = "ant.notion-tag-intake"
+    plist = os.path.join(HOME, "Library", "LaunchAgents", f"{label}.plist")
+    # launchctl is the macOS/<<MACHINE_1_ID>> signal; absent on Linux cloud containers → not applicable.
+    if sh(["bash", "-lc", "command -v launchctl >/dev/null 2>&1"])[0] != 0:
+        return {"name": "notion-tag-intake", "status": OK, "detail": "not a launchd host (lane runs on <<MACHINE_1_ID>> only)", "actions": []}
+    rc, _ = sh(["bash", "-lc", f"launchctl list 2>/dev/null | grep -q {label}"])
+    if rc == 0:
+        return {"name": "notion-tag-intake", "status": OK, "detail": "tag-intake agent loaded", "actions": []}
+    if apply:
+        _, o2 = sh(["bash", os.path.join(REPO, "scripts", "load-tag-intake-agent.sh")])
+        if "load FAILED" in o2:
+            return {"name": "notion-tag-intake", "status": NEEDS_HUMAN, "detail": "tag-intake unloaded; load FAILED",
+                    "actions": [f"load manually: launchctl load -w {plist}"]}
+        return {"name": "notion-tag-intake", "status": HEALED, "detail": "tag-intake was unloaded — loaded", "actions": ["loaded ant.notion-tag-intake"]}
+    return {"name": "notion-tag-intake", "status": NEEDS_HUMAN, "detail": "tag-intake UNLOADED (#438 lane not live)",
+            "actions": [f"load: bash {os.path.join(REPO, 'scripts', 'load-tag-intake-agent.sh')}"]}
+
+
 def check_lane_bloat(apply):
     """Lane sessions over the 20k-token bloat line → cold-start cascade. Detection only;
     a reset can clobber an in-flight lane call, so it's agent-tier, not auto."""
@@ -231,6 +425,47 @@ def check_lane_bloat(apply):
         return {"name": "lane-bloat", "status": OK, "detail": "no lane over 20k tokens", "actions": []}
     return {"name": "lane-bloat", "status": NEEDS_HUMAN, "detail": "bloated lane(s): " + ", ".join(bloated),
             "actions": ["run: lane-health --reset-bloated"]}
+
+
+def heal_stale_tmux_sessions(apply):
+    """Reap detached numbered claude-<N> tmux sessions that have been idle longer
+    than METIS_TMUX_REAPER_MAX_AGE_HOURS (default 48h).
+
+    Conservative by design: never touch campaign lanes (hub/g1..g6), ccc, attached
+    sessions, non-numbered sessions, or panes with active-turn markers. The dry-run
+    actions become the self-heal report; --apply performs the same plan and logs
+    every kill in that report.
+    """
+    sessions = _tmux_mock_sessions()
+    if sessions is None:
+        sessions = _tmux_live_sessions()
+    threshold_s = _tmux_reaper_threshold_s()
+    plan = _tmux_reap_plan(sessions, threshold_s=threshold_s)
+    victims = [p for p in plan if p["reap"]]
+    if not victims:
+        return {"name": "tmux-stale-reaper", "status": OK,
+                "detail": f"no detached claude-<N> sessions idle >= {threshold_s}s",
+                "actions": []}
+    actions = []
+    failed = False
+    for v in victims:
+        name = v["name"]
+        if apply:
+            if os.environ.get("METIS_TMUX_REAPER_MOCK"):
+                rc, out = 0, ""
+            else:
+                rc, out = sh(["tmux", "kill-session", "-t", f"={name}"], timeout=10)
+            if rc == 0:
+                actions.append(f"killed stale tmux session {name}: {v['reason']}")
+            else:
+                failed = True
+                actions.append(f"FAILED kill {name}: {out.strip()[:160]}")
+        else:
+            actions.append(f"would kill stale tmux session {name}: {v['reason']}")
+    return {"name": "tmux-stale-reaper",
+            "status": HEALED if apply and not failed else NEEDS_HUMAN,
+            "detail": f"{len(victims)} stale detached claude-<N> session(s)",
+            "actions": actions}
 
 
 _RECON = {}
@@ -289,6 +524,42 @@ def heal_reconcile_safe(apply):
             "actions": detail_lines[:5] or lines[-3:]}
 
 
+def heal_lease_reap(apply):
+    """Checkout-ledger bloat (2026-07-08 flood): queue-runner claims with
+    session="manual" accumulate as terminal records forever because nothing
+    scheduled `agent-work.py reap` — active-checkouts.json hit 1269 records
+    (299 dupes on one task) before the first manual prune. Reap is mechanical,
+    idempotent, and touches only expired/terminal records via the locked
+    mutator, so it belongs in Layer-A. Tuning (measured 2026-07-08): queue-runner
+    churns ~144 records/day, so 2-day retention bounds the ledger near ~300
+    records and the alert threshold sits at 400; git history keeps the full
+    audit trail beyond that window."""
+    path = os.path.join(REPO, "docs/process/state/active-checkouts.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            recs = json.load(f).get("checkouts", [])
+    except (OSError, ValueError) as e:
+        return {"name": "lease-reap", "status": NEEDS_HUMAN,
+                "detail": f"active-checkouts.json unreadable: {e}", "actions": []}
+    terminal = [r for r in recs if r.get("status") in ("released", "expired", "stolen")]
+    if len(terminal) <= 400:
+        return {"name": "lease-reap", "status": OK,
+                "detail": f"checkout ledger healthy ({len(recs)} records, {len(terminal)} terminal)",
+                "actions": []}
+    if not apply:
+        return {"name": "lease-reap", "status": NEEDS_HUMAN,
+                "detail": f"{len(terminal)} terminal checkout record(s) — reap needed (dry-run)",
+                "actions": ["python3 scripts/agent-work.py reap --prune-terminal --older-than 2"]}
+    rc, out = sh([sys.executable, os.path.join(REPO, "scripts", "agent-work.py"),
+                  "reap", "--prune-terminal", "--older-than", "2"], timeout=60)
+    if rc != 0:
+        return {"name": "lease-reap", "status": NEEDS_HUMAN,
+                "detail": f"reap exited {rc}", "actions": [out[:160]]}
+    return {"name": "lease-reap", "status": HEALED,
+            "detail": f"reaped checkout ledger ({len(terminal)} terminal records before)",
+            "actions": [out.strip()[:160]]}
+
+
 def check_lease_invariants(apply):
     """Lease/checkout/fence drift (I5/I6) — the active-checkouts conflict-loop class.
     Detection of the non-auto-fixable residue; heal_reconcile_safe applies I5."""
@@ -326,10 +597,134 @@ def check_detector_gaps(apply):
             "actions": [f"{g['name']}: {g.get('reason','')} — write a check or close the gap" for g in gaps[:5]]}
 
 
+def heal_claude_keychain(apply):
+    """HYBRID auth model (changed 2026-06-30 — was: token-only, auto-DELETE keychain creds).
+    The fleet still runs on the inference-only env token (CLAUDE_CODE_OAUTH_TOKEN in
+    ~/.claude-oauth.env), which SHADOWS the keychain in current CC (env wins) — so a present
+    'Claude Code-credentials' entry no longer harms the fleet. That entry is now LOAD-BEARING:
+    it's the full-scope `claude auth login` credential the carve-out RC session
+    (scripts/claude-rc.sh / `ccrc`) needs for Claude Code Remote Control. Auto-deleting it is
+    what broke RC four times, so this check now PRESERVES it: present = OK (RC ready), absent =
+    advisory (fleet fine via env token, RC unavailable). It NEVER deletes. Never touch
+    'Claude Safe Storage' (the desktop app key). See memory project-claude-oauth-token-fix
+    (hybrid section). macOS only; no-op elsewhere."""
+    if sys.platform != "darwin":
+        return {"name": "claude-keychain", "status": OK, "detail": "not macOS", "actions": []}
+    tokfile = os.path.join(HOME, ".claude-oauth.env")
+    has_token = os.path.exists(tokfile) and "CLAUDE_CODE_OAUTH_TOKEN" in open(tokfile).read()
+    _, dump = sh(["bash", "-lc", "security dump-keychain 2>/dev/null | grep -i '\"svce\"'"])
+    names = sorted(set(re.findall(r'"svce"<blob>="(Claude Code-credentials[^"]*)"', dump)))
+    if names:
+        # PRESERVE — this is the RC carve-out's full-scope login. Do not delete.
+        return {"name": "claude-keychain", "status": OK,
+                "detail": f"RC keychain cred present ({', '.join(names)}) — preserved for the ccrc carve-out; "
+                          f"fleet uses the env token{' (present)' if has_token else ' (MISSING — see below)'}",
+                "actions": [] if has_token else
+                           ["fleet token missing: ~/.local/bin/claude setup-token, then recreate ~/.claude-oauth.env (chmod 600)"]}
+    # no keychain cred
+    if not has_token:
+        return {"name": "claude-keychain", "status": NEEDS_HUMAN, "escalation": ANT,
+                "detail": "no RC keychain cred AND ~/.claude-oauth.env token missing — next claude will force /login",
+                "actions": ["restore fleet: ~/.local/bin/claude setup-token, then recreate ~/.claude-oauth.env (chmod 600)"]}
+    return {"name": "claude-keychain", "status": OK,
+            "detail": "fleet token-only auth intact (env token present); RC keychain cred absent — "
+                      "Remote Control unavailable until `ccrc` + `claude auth login`",
+            "actions": []}
+
+
+# <<MACHINE_1_ID>>'s Ollama must host ONLY the small arbiter + embed models. A second BIG model
+# co-resident with the always-on MLX lane (~18GB) blows the macOS GPU budget (~48GB =
+# 75% of 64GB) → kIOGPUCommandBufferCallbackErrorOutOfMemory + jetsam → WindowServer
+# starves → SCREENS GLITCH (also kills lanes/verdicts/embeds). The screen-glitch bug
+# recurred 2026-06-26 even after the queue-runner arbiter was right-sized to qwen3:8b,
+# because a STALE caller (<<MACHINE_2_ID>>'s old queue-runner, src <<MACHINE_2_TAILSCALE_IP>>) kept loading
+# qwen3-coder:30b at its 262k default ctx (33GB) onto <<MACHINE_1_ID>>'s Ollama — a config fix
+# on one machine can't stop another machine's stale caller. The structural cure is to
+# REMOVE the big blobs so any such call 404s ("model not found", loads nothing) instead
+# of OOMing. This heal enforces that allowlist so a stray re-pull self-heals.
+# See memory project_mlx_lane_runtime.
+OLLAMA_ALLOWLIST = ("qwen3:8b", "nomic-embed-text")  # arbiter + embed; everything else is liability
+OLLAMA_OOM_GB = 10.0  # only models this big are a GPU-OOM risk; small strays are reported, not removed
+
+
+def heal_ollama_allowlist(apply):
+    """Enforce <<MACHINE_1_ID>>'s right-sized Ollama: arbiter (qwen3:8b) + embed (nomic-embed-text)
+    ONLY. Auto-remove any non-allowlisted model >= OLLAMA_OOM_GB (the co-resident-OOM
+    risk class that glitches the screens). No-op where the ollama CLI is absent."""
+    rc, out = sh(["bash", "-lc", "command -v ollama >/dev/null 2>&1 && ollama list || echo __NO_OLLAMA__"])
+    if "__NO_OLLAMA__" in out or rc != 0:
+        return {"name": "ollama-allowlist", "status": OK, "detail": "ollama not present", "actions": []}
+    liabilities, small_strays = [], []
+    for line in out.splitlines()[1:]:  # skip header
+        if not line.strip():
+            continue
+        name = line.split()[0]
+        if any(name == a or name.startswith(a + ":") for a in OLLAMA_ALLOWLIST):
+            continue
+        m = re.search(r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)", line)
+        gb = 0.0
+        if m:
+            val, unit = float(m.group(1)), m.group(2)
+            gb = val * (1024 if unit == "TB" else 1 if unit == "GB" else 1 / 1024)
+        (liabilities if gb >= OLLAMA_OOM_GB else small_strays).append((name, gb))
+    extra = []
+    if small_strays:
+        extra = [f"non-allowlisted small model(s) present (not an OOM risk, left in place): "
+                 + ", ".join(f"{n} ({g:.1f}GB)" for n, g in small_strays)]
+    if not liabilities:
+        return {"name": "ollama-allowlist", "status": OK,
+                "detail": "ollama hosts only arbiter+embed (no big co-resident OOM risk)", "actions": extra}
+    names = ", ".join(f"{n} ({g:.0f}GB)" for n, g in liabilities)
+    if apply:
+        removed = []
+        for n, _g in liabilities:
+            r, _o = sh(["ollama", "rm", n])
+            if r == 0:
+                removed.append(n)
+        if len(removed) == len(liabilities):
+            return {"name": "ollama-allowlist", "status": HEALED,
+                    "detail": f"removed big non-allowlisted ollama model(s) that risk GPU-OOM/screen-glitch: {names}",
+                    "actions": [f"removed: {', '.join(removed)}",
+                                "if a caller needs it: it now 404s (loads nothing) — fix the caller, don't re-pull"] + extra}
+        return {"name": "ollama-allowlist", "status": NEEDS_HUMAN, "escalation": AGENT,
+                "detail": f"tried to remove big ollama liabilit(ies) but some remain: {names}",
+                "actions": ["manual: ollama rm <name>"] + extra}
+    return {"name": "ollama-allowlist", "status": NEEDS_HUMAN, "escalation": AGENT,
+            "detail": f"big non-allowlisted ollama model(s) present — co-resident OOM/screen-glitch risk: {names}",
+            "actions": ["heal: re-run with --apply (auto-removes them)",
+                        "root cause: a stale caller pulled a big model onto <<MACHINE_1_ID>>'s Ollama (memory project_mlx_lane_runtime)"] + extra}
+
+
+def check_claude_auth_status(apply):
+    """Surface a RED Claude-auth verdict (from verify-claude-auth.sh's RunAtLoad run) into
+    the AGENT worklist, so a session auto-picks it up instead of Ant having to notice+relay.
+    The verify script already auto-recovers a clobbered token from its backup; a status of
+    'fail' here means it could NOT self-recover (token expired → needs interactive
+    `claude setup-token`, which only Ant can run). Read-only: the verify script owns heal."""
+    status_file = os.path.join(HOME, ".openclaw", "claude-auth-verify.status")
+    if not os.path.exists(status_file):
+        return {"name": "claude-auth", "status": OK, "detail": "no verify run yet (verify-claude-auth.sh)", "actions": []}
+    try:
+        s = json.load(open(status_file))
+    except Exception:
+        return {"name": "claude-auth", "status": OK, "detail": "auth status unreadable (ignored)", "actions": []}
+    if s.get("state") == "ok":
+        return {"name": "claude-auth", "status": OK,
+                "detail": f"auth healthy on {s.get('host','?')} ({s.get('reason','')})", "actions": []}
+    host = s.get("host", "?")
+    return {"name": "claude-auth", "status": NEEDS_HUMAN, "escalation": AGENT,
+            "detail": f"Claude auth RED on {host} and self-recovery failed: {s.get('reason','?')}",
+            "actions": [f"triage {host}: run scripts/verify-claude-auth.sh to confirm",
+                        f"if token EXPIRED → only Ant can fix: `claude setup-token` on {host}, then recreate ~/.claude-oauth.env (chmod 600)",
+                        "if a peer machine still has a valid token, copy ~/.claude-oauth.env across to recover without setup-token"]}
+
+
 HEALS = [heal_symlinks, heal_hook_exec, check_hook_wiring, check_mirror_drift, check_stray_git,
-         check_gitsync_drift, heal_autosync, check_lane_bloat,
-         heal_reconcile_safe, check_lease_invariants, check_taskstate_drift,
-         check_dashboard_contract, check_detector_gaps]
+         check_gitsync_drift, heal_autosync, heal_poller, heal_relay_poller, heal_tag_intake, check_lane_bloat,
+         heal_stale_tmux_sessions, heal_ollama_allowlist,
+         heal_lease_reap, heal_reconcile_safe, check_lease_invariants, check_taskstate_drift,
+         check_dashboard_contract, check_detector_gaps, heal_claude_keychain,
+         check_claude_auth_status]
 
 
 # ──────────── declarative command-checks (the self-growing registry) ───────────
@@ -533,6 +928,47 @@ def meter_inbox_quality(recs):
             "samples": thin[:5]}
 
 
+def meter_notion_domain_vocab(recs):
+    """Notion Command Center Domain vocab drift (#644 aftermath): the DB's Domain
+    select options must stay within the canonical life-domain vocabulary
+    (docs/process/taxonomy.yaml `domains:`). Notion auto-creates a select option
+    the first time any writer sends an off-vocab string, and select names match
+    case-insensitively — so one legacy writer silently re-seeds the old vocab
+    ('Engineering', 'business', …) and every later card can snap to it. One GET,
+    no card scan; heal = python3 scripts/notion-remap-domains.py --write.
+    Fail-soft: no token / no network / missing SoT skips the meter."""
+    skip = {"name": "notion-domain-vocab", "status": PASS, "score": 1,
+            "threshold": "0 off-vocab Domain options",
+            "detail": "notion not configured / unreachable — skipped", "samples": []}
+    sot = os.path.join(REPO, "docs/process/taxonomy.yaml")
+    if not os.path.exists(sot):
+        return skip
+    try:
+        import importlib.util as _ilu
+        import yaml as _yaml
+        canon = set((_yaml.safe_load(open(sot).read()) or {}).get("domains") or {})
+        spec = _ilu.spec_from_file_location("notion_cc", os.path.join(REPO, "scripts", "notion_cc.py"))
+        cc = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(cc)
+        tok = cc.token()
+        if not (canon and tok):
+            return skip
+        ok, db = cc.request(tok, "GET", f"/databases/{cc.DB_ID}", None)
+        if not ok:
+            return {**skip, "detail": f"notion GET failed — skipped ({str(db)[:80]})"}
+        opts = {o["name"] for o in db["properties"]["Domain"]["select"]["options"]}
+    except Exception as e:
+        return {**skip, "detail": f"notion vocab check unavailable — skipped ({e})"}
+    off = sorted(opts - canon)
+    status = ALERT if off else PASS
+    return {"name": "notion-domain-vocab", "status": status, "score": 0 if off else 1,
+            "threshold": "0 off-vocab Domain options",
+            "detail": (f"{len(off)} off-vocab Domain option(s) in the CC DB — a writer is "
+                       "seeding legacy vocab; run scripts/notion-remap-domains.py --write"
+                       if off else "CC Domain options all canonical"),
+            "samples": off[:8]}
+
+
 def meter_curator_format(recs):
     """Arbiter JSON discipline (#333): count 'Arbiter returned invalid JSON' /
     'no JSON object' lines in the queue-runner log from the last 24h. Lanes
@@ -566,7 +1002,340 @@ def meter_curator_format(recs):
             "samples": bad[-5:]}
 
 
-METERS = [meter_signoff, meter_taxonomy, meter_inbox_quality, meter_curator_format]
+def meter_headless_model_pin(recs):
+    """Unpinned headless `claude -p` callers (2026-07-04 burn): a scheduled script
+    that invokes `claude -p` WITHOUT `--model` inherits the interactive default
+    from ~/.claude/settings.json — one /model switch to a premium tier (fable-5)
+    silently multiplied the 08:30 system-audit's cost and burned ~75% of a shared
+    5h window before wake. Every headless caller must pin its own model
+    (model-effort-and-routing-standard.md). Detective only; file-level check
+    (invokes `claude`/`$CLAUDE_BIN` with -p somewhere AND has --model somewhere).
+    Fails soft on unreadable files."""
+    import glob as _glob
+    roots = [os.path.join(REPO, "scripts", "*.sh"),
+             os.path.expanduser("~/.local/bin/*")]
+    invoke = re.compile(r'(\bclaude\b|\$\{?CLAUDE_BIN\}?"?)\s+(-p|--print)\b')
+    unpinned = []
+    for pat in roots:
+        for path in _glob.glob(pat):
+            real = os.path.realpath(path)
+            if not os.path.isfile(real):
+                continue
+            # shell scripts only: python callers build argv lists this regex can't
+            # see, and their doc strings (metis-status.py's job table) false-positive
+            if real.endswith(".py"):
+                continue
+            try:
+                with open(real, errors="replace") as f:
+                    lines = f.readlines()
+            except Exception:
+                continue
+            # comment lines don't count as invocations (metis-status documents
+            # the scheduled `claude -p` jobs in comments/strings without calling one);
+            # join backslash-continued lines so multi-line invocations
+            # (claude-task.sh style: `claude \` / `--print \`) still match.
+            code = "\n".join(l for l in lines if not l.lstrip().startswith("#"))
+            code = code.replace("\\\n", " ")
+            if invoke.search(code) and "--model" not in code:
+                unpinned.append(os.path.basename(path))
+    unpinned = sorted(set(unpinned))
+    status = ALERT if unpinned else PASS
+    return {"name": "headless-model-pin", "status": status,
+            "score": 0 if unpinned else 1,
+            "threshold": "0 unpinned headless claude -p callers",
+            "detail": f"{len(unpinned)} script(s) call claude -p without --model "
+                      "(inherit interactive settings.json model)",
+            "samples": unpinned[:5]}
+
+
+def meter_whisper_stt(recs):
+    """Voice dictation STT health (#574).
+
+    <<MACHINE_1_ID>> hosts whisper.cpp on loopback :3762 and exposes it through the Metis
+    Caddy front door at /stt/. <<MACHINE_2_ID>> should NOT run/download its own model; it
+    probes <<MACHINE_1_ID>>'s tailnet front door instead. <<MACHINE_1_ID>> still probes loopback and
+    can kickstart the LaunchAgent. Any HTTP response means the server path is
+    alive; only connection failures count as down.
+    """
+    import urllib.request as _rq
+    import socket as _socket
+    user = os.environ.get("USER") or ""
+    host = (_socket.gethostname() or "").lower()
+    on_hearth = user == "Ant" or "<<MACHINE_1_ID>>" in host
+    url = os.environ.get("WHISPER_STT_HEALTH_URL") or (
+        "http://127.0.0.1:3762/" if on_hearth else "http://<<MACHINE_1_TAILSCALE_IP>>:3749/stt/"
+    )
+    try:
+        _rq.urlopen(url, timeout=5)
+        up = True
+    except Exception as e:
+        up = getattr(e, "code", None) is not None
+    if not up and on_hearth:
+        subprocess.run(["launchctl", "kickstart", "-k",
+                        f"gui/{os.getuid()}/ai.openclaw.whisper-server"],
+                       capture_output=True, check=False)
+    status = PASS if up else ALERT
+    where = "<<MACHINE_1_ID>>-local" if on_hearth else "<<MACHINE_1_ID>> front-door"
+    return {"name": "whisper-stt", "status": status,
+            "score": 1 if up else 0,
+            "threshold": f"{where} whisper endpoint answering at {url}",
+            "detail": "voice dictation STT " + ("healthy" if up else
+                      "DOWN — cockpit mic falls back to cloud SR"),
+            "samples": []}
+
+
+def meter_kokoro_tts(recs):
+    """Conversation-mode TTS health (#591).
+
+    <<MACHINE_1_ID>> hosts the Kokoro voice server on loopback :3763; the cockpit proxies
+    it at /api/voice/tts. Down is non-fatal (speak() falls back to browser
+    speechSynthesis) but degrades the voice — heal it like whisper. <<MACHINE_2_ID>>
+    probes the cockpit proxy through the front door (405 on GET still proves
+    the path is alive); <<MACHINE_1_ID>> probes loopback and can kickstart.
+    """
+    import urllib.request as _rq
+    import socket as _socket
+    user = os.environ.get("USER") or ""
+    host = (_socket.gethostname() or "").lower()
+    on_hearth = user == "Ant" or "<<MACHINE_1_ID>>" in host
+    url = os.environ.get("KOKORO_TTS_HEALTH_URL") or (
+        "http://127.0.0.1:3763/" if on_hearth
+        else "https://<<MACHINE_1_HOSTNAME>>.tailbe5cff.ts.net/api/voice/tts"
+    )
+    try:
+        _rq.urlopen(url, timeout=5)
+        up = True
+    except Exception as e:
+        up = getattr(e, "code", None) is not None
+    if not up and on_hearth:
+        subprocess.run(["launchctl", "kickstart", "-k",
+                        f"gui/{os.getuid()}/ai.openclaw.kokoro-tts"],
+                       capture_output=True, check=False)
+    status = PASS if up else ALERT
+    where = "<<MACHINE_1_ID>>-local" if on_hearth else "<<MACHINE_1_ID>> front-door"
+    return {"name": "kokoro-tts", "status": status,
+            "score": 1 if up else 0,
+            "threshold": f"{where} Kokoro TTS endpoint answering at {url}",
+            "detail": "conversation voice " + ("healthy" if up else
+                      "DOWN — replies fall back to robotic speechSynthesis"),
+            "samples": []}
+
+
+def meter_web_brain_reachable(recs):
+    """Web Metis assistant never-down health (#581).
+
+    Ant runs everything through the metis-command web assistant while traveling;
+    it must never go dark. The route now falls through a reliability-first ladder
+    (Claude -> Codex -> local MLX/gateway), so the brain is DARK only when the app
+    itself is down OR *every* rung is unavailable. This is a free reachability
+    probe (no brain POST, no token spend) — the token-spending end-to-end check is
+    scripts/metis-brain-selftest.sh, run on demand. <<MACHINE_1_ID>>-only (the app + brain
+    backends live here); <<MACHINE_2_ID>> PASSes (it drives <<MACHINE_1_ID>>'s brain remotely).
+    """
+    import urllib.request as _rq
+    import socket as _socket
+    user = os.environ.get("USER") or ""
+    host = (_socket.gethostname() or "").lower()
+    on_hearth = user == "Ant" or "<<MACHINE_1_ID>>" in host
+    if not on_hearth:
+        return {"name": "web-brain-reachable", "status": PASS, "score": 1,
+                "threshold": "<<MACHINE_1_ID>>-only meter (brain surface lives on <<MACHINE_1_ID>>)",
+                "detail": "skipped on <<MACHINE_2_ID>>", "samples": []}
+
+    def _up(url, timeout=4):
+        try:
+            _rq.urlopen(url, timeout=timeout); return True
+        except Exception as e:
+            return getattr(e, "code", None) is not None  # any HTTP response = up
+    def _port_open(port, timeout=3):
+        try:
+            with _socket.create_connection(("127.0.0.1", port), timeout=timeout):
+                return True
+        except Exception:
+            return False
+
+    app_up = _up(f"http://127.0.0.1:{os.environ.get('MC_PORT','3747')}/")
+    # rung availability (mirrors metis.sh / brain-rungs.ts): claude budget usable,
+    # gateway listening, MLX serving. ANY one available => brain can answer.
+    claude_5h = None
+    try:
+        out = subprocess.run(["python3", os.path.join(REPO, "scripts/lib/claude_budget.py")],
+                             capture_output=True, text=True, timeout=8).stdout
+        claude_5h = json.loads(out).get("5h")
+    except Exception:
+        claude_5h = None
+    min5h = int(os.environ.get("METIS_MIN_5H_PCT", "8"))
+    claude_rung = (claude_5h is None) or (isinstance(claude_5h, (int, float)) and claude_5h >= min5h)
+    gateway_up = _port_open(18789)
+    mlx_up = _up("http://127.0.0.1:8081/v1/models")
+    rungs_up = [n for n, ok in (("claude", claude_rung), ("gateway", gateway_up), ("mlx", mlx_up)) if ok]
+
+    dark = (not app_up) or (len(rungs_up) == 0)
+    status = ALERT if dark else PASS
+    if not app_up:
+        detail = "metis-command app DOWN — web brain unreachable (restart metis-command)"
+    elif not rungs_up:
+        detail = "app up but ALL rungs down (claude budget spent, gateway + MLX down) — brain will go dark"
+    else:
+        detail = f"web brain up; rungs available: {', '.join(rungs_up)} (5h={claude_5h})"
+    return {"name": "web-brain-reachable", "status": status,
+            "score": 0 if dark else 1,
+            "threshold": "app up AND >=1 rung (claude|gateway|mlx) available",
+            "detail": detail,
+            "actions": (["restart metis-command; then bash scripts/metis-brain-selftest.sh"] if dark else []),
+            "samples": rungs_up[:3]}
+
+
+# --- doc-truth meter (#514): protocol docs must not teach forbidden operations ----------
+_DOC_TRUTH_GLOBS = ["docs/process/*.md", "ClaudeCode/skills/**/*.md"]
+_DOC_TRUTH_BANNED = [
+    ("ollama-lanes", re.compile(r"\bOllama lanes?\b", re.I)),
+    ("legacy-board-checkbox", re.compile(r"^\s*[-*]\s+\[P[0-9]\]\s*\[[ xX]?\]")),
+    ("illegal-transition-in_progress->done",
+     re.compile(r"in_progress\s*(?:->|-->|→|\bto\b)\s*`?done", re.I)),
+    ("projection-hand-edit",
+     re.compile(r"(?:write|log|add|append|entr(?:y|ies)|prune|check the box|move it)"
+                r"[^\n]{0,48}(?:task-queue\.md|OPEN_TASKS\.md)", re.I)),
+]
+# Negated / explanatory / self-referential mentions are not violations (e.g.
+# "never hand-edit task-queue.md", "there is no in_progress -> done", the meter's own doc).
+_DOC_TRUTH_EXEMPT = re.compile(
+    r"never|don'?t|do not|not by hand|no\s+`?in_progress|re-?render|regenerat|projection|"
+    r"read-only|overwrit|owns the|instead of|rather than|legacy|retired|deprecat|banned|"
+    r"forbidden|old format|drift|meter|#514|reject|illegal|invalid|wrong|must not|no longer", re.I)
+
+
+def meter_doc_truth(recs):
+    """Doc-vs-contract drift in the highest-traffic protocol surfaces (#514). Greps the
+    close/lifecycle/state docs + skills for prose that teaches forbidden operations:
+    'Ollama lanes' (the lane runtime is MLX-LM), the retired '- [P2] [ ]' board format,
+    the illegal in_progress->done transition (done is only reachable from
+    needs_verification), or hand-editing the task-queue.md/OPEN_TASKS.md projections
+    (render-tier1-state.py regenerates them). Negated/explanatory mentions are exempt."""
+    import glob
+    hits = []
+    for pat in _DOC_TRUTH_GLOBS:
+        for path in glob.glob(os.path.join(REPO, pat), recursive=True):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    lines = f.readlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            in_fence = fence_exempt = False
+            for i, line in enumerate(lines, 1):
+                if line.lstrip().startswith("```"):
+                    if not in_fence:  # opening: is the prose block directly above exempt?
+                        j = i - 2                       # line just above the fence (0-based)
+                        while j >= 0 and not lines[j].strip():   # skip one blank gap
+                            j -= 1
+                        frame = []                       # contiguous non-blank prose block
+                        while j >= 0 and lines[j].strip():
+                            frame.append(lines[j]); j -= 1
+                        fence_exempt = bool(_DOC_TRUTH_EXEMPT.search("".join(frame)))
+                    in_fence = not in_fence
+                    continue
+                if _DOC_TRUTH_EXEMPT.search(line):
+                    continue
+                # A banned pattern echoed inside a code fence is a reference EXAMPLE, not an
+                # instruction, when the framing prose above the fence marks the surface
+                # read-only / auto-rendered (e.g. the rendered board-line shape). Bare prose
+                # teaching the op is never fence-exempt, so seeded drift still fires.
+                if in_fence and fence_exempt:
+                    continue
+                for label, rx in _DOC_TRUTH_BANNED:
+                    if rx.search(line):
+                        hits.append({"file": os.path.relpath(path, REPO), "line": i,
+                                     "kind": label, "text": line.strip()[:120]})
+    status = ALERT if hits else PASS
+    return {"name": "doc-truth", "status": status, "score": 0 if hits else 1,
+            "threshold": "0 protocol-doc drift lines",
+            "detail": (f"{len(hits)} protocol-doc drift line(s) — docs teach a forbidden op"
+                       if hits else "protocol docs match the governed contract"),
+            "samples": hits[:8]}
+
+
+def meter_front_door_phone_path(recs):
+    """Front-door phone-path regression probe (#527).
+
+    The access-token gate regressed TWICE after being 'fixed' with NOTHING exercising the
+    real phone path, so Ant found each regression himself ('i thought we fixed that') —
+    each one a wasted mobile round-trip that erodes trust in done-claims. This synthetically
+    walks the path a phone actually takes and alerts BEFORE he hits it:
+
+      1. Functional — the Caddy front door must VOUCH: a no-cookie request returns the
+         console (200), not the token prompt (401) and not a dead door (000/5xx). Also
+         asserts the cockpit gate is still active on bare loopback and the upstreams are
+         closed on the tailnet IP. Delegated to the canonical check-metis-front-door-gated.sh
+         so the assertions never drift from the real regression check.
+      2. Config canary — the Caddyfile still injects `header_up x-metis-front-door` (the
+         vouch mechanism). This request header is invisible from the client, so the config
+         line is the earliest signal that vouching is about to break.
+      3. Preview door — the :3750 preview door answers (Caddy route up), so the Studio
+         live-preview path a phone uses isn't dark.
+
+    <<MACHINE_1_ID>>-only (the doors + upstreams live here); <<MACHINE_2_ID>> PASSes (it reaches them remotely).
+    """
+    import socket as _socket
+    user = os.environ.get("USER") or ""
+    host = (_socket.gethostname() or "").lower()
+    if not (user == "Ant" or "<<MACHINE_1_ID>>" in host):
+        return {"name": "front-door-phone-path", "status": PASS, "score": 1,
+                "threshold": "<<MACHINE_1_ID>>-only meter (front door lives on <<MACHINE_1_ID>>)",
+                "detail": "skipped on <<MACHINE_2_ID>>", "samples": []}
+
+    fails, samples = [], []
+
+    # 1. Functional vouch + gate + closed-upstreams (the real regression check).
+    try:
+        r = subprocess.run(["bash", os.path.join(REPO, "scripts/check-metis-front-door-gated.sh")],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            msg = (r.stderr or r.stdout).strip().splitlines()[-1] if (r.stderr or r.stdout).strip() else "check failed"
+            fails.append(f"vouch/gate: {msg[:140]}")
+        else:
+            samples.append("door vouches (200 no-cookie), gate active, upstreams closed")
+    except Exception as e:
+        fails.append(f"vouch/gate probe error: {e}")
+
+    # 2. Config canary: the vouch header injection is still in the Caddyfile.
+    try:
+        with open(os.path.join(REPO, "scripts/caddy/Caddyfile")) as f:
+            if not re.search(r"header_up\s+x-metis-front-door", f.read()):
+                fails.append("Caddyfile no longer injects x-metis-front-door — vouch mechanism removed")
+            else:
+                samples.append("Caddyfile vouch header present")
+    except Exception as e:
+        fails.append(f"Caddyfile canary error: {e}")
+
+    # 3. Preview door :3750 answers (Caddy route up; any HTTP code beats a dead port).
+    # gethostname() is 'AntFox-Macbook.local' → take the first label for the tailnet FQDN.
+    tailnet_host = f"{(host.split('.')[0] or '<<MACHINE_1_HOSTNAME>>')}.tailbe5cff.ts.net"
+    try:
+        out = subprocess.run(
+            ["curl", "-sS", "--max-time", "6", "-o", "/dev/null", "-w", "%{http_code}",
+             f"http://{tailnet_host}:3750/"],
+            capture_output=True, text=True, timeout=10).stdout.strip()
+        if out in ("", "000"):
+            fails.append(f"preview door :3750 unreachable (curl code {out or 'none'})")
+        else:
+            samples.append(f"preview door :3750 answers ({out})")
+    except Exception as e:
+        fails.append(f"preview door probe error: {e}")
+
+    status = ALERT if fails else PASS
+    return {"name": "front-door-phone-path", "status": status, "score": 0 if fails else 1,
+            "threshold": "door vouches (200 no-token) + Caddyfile vouch header + :3750 answers",
+            "detail": ("; ".join(fails) if fails
+                       else "phone path healthy: door vouches, vouch header present, preview door up"),
+            "actions": (["check METIS_COMMAND_TOKEN in the Caddy env + restart Caddy; "
+                         "verify scripts/caddy/Caddyfile header_up x-metis-front-door"] if fails else []),
+            "samples": samples[:3]}
+
+
+METERS = [meter_signoff, meter_taxonomy, meter_notion_domain_vocab, meter_inbox_quality,
+          meter_curator_format,
+          meter_headless_model_pin, meter_whisper_stt, meter_kokoro_tts, meter_web_brain_reachable,
+          meter_doc_truth, meter_front_door_phone_path]
 
 
 # ───────────────────────────────── main ──────────────────────────────────────

@@ -38,11 +38,19 @@ _spec = importlib.util.spec_from_file_location("free_work", _FW_PATH)
 free_work = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(free_work)
 
+# Sibling ecosystem-map generator (hyphenated filename → load by path) for I13.
+_EM_PATH = Path(__file__).resolve().parent / "render-ecosystem-map.py"
+_em_spec = importlib.util.spec_from_file_location("render_ecosystem_map", _EM_PATH)
+ecosystem_map = importlib.util.module_from_spec(_em_spec)
+_em_spec.loader.exec_module(ecosystem_map)
+
 REPO_ROOT = free_work.REPO_ROOT
 NAMING_CONVENTION = REPO_ROOT / "docs/process/task-naming-convention.md"
 TASK_QUEUE = REPO_ROOT / "docs/process/task-queue.md"
 TASK_ARCHIVE = REPO_ROOT / "docs/process/task-archive.md"
 TASKS_ARCHIVE_JSON = REPO_ROOT / "docs/process/state/tasks-archive.json"
+SKILLS_DIR = REPO_ROOT / "ClaudeCode/skills"
+SKILLS_INDEX = SKILLS_DIR / "INDEX.md"
 
 # Only `done` is terminal. needs_verification / in_progress / queued / blocked
 # are all live states a lease may legitimately point at.
@@ -247,6 +255,27 @@ def check_I6(last_assigned, doc_ids: list, governed_ids: list) -> list:
     return out
 
 
+# A crashed create between alloc-id and the governed write leaks the odd id, so a
+# small lead is normal; a 25+ lead means ids are being burned in bulk.
+I15_MAX_COUNTER_LEAD = 25
+
+
+def check_I15(last_assigned, doc_ids: list) -> list:
+    """Counter runaway — the inverse of I6. lastAssigned far ABOVE the highest id
+    that actually exists means ids are being burned without tasks: the 2026-07-08
+    sandbox leak (#678) jumped the counter 648->901 and 234 ids vanished, unnoticed
+    until Ant asked why numbering skipped from the 600s to the 900s (#679)."""
+    if last_assigned is None or not doc_ids:
+        return []
+    lead = int(last_assigned) - max(doc_ids)
+    if lead > I15_MAX_COUNTER_LEAD:
+        return [viol("I15", "fail",
+                     f"counter runaway: last-assigned #{last_assigned} is {lead} ahead of the "
+                     f"highest real task id #{max(doc_ids)} — ids are being burned without tasks",
+                     False)]
+    return []
+
+
 def check_I7(thread_ids: list, tasks: list) -> list:
     """Every working-context Open-threads #NNN must point at a non-terminal task."""
     tasks_by_id = {t.get("taskId"): t for t in tasks}
@@ -348,6 +377,117 @@ def _archived_task_ids() -> set:
         return {t.get("taskId") for t in json.load(open(TASKS_ARCHIVE_JSON)).get("tasks", [])}
     except (ValueError, OSError):
         return set()
+
+
+def _load_skill_slugs() -> list[str]:
+    """Slugs of skills on disk (a dir under ClaudeCode/skills/ holding a SKILL.md)."""
+    if not SKILLS_DIR.is_dir():
+        return []
+    return sorted(p.name for p in SKILLS_DIR.iterdir()
+                  if p.is_dir() and (p / "SKILL.md").is_file())
+
+
+def _load_skill_index_text() -> str:
+    return SKILLS_INDEX.read_text() if SKILLS_INDEX.exists() else ""
+
+
+def check_I12(skill_slugs: list[str], index_text: str) -> list:
+    """Un-indexed = unfinished (filing standard, #390): a skill on disk that the
+    catalog (ClaudeCode/skills/INDEX.md) does not list is unroutable — it does
+    not exist for the org. WARN-only for now (promote to fail after backfill).
+    Pure: membership is a substring test against the index text, so the test
+    passes plain strings and never touches the filesystem."""
+    if not index_text:
+        return []  # no index to check against (don't false-alarm on a fresh clone)
+    out = []
+    for slug in skill_slugs:
+        if f"`{slug}`" not in index_text and slug not in index_text:
+            out.append(viol("I12", "warn",
+                            f"skill '{slug}' is on disk but not listed in ClaudeCode/skills/INDEX.md (un-indexed = unfinished)", False))
+    return out
+
+
+def check_I13(map_text: str, expected_text: str) -> list:
+    """Ecosystem-map drift (#388): docs/process/ecosystem-map.yaml is GENERATED
+    from canonical state, so a stale file means an agent could route off wrong
+    truth. Fail closed (the map is cheap to regenerate). Pure: compares two
+    already-loaded strings."""
+    if not expected_text:
+        return []
+    if map_text != expected_text:
+        return [viol("I13", "fail",
+                     "ecosystem-map.yaml is stale vs canonical — run: python3 scripts/render-ecosystem-map.py", False)]
+    return []
+
+
+def check_I14(goals: dict, campaigns: dict, goals_md_text: str, ecosystem_text: str) -> list:
+    """Goal-layer integrity (#647): the campaign layer must agree across its three
+    surfaces — goals.json (governed SoT), taxonomy.yaml `campaigns`, and goals.md
+    live headings. A G# alive on one surface but absent/retired on another is a
+    zombie campaign (the G2 class of drift: goals.json merged G2→G1 while
+    taxonomy.yaml/goals.md/ECOSYSTEM.md still declared it live). Domains must
+    match between goals.json and taxonomy.yaml. Pure: takes already-loaded
+    surfaces (`goals` = id->goal record, `campaigns` = taxonomy campaigns map);
+    the loader (_load_goal_layer) fails soft when a surface or PyYAML is
+    unavailable — this is an overlay, not a portable-core invariant."""
+    out = []
+
+    # goals.md live headings: a "### G# — merged into …/retired" stub is NOT live.
+    live_md = set()
+    for line in (goals_md_text or "").splitlines():
+        m = re.match(r"#+\s*(G\d+)\b(.*)", line)
+        if m and not re.search(r"merged into|retired", m.group(2), re.I):
+            live_md.add(m.group(1))
+
+    gj_ids, tx_ids = set(goals), set(campaigns)
+    for gid in sorted(gj_ids - tx_ids):
+        out.append(viol("I14", "fail", f"campaign {gid} live in goals.json but missing from taxonomy.yaml campaigns", False))
+    for gid in sorted(tx_ids - gj_ids):
+        out.append(viol("I14", "fail", f"campaign {gid} declared in taxonomy.yaml but not in goals.json — zombie campaign", False))
+    for gid in sorted(gj_ids - live_md):
+        out.append(viol("I14", "fail", f"campaign {gid} live in goals.json but has no live heading in goals.md", False))
+    for gid in sorted(live_md - gj_ids):
+        out.append(viol("I14", "fail", f"goals.md heading {gid} is live but campaign absent from goals.json — zombie campaign", False))
+    for gid in sorted(gj_ids & tx_ids):
+        d1 = goals[gid].get("domain")
+        d2 = (campaigns.get(gid) or {}).get("domain")
+        if d1 and d2 and d1 != d2:
+            out.append(viol("I14", "fail", f"campaign {gid} domain mismatch: goals.json={d1!r} vs taxonomy.yaml={d2!r}", False))
+
+    # ECOSYSTEM.md campaign table (orientation surface) — warn-level drift.
+    eco_ids = set(re.findall(r"^\|\s*\*\*(G\d+)\*\*", ecosystem_text or "", re.M))
+    if eco_ids and eco_ids != gj_ids:
+        extra, missing = sorted(eco_ids - gj_ids), sorted(gj_ids - eco_ids)
+        bits = (f"stale rows {extra}" if extra else "") + (" & " if extra and missing else "") + \
+               (f"missing rows {missing}" if missing else "")
+        out.append(viol("I14", "warn", f"ECOSYSTEM.md campaign table drifted vs goals.json: {bits}", False))
+    return out
+
+
+def _load_goal_layer():
+    """IO for check_I14: load the four goal-layer surfaces, failing soft.
+    Returns (goals, campaigns, goals_md_text, ecosystem_text, preload_viols);
+    goals is None when the layer is absent/unreadable → skip the check."""
+    root = Path(__file__).resolve().parent.parent
+    gj_path = root / "docs/process/goals.json"
+    tx_path = root / "docs/process/taxonomy.yaml"
+    gm_path = root / "docs/process/goals.md"
+    if not (gj_path.exists() and tx_path.exists() and gm_path.exists()):
+        return None, None, "", "", []
+    try:
+        goals = {g["id"]: g for g in json.load(open(gj_path)).get("goals", []) if g.get("id")}
+    except (ValueError, OSError, KeyError):
+        return None, None, "", "", [viol("I14", "warn", "goals.json unreadable — goal-layer check skipped", False)]
+    try:
+        import yaml as _yaml
+        campaigns = (_yaml.safe_load(tx_path.read_text()) or {}).get("campaigns") or {}
+    except ImportError:
+        return None, None, "", "", []
+    except Exception:
+        return None, None, "", "", [viol("I14", "warn", "taxonomy.yaml unreadable — goal-layer check skipped", False)]
+    eco_path = root / "ECOSYSTEM.md"
+    return (goals, campaigns, gm_path.read_text(),
+            eco_path.read_text() if eco_path.exists() else "", [])
 
 
 def check_I11(tasks: list) -> list:
@@ -602,12 +742,14 @@ def plan_fixes(leases: list, tasks: list, checkouts: list | None = None,
 
 # ---- IO loaders (used only by evaluate) ------------------------------------
 def _read_last_assigned():
+    # Canonical: task-counter.json (#352 dropped the task-naming-convention.md
+    # mirror this used to parse, which raced under concurrent allocs).
     try:
-        text = NAMING_CONVENTION.read_text()
-    except OSError:
+        import json as _json
+        counter = REPO_ROOT / "docs/process/state/task-counter.json"
+        return int(_json.loads(counter.read_text()).get("lastAssigned"))
+    except Exception:
         return None
-    m = re.search(r"Last assigned:\s*#(\d+)", text)
-    return int(m.group(1)) if m else None
 
 
 def _scan_ids(path: Path) -> list:
@@ -715,7 +857,7 @@ def apply_fixes(actions: list) -> list:
 
 # ---- evaluator -------------------------------------------------------------
 def evaluate() -> dict:
-    """Load every source, run I1-I10, return {violations, ok}. ok == no fails."""
+    """Load every source, run I1-I13, return {violations, ok}. ok == no fails."""
     raw_checkouts = free_work.load_json(free_work.CHECKOUTS) or {}
     checkouts = raw_checkouts.get("checkouts", [])
     presence = raw_checkouts.get("presence", [])
@@ -740,11 +882,20 @@ def evaluate() -> dict:
     violations += check_I4(opens, tasks, leases)
     violations += check_I5(leases, tasks)
     violations += check_I6(last_assigned, doc_ids, governed_ids)
+    violations += check_I15(last_assigned, doc_ids)
     violations += check_I7(thread_ids, tasks)
     violations += check_I8(wc_lines)
     violations += check_I9(tasks)
     violations += check_I10(presence)
     violations += check_I11(tasks)
+    violations += check_I12(_load_skill_slugs(), _load_skill_index_text())
+    _em_out = ecosystem_map.OUT
+    violations += check_I13(_em_out.read_text() if _em_out.exists() else "",
+                            ecosystem_map.build_text())
+    _goals, _campaigns, _gm_text, _eco_text, _preload = _load_goal_layer()
+    violations += _preload
+    if _goals is not None:
+        violations += check_I14(_goals, _campaigns, _gm_text, _eco_text)
 
     ok = not any(v["severity"] == "fail" for v in violations)
     return {"violations": violations, "ok": ok}
