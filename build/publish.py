@@ -92,6 +92,9 @@ SCRUBS = [
     (re.compile(r"\bNavore\b"), "Example"),
 ]
 SCRUB_EXT = {".py", ".sh", ".json", ".md", ".ts", ".tsx", ".js", ".mjs", ".env", ".yml", ".yaml", ".template", ".html"}
+# Extensionless config dotfiles have suffix "" and would skip the scrub entirely —
+# .gitattributes shipped persona-named paths that way on the 0.1.0 refresh (CI caught it).
+SCRUB_NAMES = {".gitattributes", ".prettierrc", ".gitignore", ".editorconfig"}
 
 
 def derived_items():
@@ -116,7 +119,7 @@ def remap(rel):
 
 
 def scrub_file(p: Path):
-    if p.suffix not in SCRUB_EXT:
+    if p.suffix not in SCRUB_EXT and p.name not in SCRUB_NAMES:
         return
     try:
         txt = p.read_text()

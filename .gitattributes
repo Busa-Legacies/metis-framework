@@ -32,14 +32,14 @@ docs/process/state/file-claims.jsonl merge=union
 docs/process/state/eval-corpus.jsonl merge=union
 docs/process/state/pr-ledger.jsonl merge=union
 # cloud-sessions.jsonl: ephemeral cloud/web sessions self-register here (append-only,
-# one row per start/heartbeat/end) so Hearth's dashboard can surface them in the
-# Sessions panel — the repo is the only medium the ephemeral container and Hearth share.
+# one row per start/heartbeat/end) so the host machine's dashboard can surface them in
+# the Sessions panel — the repo is the only medium the container and the host share.
 # Written from many parallel cloud sessions; union keeps every row on a merge.
 docs/process/state/cloud-sessions.jsonl merge=union
-Hearth/state/gpu-oom-incidents.jsonl merge=union
+workspace/state/gpu-oom-incidents.jsonl merge=union
 # voice-deltas.jsonl: Writing studio appends one row per meaningful edit-session
 # (#8, before->after body diff) so writing-voice-synthesize.py can propose voice-
 # profile deltas. Append-only, may be written from either machine — union keeps
 # every captured edit on a merge.
 projects/writing/voice-deltas.jsonl merge=union
-Hearth/memory/mindset-ledger.jsonl merge=union
+workspace/memory/mindset-ledger.jsonl merge=union
