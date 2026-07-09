@@ -39,7 +39,6 @@ checkpoint: $TASK_ID $TASK_TITLE — done
 $TASK_SUMMARY
 
 Auto-checkpoint on task-close.
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 MSGEOF
 
 # The git-lock inner command must use absolute paths to scripts/ since CWD may vary.
