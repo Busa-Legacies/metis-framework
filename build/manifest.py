@@ -89,7 +89,7 @@ CORE_SCRIPTS = [
     # quality / audit / tests
     "system-audit.sh", "gitignore-lint.sh", "test-git-sync-guards.sh",
     "test-agent-work.sh", "test-working-context-update.sh", "test-taskstate-archive.py",
-    "check-memory-limits.sh", "review.sh",
+    "check-memory-limits.sh", "self-review.py", "review.sh",
     # templates
     "launchagent-claude-task.plist.template",
 ]
