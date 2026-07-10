@@ -68,6 +68,10 @@ SCRUBS = [
     # the bare-persona rule below so only the PATH form is neutralized; prose mentions of
     # the machine still scrub to the id placeholder. (#434 path-resolution sweep.)
     (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)/(?=state|memory|lanes|AGENTS\.md|SOUL\.md|\.gitignore|HANDOFF)"), "workspace/"),
+    # Same workspace dir written as os.path.join ARGS ("Hearth", "state", ...) — the
+    # path-form rule above can't see it, so the bare-persona rule was turning it into
+    # a literal <<MACHINE_1_ID>> directory (broke self-review.py's DIGEST_DIR/BOARD).
+    (re.compile(r'"(?:Hearth|HEARTH|Jay|JAY)", "state"'), '"workspace", "state"'),
     # Machine persona names → org-neutral id placeholders. The framework ships LANE
     # role names (smith/scout/warden/...) as real vocabulary, but MACHINE names are
     # org-specific topology → placeholders resolved from config/infrastructure.json.
