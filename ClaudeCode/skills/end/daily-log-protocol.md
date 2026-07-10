@@ -22,7 +22,7 @@ git diff <sha>..HEAD --stat
 
 Also run friction/miss signal check:
 ```bash
-python3 scripts/self-review.py --latest
+[ -f scripts/self-review.py ] && python3 scripts/self-review.py --latest || true
 ```
 Any actionable signals not already queued become tasks per step 7.
 
