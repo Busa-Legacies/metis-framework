@@ -78,12 +78,18 @@ if [ -f "$mirror_script" ]; then
   [ $? -ne 0 ] && mirror_msg="$mirror_out"
 fi
 
-# --- Ollama routing check (surfaces only when baseUrl missing or unreachable on <<MACHINE_2_ID>>) ---
+# --- Ollama routing check (surfaces only when baseUrl missing or unreachable off-host) ---
 # Prevents silent lane failures after openclaw.json reset/upgrade.
-# Skipped on <<MACHINE_1_ID>> (antfox/Ant) — it IS the Ollama host; localhost:11434 works without baseUrl.
+# Skipped on the model host — it serves the models; localhost works without baseUrl.
+# Host identity comes from the declared topology (config/infrastructure.json via
+# infra_config: detect-machine vs model-host) — never hardcoded hostnames/users.
+# Detector unavailable => skip the check (can't know which machine this is).
+# NOTE: no pre-warm here. Force-loading a big model from session-init collides with
+# a resident model on the host and can OOM the GPU (upstream removed it 2026-06-25).
 ollama_msg=""
-_machine_hostname=$(hostname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
-if [ "$_machine_hostname" != "antfox" ] && [ "$USER" != "Ant" ]; then
+_machine_id=$(python3 "$METIS_HOME/scripts/lib/infra_config.py" detect-machine 2>/dev/null || true)
+_model_host=$(python3 "$METIS_HOME/scripts/lib/infra_config.py" model-host 2>/dev/null || true)
+if [ -n "$_machine_id" ] && [ -n "$_model_host" ] && [ "$_machine_id" != "$_model_host" ]; then
   oc_json="$HOME/.openclaw/openclaw.json"
   if [ -f "$oc_json" ]; then
     ollama_base=$(python3 -c "
@@ -94,17 +100,9 @@ try:
 except: pass
 " "$oc_json" 2>/dev/null)
     if [ -z "$ollama_base" ]; then
-      ollama_msg="models.providers.ollama.baseUrl missing from ~/.openclaw/openclaw.json — lanes will fall back to localhost:11434 (broken on <<MACHINE_2_ID>>). Fix: add baseUrl: http://<<MACHINE_1_TAILSCALE_IP>>:11434"
+      ollama_msg="models.providers.ollama.baseUrl missing from ~/.openclaw/openclaw.json — lanes will fall back to localhost (broken off-host). Fix: add baseUrl pointing at the model host declared in config/infrastructure.json"
     elif ! curl -s --max-time 4 "${ollama_base}/api/tags" >/dev/null 2>&1; then
-      ollama_msg="Ollama unreachable at ${ollama_base} — lane calls will fail. Check Tailscale + <<MACHINE_1_ID>> gateway."
-    else
-      # Pre-warm: load qwen3-coder:30b into VRAM in the background so the first lane
-      # call this session doesn't pay the cold-start cost (30–170s model reload).
-      ( curl -s --max-time 200 -X POST "${ollama_base}/api/generate" \
-          -H "Content-Type: application/json" \
-          -d '{"model":"qwen3-coder:30b","prompt":"hi","stream":false,"keep_alive":"2h"}' \
-          -o /dev/null 2>/dev/null ) &
-      disown $! 2>/dev/null || true
+      ollama_msg="Ollama unreachable at ${ollama_base} — lane calls will fail. Check the network path to the model host (${_model_host})."
     fi
   fi
 fi

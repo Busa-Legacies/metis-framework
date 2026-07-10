@@ -40,6 +40,7 @@ jobs:
                  -e '/Users/Ant' -e '/Users/abusa' \
                  -e 'antfox-macbook' -e 'anthonys-macbook-pro' \
                  -e '\b(Jay|Jarry|Hearth|Outpost)\b' \
+                 -e '\b(antfox|jarry|abusa)\b' \
                  --exclude-dir=.git --exclude-dir=build \
                  --exclude-dir=.github --exclude=SPLIT.md . ; then
             echo "::error::personal value (IP/path/hostname/persona) leaked into core — parameterize it"; exit 1
