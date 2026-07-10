@@ -1,3 +1,9 @@
+[project]
+name = "metis-framework"
+version = "0.1.0"
+description = "Run AI agents as a governed, multi-session, multi-machine workforce — a production implementation of the long-running-agent harness. Source-available (FSL-1.1), vendored via git subtree."
+license = { file = "LICENSE" }
+
 [tool.ruff]
 line-length = 100
 exclude = [".venv", "__pycache__", "node_modules"]

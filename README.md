@@ -1,4 +1,12 @@
+<p align="center"><img src="docs/assets/metis-mark.svg" width="88" alt="Metis compass-needle mark"></p>
+
 # Metis Framework
+
+[![core-ci](https://github.com/Busa-Legacies/metis-framework/actions/workflows/core-ci.yml/badge.svg)](https://github.com/Busa-Legacies/metis-framework/actions/workflows/core-ci.yml)
+[![license: FSL-1.1-Apache-2.0](https://img.shields.io/badge/license-FSL--1.1--Apache--2.0-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/Busa-Legacies/metis-framework)](https://github.com/Busa-Legacies/metis-framework/releases)
+
+**Run AI agents as a governed, multi-session, multi-machine workforce — a production implementation of the long-running-agent harness.**
 
 > **Metis** (Greek): cunning, adaptive, practical intelligence; counsel internalized into judgment.
 
