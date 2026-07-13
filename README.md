@@ -8,9 +8,9 @@
 
 **Run AI agents as a governed, multi-session, multi-machine workforce — a production implementation of the long-running-agent harness.**
 
-> **Metis** (Greek): cunning, adaptive, practical intelligence; counsel internalized into judgment.
+*Mētis* is the Greek word for cunning, adaptive, practical intelligence, and the name of the Titaness of counsel whose wisdom, in the myth, was swallowed by Zeus and became the voice advising him from within. That last part is the whole point. Metis OS is not a tool you reach for; it is an orchestrating intelligence that lives inside the work. It remembers, it delegates, it governs itself, and it does all of it in service of one person.
 
-The portable core of the Metis operating system: an
+This is the portable core of the Metis operating system: an
 org-agnostic framework for running AI agents as a governed, multi-session,
 memory-backed workforce. This repo holds **only** the pieces that generalize to any
 organization adopting the system (the protocols, skills, hooks, governance
