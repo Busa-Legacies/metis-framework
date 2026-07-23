@@ -105,6 +105,10 @@
           {
             "type": "command",
             "command": "~/.claude/hook-signoff-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hook-task-naming-gate.sh"
           }
         ]
       }

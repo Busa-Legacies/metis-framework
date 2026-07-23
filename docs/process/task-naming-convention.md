@@ -86,3 +86,15 @@ eval-pipeline tasks; normalized + re-IDed 2026-06-15.)
 ## Legacy ID Mapping
 
 Full `T-DOMAIN-NN` → `#NNN slug` mapping (41 entries, migration 2026-06-01): `docs/process/legacy-id-mapping.md`
+
+## Referencing tasks in prose (enforced)
+
+Never refer to a task by a **bare `#NNN`** in prose, commit messages, or sign-offs — the number
+is opaque and drops the meaning the slug carries. Use the **descriptive title with the id in
+parens**: `the per-file-leases sync task (#234)`, never `flip #234 to live`.
+
+Enforced mechanically by `ClaudeCode/hooks/hook-task-naming-gate.sh` — a zero-LLM Stop hook
+(sibling of `hook-signoff-gate.sh`) that scans the closing message and blocks **once** on a bare
+`#NNN`, with the fix. Exempts the parenthesised `(#NNN)` form and external VCS refs (`PR #NNN`);
+ignores code fences; fails open; loop-safe. Documentation alone failed for a whole session, hence
+the gate. Register it in the `Stop` array of your Claude Code settings.
