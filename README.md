@@ -6,7 +6,7 @@
 [![license: FSL-1.1-Apache-2.0](https://img.shields.io/badge/license-FSL--1.1--Apache--2.0-blue)](LICENSE)
 [![release](https://img.shields.io/github/v/release/Busa-Legacies/metis-framework)](https://github.com/Busa-Legacies/metis-framework/releases)
 
-**Run AI agents as a governed, multi-session, multi-machine workforce — a production implementation of the long-running-agent harness.**
+**Run AI agents as a governed, multi-session, multi-machine workforce: a production implementation of the long-running-agent harness.**
 
 *Mētis* is the Greek word for cunning, adaptive, practical intelligence, and the name of the Titaness of counsel whose wisdom, in the myth, was swallowed by Zeus and became the voice advising him from within. That last part is the whole point. Metis OS is not a tool you reach for; it is an orchestrating intelligence that lives inside the work. It remembers, it delegates, it governs itself, and it does all of it in service of one person.
 
@@ -20,19 +20,19 @@ parameterized out into [`config/infrastructure.json`](config/infrastructure.json
 It is consumed by downstream repos (e.g. an org's private operating repo) via
 **git subtree**, so the same spine stays in sync across every agent that runs it.
 
-![Metis Command console — the governed agent workforce live: goal/project board with agent-run milestones, the typed needs-you queue (decide / verify / unblock) with done-gates, eleven concurrent agent sessions, and the governed task lifecycle they follow](docs/assets/metis-cockpit-demo.webp)
+![Metis Command console, the governed agent workforce live: goal/project board with agent-run milestones, the typed needs-you queue (decide / verify / unblock) with done-gates, eleven concurrent agent sessions, and the governed task lifecycle they follow](docs/assets/metis-cockpit-demo.webp)
 
 ## A production implementation of the long-running-agent harness
 
 Anthropic's *[Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)*
 names five primitives for building agents that work across many fresh-context sessions without a
 human babysitting each step. Metis was built on the same problem and **independently converged on
-four of them** — with an evidence gate that runs as a standing protocol across every agent, not a
+four of them**, with an evidence gate that runs as a standing protocol across every agent, not a
 per-project hook. It's a battle-tested implementation of the pattern the article describes in theory.
 
 | Harness primitive | In Metis |
 |---|---|
-| Default-FAIL / evidence-first contract | The done-gate — a task stays `needs_verification` until observed proof is Read (`scripts/update-tier1-state.py`, `docs/process/doctrine-to-operations-bridge.md`) |
+| Default-FAIL / evidence-first contract | The done-gate: a task stays `needs_verification` until observed proof is Read (`scripts/update-tier1-state.py`, `docs/process/doctrine-to-operations-bridge.md`) |
 | Fresh-context evaluator | `warden` / `arbiter` lanes grade from a virgin context with no write tools, binary PASS/NEEDS_WORK (`CLAUDE.md`) |
 | Agent-maintained handoff | `checkpoint` / `end` commit state + refresh forward state across the context boundary (`ClaudeCode/skills/`, `surgical-delivery-protocol.md`) |
 | Decomposed, one-feature-at-a-time work | `plan` → `build` over a forward-only task DAG with leases + fencing (`ClaudeCode/skills/`, `scripts/agent-work.py`) |

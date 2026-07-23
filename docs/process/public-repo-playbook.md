@@ -4,7 +4,7 @@ How to carve a publishable project out of Metis OS.
 
 ---
 
-## Inspiration — what makes good open-source repos in this space
+## Inspiration: what makes good open-source repos in this space
 
 **Local AI / agent frameworks** (open-interpreter, anything-llm, local-ai):
 - Single `docker compose up` or `pip install + one command` → running in < 5 min
@@ -52,7 +52,7 @@ The public README shows both paths:
 
 ### Internal imports
 
-Use optional dependency pattern — never hard `import openclaw` at module level:
+Use optional dependency pattern; never hard `import openclaw` at module level:
 
 ```python
 try:
@@ -69,7 +69,7 @@ def get_client():
 
 ### Mono-repo structure (recommended)
 
-Keep Nick's projects as subdirectories inside Metis OS. Don't create separate private repos — that fragments history and doubles maintenance. Public forks are downstream read-only mirrors, not development homes.
+Keep Nick's projects as subdirectories inside Metis OS. Don't create separate private repos; that fragments history and doubles maintenance. Public forks are downstream read-only mirrors, not development homes.
 
 ```
 metis-os/
@@ -85,7 +85,7 @@ Public repos (`anthonyabusa/metis-command`, `anthonyabusa/polymarket-trading-bot
 
 ### Startup / LaunchAgent portability
 
-Don't abstract — document both. README section: "Running as a background service":
+Don't abstract; document both. README section: "Running as a background service":
 - macOS: `cp launchagents/com.example.app.plist ~/Library/LaunchAgents/ && launchctl load ...`
 - Linux: `cp systemd/app.service ~/.config/systemd/user/ && systemctl --user enable --now app`
 - Manual: `python3 app.py` (always works)
@@ -97,8 +97,8 @@ Don't abstract — document both. README section: "Running as a background servi
 Run this before every public release:
 
 ### 1. Secrets audit
-- [ ] `grep -r "sk-" . --include="*.py" --include="*.js"` — no API keys in source
-- [ ] `grep -r "@gmail\|@example\|anthonyabusa" . --include="*.py"` — no personal emails hardcoded
+- [ ] `grep -r "sk-" . --include="*.py" --include="*.js"`: no API keys in source
+- [ ] `grep -r "@gmail\|@example\|anthonyabusa" . --include="*.py"`: no personal emails hardcoded
 - [ ] `.env` and `*-tokens.json` in `.gitignore`
 - [ ] All sheet IDs / webhook URLs moved to env vars
 
@@ -118,7 +118,7 @@ Run this before every public release:
 See template below.
 
 ### 5. License
-Add `LICENSE` file (MIT recommended — see below).
+Add `LICENSE` file (MIT recommended; see below).
 
 ### 6. Version tag
 - [ ] `git tag v1.0.0` in the public repo after publish script runs
@@ -169,7 +169,7 @@ MIT — see [LICENSE](LICENSE).
 
 Steps:
 1. Copy `projects/<project>/` to a temp dir
-2. Run secrets audit — abort if any hits
+2. Run secrets audit; abort if any hits
 3. Strip internal import lines (`from openclaw...`, `from app.core.config...` where config is internal-only)
 4. Replace `~/.openclaw/` path refs with config discovery shim
 5. Copy `LICENSE`, `CHANGELOG.md` if not present
@@ -178,9 +178,9 @@ Steps:
 8. `git -C <tempdir> tag v<version> && git push origin main --tags`
 
 **Risky parts:**
-- Step 4 (path replacement) needs a test suite — easy to under-replace and leak an internal path
+- Step 4 (path replacement) needs a test suite; easy to under-replace and leak an internal path
 - Step 6 assumes the public remote exists; script should check and error clearly
-- Never run this on uncommitted changes in the private tree — gate on `git diff --quiet`
+- Never run this on uncommitted changes in the private tree; gate on `git diff --quiet`
 
 ---
 
@@ -188,7 +188,7 @@ Steps:
 
 **Why MIT over Apache 2.0:**
 - MIT is universally understood, zero friction for users/contributors
-- Apache 2.0 adds patent grant language that matters at company scale — overkill for personal portfolio projects
+- Apache 2.0 adds patent grant language that matters at company scale; overkill for personal portfolio projects
 - Most popular personal AI/dashboard repos use MIT; it signals approachability
 
 The one exception: if a project incorporates code from an Apache-licensed upstream (some ML libraries), use Apache 2.0 to stay compatible.

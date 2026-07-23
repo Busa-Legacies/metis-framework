@@ -46,10 +46,10 @@ Required fields:
 - `nextAction`
 - `mainFiles[]`
 - `nextDecisionPoint` (optional)
-- `verificationState` (optional; recommended at `execution_finished`/`needs_verification`/`done`) — sub-process state for verification: `not_started` / `pending` / `passed` / `failed`
-- `evidenceRefs` (optional; required at `execution_finished`/`done`) — array of file paths, commands, or artifact descriptions that substantiate a completion claim
-- `handoffContext` (optional; required on owner changes or when entering `waiting`/`blocked` with accumulated context) — one-to-three sentence summary for the next owner
-- `delegation` (optional) — structured delegation metadata when bounded sub-execution is active or has just returned; see `docs/process/task-state-contract.md` for recommended fields
+- `verificationState` (optional; recommended at `execution_finished`/`needs_verification`/`done`): sub-process state for verification: `not_started` / `pending` / `passed` / `failed`
+- `evidenceRefs` (optional; required at `execution_finished`/`done`): array of file paths, commands, or artifact descriptions that substantiate a completion claim
+- `handoffContext` (optional; required on owner changes or when entering `waiting`/`blocked` with accumulated context): one-to-three sentence summary for the next owner
+- `delegation` (optional): structured delegation metadata when bounded sub-execution is active or has just returned; see `docs/process/task-state-contract.md` for recommended fields
 - `updatedAt`
 - `updatedBy`
 - `revision`

@@ -2,7 +2,7 @@
 name: Next Task
 slug: next
 version: 1.0.0
-description: "Atomically claim the next-highest-priority free task for THIS machine — collision-free even when several sessions wrap up at once. Write-side companion to /free-work."
+description: "Atomically claim the next-highest-priority free task for THIS machine, collision-free even when several sessions wrap up at once. Write-side companion to /free-work."
 ---
 
 ## Steps
@@ -13,7 +13,7 @@ Pickup is **project-oriented** (#181): join a project (shared workspace, never a
    ```bash
    python3 scripts/agent-work.py join <slug>
    ```
-   Writes an informational presence record (4h TTL, session-keyed). Multiple sessions can and should share a project — presence is a roster, not a lock. Pick the project from `/free-work`'s ranked board.
+   Writes an informational presence record (4h TTL, session-keyed). Multiple sessions can and should share a project; presence is a roster, not a lock. Pick the project from `/free-work`'s ranked board.
 
 2. **Preview first (optional):**
    ```bash
@@ -49,4 +49,4 @@ Pickup is **project-oriented** (#181): join a project (shared workspace, never a
 ## Flags
 `--project <slug>` · `--machine <<MACHINE_1_ID>>|<<MACHINE_2_USER>>` · `--hours N` · `--allow-multi` · `--dry-run` · `--json`
 
-Machine + ranking come from `free-work.py` (single source of truth — `claim-next` imports its `aggregate()`), so `/next` and `/free-work` always agree on what's free and in what order.
+Machine + ranking come from `free-work.py` (single source of truth: `claim-next` imports its `aggregate()`), so `/next` and `/free-work` always agree on what's free and in what order.

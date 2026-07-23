@@ -1,8 +1,8 @@
-# Design Rules Checklist — /qa-ui
+# Design Rules Checklist: /qa-ui
 
-Authoritative source: `docs/design-guidelines.md` §10 (What to Avoid) and §11 (Implementation Checklist). This file is a quick-reference extract — always reconcile against the source if they diverge.
+Authoritative source: `docs/design-guidelines.md` §10 (What to Avoid) and §11 (Implementation Checklist). This file is a quick-reference extract; always reconcile against the source if they diverge.
 
-## Category A — Static scan (checkable from source text)
+## Category A: Static scan (checkable from source text)
 
 | Rule | How to grep/check | FAIL signal |
 |---|---|---|
@@ -14,7 +14,7 @@ Authoritative source: `docs/design-guidelines.md` §10 (What to Avoid) and §11 
 | Cards have `id` | Card/panel class blocks | A card element with no `id` (breaks nav anchors) |
 | T1 section labels | Section-label styles | Label not 9px / 700 weight / uppercase / muted color |
 
-## Category B — Runtime-only (need computed style or animation observation)
+## Category B: Runtime-only (need computed style or animation observation)
 
 | Rule | Check method | Notes |
 |---|---|---|
@@ -32,7 +32,7 @@ Authoritative source: `docs/design-guidelines.md` §10 (What to Avoid) and §11 
 --surface2  #1a1e2e   nested / active state
 --surface3  #222842   tooltip / overlay
 ```
-Cards must use `border-top: 1px solid var(--border-hi)` for elevation — not `box-shadow`.
+Cards must use `border-top: 1px solid var(--border-hi)` for elevation, not `box-shadow`.
 
 ## Typography tiers (reference)
 - T1 (section labels): 9px / 700 / uppercase / `var(--text-muted)` / 1.5px letter-spacing

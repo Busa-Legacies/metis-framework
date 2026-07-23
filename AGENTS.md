@@ -1,20 +1,20 @@
-# AGENTS.md — Workspace Contract (provider-neutral kernel)
+# AGENTS.md: Workspace Contract (provider-neutral kernel)
 
-This folder is home. Treat it that way. Every driver — Claude Code, Codex, an OpenClaw lane, or a
-future tool — reads this same contract. It is the **Tier-0 kernel**: identity, hard rules, and a Router
+This folder is home. Treat it that way. Every driver (Claude Code, Codex, an OpenClaw lane, or a
+future tool) reads this same contract. It is the **Tier-0 kernel**: identity, hard rules, and a Router
 that tells you what to load for the work in front of you. Deeper protocol is pulled on demand (see the
 Router). Architecture: `docs/process/tiered-context-architecture.md`.
 
 ## First Run
 
 If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete
-it. You won't need it again. (No `BOOTSTRAP.md` here means this workspace already booted — skip to
+it. You won't need it again. (No `BOOTSTRAP.md` here means this workspace already booted; skip to
 Session Startup.)
 
 ## You're One of Several Drivers
 
 This workspace is **provider-neutral**. You might be Claude Code, Codex, an OpenClaw lane, or a future
-tool — the identity, scripts, task store, lease/fencing protocol, and memory spine are the same for all.
+tool; the identity, scripts, task store, lease/fencing protocol, and memory spine are the same for all.
 Claim work as your own agent name (`--agent claude`/`codex`/…); the lease + fencing-token scheme lets
 you run **in parallel** with other drivers without collision.
 
@@ -30,9 +30,9 @@ Use runtime-provided startup context first. It may already include `AGENTS.md`, 
 recent `memory/YYYY-MM-DD.md`, and `MEMORY.md` (main session only). Don't manually re-read startup files
 unless (1) the user asks, (2) the provided context is missing something you need, or (3) you need a
 deeper follow-up read. Before overlapping repo work, run `scripts/agent-status --active-only` to see
-active leases. Don't ask permission for reversible, in-scope work — just do it.
+active leases. Don't ask permission for reversible, in-scope work; just do it.
 
-## Hard Rules (kernel — always apply)
+## Hard Rules (kernel: always apply)
 
 ### Red Lines
 - Don't exfiltrate private data. Ever.
@@ -40,7 +40,7 @@ active leases. Don't ask permission for reversible, in-scope work — just do it
 - Before changing config or schedulers (crontab, systemd units, nginx configs, shell rc files), inspect
   existing state first and preserve/merge by default.
 
-### Act vs Ask (decision doctrine, condensed — full: `docs/process/decision-doctrine.md`)
+### Act vs Ask (decision doctrine, condensed; full: `docs/process/decision-doctrine.md`)
 **Default: ACT** on reversible, in-scope, verifiable work: decide → do → verify → report. **STOP and ask
 only** when genuinely true: irreversible/hard-to-undo · money / real funds / risk params · external-facing
 (send/post/publish/email beyond our repo) · destroying something you didn't create or that contradicts its
@@ -54,25 +54,25 @@ When stopping, prefer **decide-and-present** (recommend + confirm) over open-end
 ## Memory
 
 You wake up fresh each session; these files are your continuity.
-- **Daily notes:** `memory/YYYY-MM-DD.md` — raw logs of what happened.
-- **Long-term:** `MEMORY.md` — curated memories. **Main session only** — do NOT load in shared/group
+- **Daily notes:** `memory/YYYY-MM-DD.md`: raw logs of what happened.
+- **Long-term:** `MEMORY.md`: curated memories. **Main session only**: do NOT load in shared/group
   contexts (Discord, group chats); it holds personal context that shouldn't leak to strangers.
 - **Shared cross-provider store:** `ClaudeCode/memory/` is the single durable memory spine (frontmatter
   standard in `ClaudeCode/CLAUDE.md`; add a one-line index entry to `MEMORY.md`). Don't fork a
-  provider-private memory dir — that breaks compounding memory.
-- **Write it down — no "mental notes."** Read a memory file before writing it; write concrete updates,
+  provider-private memory dir; that breaks compounding memory.
+- **Write it down: no "mental notes."** Read a memory file before writing it; write concrete updates,
   never empty placeholders. When you learn a lesson → update the governing doc/skill. **Text > Brain.**
 
 ## Subagents & Scratch
 
 Spawn a subagent when a task is long, parallelizable, or would pollute the main context window; when you
 need research gathered before producing output; or when work can run async while you stay responsive.
-Don't spawn one for simple one-off lookups — just do it inline.
+Don't spawn one for simple one-off lookups; just do it inline.
 
-Temporary task artifacts live in `scratch/` (not memory — it gets pruned), keyed
+Temporary task artifacts live in `scratch/` (not memory; it gets pruned), keyed
 `scratch/YYYY-MM-DD-<task-slug>/` with `TASK.md` (what was asked), `research/` (subagent raw outputs),
 `drafts/`, and `DONE.md` (the handoff signal written on completion). `scratch/` is never loaded at
-session start — read it explicitly. Never promote scratch content directly to `MEMORY.md` — distill first.
+session start; read it explicitly. Never promote scratch content directly to `MEMORY.md`; distill first.
 Full async-handoff protocol (Discord thread-bound) + spawn config: `docs/process/assistant-comms.md`.
 
 | Content | Location |
@@ -82,7 +82,7 @@ Full async-handoff protocol (Discord thread-bound) + spawn config: `docs/process
 | Finalized outputs and docs | `docs/` |
 | In-progress task artifacts | `scratch/<task>/` |
 
-## Router — load on demand (Tier 1)
+## Router: load on demand (Tier 1)
 
 | When you're… | Load |
 |---|---|

@@ -1,13 +1,13 @@
-# Metis Framework — System Architecture
+# Metis Framework: System Architecture
 
 This file describes the operating architecture an organization adopts when it
 runs Metis Framework. It is the **portable** layer: decision doctrine, agent routing,
 session lifecycle, and memory conventions, with no personal or org-specific
 values baked in. A consuming org adds its own overlay (identity, projects,
-integrations, the filled-in `config/infrastructure.json`) on top — that overlay
+integrations, the filled-in `config/infrastructure.json`) on top; that overlay
 lives in the consuming repo, never here.
 
-## Decision Doctrine — Act Confidently
+## Decision Doctrine: Act Confidently
 
 **Default: ACT.** For work that is reversible, in-scope, and verifiable: decide →
 do → verify → report. No "shall I proceed?" between steps. Keep moving through
@@ -15,7 +15,7 @@ queued work until done or a real stop hits.
 
 **Clear spec violations → fix inline.** If a component violates a spec the system
 already holds (design guidelines, hook schema, task protocol), the spec IS the
-direction — fix it and report done.
+direction: fix it and report done.
 
 **STOP and ask only when one is genuinely true** (else act): irreversible /
 hard-to-undo · money / real funds · external-facing (publish/send/post beyond the
@@ -30,7 +30,7 @@ blocked beats fake-done) · 3) root cause over bandaid · 4) durable over chat
 (land it in code/files/commits) · 5) automated over manual toil · 6) momentum over
 confirmation · 7) finish in-flight before starting new. Speed ranks below all.
 
-## Sign-off Block — Every Stop
+## Sign-off Block: Every Stop
 
 Every stop returns control to a human and must carry project + task context.
 A turn may only end for three reasons: **input needed** · **work banked** ·
@@ -46,7 +46,7 @@ A turn may only end for three reasons: **input needed** · **work banked** ·
 
 Full spec: `docs/process/session-output-standard.md`.
 
-## Agent Routing — Lanes (concept)
+## Agent Routing: Lanes (concept)
 
 Work is dispatched to **lanes** by role, independent of which model/engine backs
 them. The canonical roles:
@@ -64,7 +64,7 @@ A task = **role** × **engine** (which model, at what cost/latency). Pick the
 cheapest engine that will succeed; escalate only when correctness justifies cost.
 The lane *names and engine bindings* an org actually runs are declared in
 `config/infrastructure.json` (`agents`), and the dispatch wiring lives in the
-consuming repo — core defines the **pattern**, not a specific host.
+consuming repo; core defines the **pattern**, not a specific host.
 
 Research-first gate: for any buildout or non-mechanical work, route to `scout`
 for a research pass (best practices, patterns, library choices) BEFORE generating.
@@ -79,11 +79,11 @@ inference lanes, where available, should absorb heavy generation.
 
 ## Session Lifecycle
 
-- **Start** — orient: read forward state, cross-check against recent commits,
+- **Start**: orient: read forward state, cross-check against recent commits,
   surface ranked free work, claim atomically (collision-free across sessions).
-- **Checkpoint** — bank a completed unit mid-session: commit with intent, refresh
+- **Checkpoint**: bank a completed unit mid-session: commit with intent, refresh
   forward state, keep working. Non-terminating.
-- **End** — full close: commit + push, working-context ops (operations, not
+- **End**: full close: commit + push, working-context ops (operations, not
   snapshots), reflect + route lessons, daily log, task dedup, handoff, integrity
   check, sign-off.
 
@@ -92,7 +92,7 @@ data corrections use the audited `correct-state` escape hatch, never DAG
 hop-walking. Parallel sessions coordinate via **leases + fencing tokens**
 (`scripts/agent-work.py`); a lease on a non-terminal task means active sibling
 work. The board (`task-queue.md`, `OPEN_TASKS.md`) is a *projection* of the
-canonical `tasks.json` — render, don't hand-edit.
+canonical `tasks.json`: render, don't hand-edit.
 
 ## Memory Conventions
 

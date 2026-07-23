@@ -1,4 +1,4 @@
-# Briefing Format — /start output template
+# Briefing Format: /start output template
 
 Print a single clean briefing block. No preamble, no padding.
 
@@ -33,7 +33,7 @@ Print a single clean briefing block. No preamble, no padding.
 
 ## Rules
 
-- One briefing block — no multiple sections or follow-up prose before Ant picks a task
-- Workstream map verbatim — do not summarise `session-workstreams.py` output into a flat list unless the script failed
+- One briefing block: no multiple sections or follow-up prose before Ant picks a task
+- Workstream map verbatim: do not summarise `session-workstreams.py` output into a flat list unless the script failed
 - Structural FAILs from reconcile → name them explicitly above the workstream map, not buried in Drift
 - COLD PICKUP warning → first line of the block, bold, so it's impossible to miss

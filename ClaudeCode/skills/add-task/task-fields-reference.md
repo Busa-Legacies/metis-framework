@@ -1,8 +1,8 @@
-# Task Fields Reference — /add-task
+# Task Fields Reference: /add-task
 
 ## Gather prompt (Step 3)
 
-Present as a single prompt — not one question at a time:
+Present as a single prompt, not one question at a time:
 
 ```
 To add this task I need a few details:
@@ -67,26 +67,26 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 
 | Field | Required | Notes |
 |---|---|---|
-| `taskId` | yes | `#NNN` from `alloc-id` — never hand-pick |
+| `taskId` | yes | `#NNN` from `alloc-id`; never hand-pick |
 | `title` | yes | kebab-case slug, verb-noun, no domain prefix |
 | `priority` | yes | P1 (blocking) · P2 (important) · P3 (nice-to-have) |
 | `state` | yes | `queued` for new tasks; `inbox` only for un-triaged captures |
 | `owner` | yes | <<MACHINE_1_ID>> / <<MACHINE_2_ID>> / either |
-| `project` | yes | slug from `docs/process/state/projects.json` — write gate rejects unknown/missing (#181); `ops` is the catch-all |
-| `area` / `agent` / `machine` | yes | board-projection fields (#100) — helper rejects if absent |
-| `summary` | yes | one-line what — required by schema, helper rejects if absent |
+| `project` | yes | slug from `docs/process/state/projects.json`; write gate rejects unknown/missing (#181); `ops` is the catch-all |
+| `area` / `agent` / `machine` | yes | board-projection fields (#100); helper rejects if absent |
+| `summary` | yes | one-line what; required by schema, helper rejects if absent |
 | `why` | yes | required by schema, helper rejects if absent |
 | `how` | yes | required by schema, helper rejects if absent |
-| `origin` | **yes** | WHO originated it: `ant` / `agent` / `collab` / `system` — write gate rejects missing/invalid |
+| `origin` | **yes** | WHO originated it: `ant` / `agent` / `collab` / `system`; write gate rejects missing/invalid |
 | `originRef` | no | free-text backlink to specific trigger (strategy doc path, "chat YYYY-MM-DD", incident ref) |
 | `firstStep` | no | capture while intent is fresh; omit if genuinely unknown |
 | `mainFiles` | no | array of paths; omit if unknown |
-| `planRef` | no | the planning/spec doc this task derives from (`docs/plans/PLAN-*.md` slug or a research/spec doc path) — makes the PLAN↔task link queryable instead of freeform prose; rendered in the queue projection |
+| `planRef` | no | the planning/spec doc this task derives from (`docs/plans/PLAN-*.md` slug or a research/spec doc path); makes the PLAN↔task link queryable instead of freeform prose; rendered in the queue projection |
 
-## Board line format (reference only — auto-rendered)
+## Board line format (reference only; auto-rendered)
 
 `workspace/state/OPEN_TASKS.md` is a **read-only projection** of `tasks.json`
-(`render-tier1-state.py` owns it — never hand-edit). Create tasks via the governed mutator
+(`render-tier1-state.py` owns it; never hand-edit). Create tasks via the governed mutator
 (`update-tier1-state.py create-task`) and the board line renders itself. Its rendered shape:
 
 ```
@@ -96,13 +96,13 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 ## Goals and projects reference
 
 Goals:
-- G1 — OpenClaw infrastructure reliability
-- G2 — Dashboard + personal integrations
-- G3 — Example Market operations
-- G4 — Financial systems (trading + finances)
-- G5 — Public presence (portfolio + social)
+- G1: OpenClaw infrastructure reliability
+- G2: Dashboard + personal integrations
+- G3: Example Market operations
+- G4: Financial systems (trading + finances)
+- G5: Public presence (portfolio + social)
 
-Projects (`project` is a required governed field on every task — the mutator rejects a task without one):
+Projects (`project` is a required governed field on every task; the mutator rejects a task without one):
 - P01 `queue-runner` (G1) · P02 `agent-coordination` (G1) · P03 `lane-reliability` (G1) · P04 `sync-integrity` (G1)
 - P05 `dashboard-core` (G2) · P06 `partner-brief` (G3) · P07 `finances-panel` (G4) · P08 `trading-bot` (G4)
 - P09 `portfolio-site` (G5) · P10 `portfolio-social` (G5)
