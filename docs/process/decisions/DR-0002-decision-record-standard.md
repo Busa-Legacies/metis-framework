@@ -7,12 +7,12 @@
 ## Context
 
 Git reliably captures *what changed* (diffs + intentional commit messages under the
-snapshot-vs-history contract). It does **not** capture *why* a cluster of changes happened — the
+snapshot-vs-history contract). It does **not** capture *why* a cluster of changes happened: the
 research or decision behind them. That rationale lived only in a session's live context and was
 lost at session end.
 
 The trigger was concrete: a session asked "what did we learn from the Boris Cherny research?"
-and the natural recall path (working-context → memory files → RAG grep) returned nothing — the
+and the natural recall path (working-context → memory files → RAG grep) returned nothing: the
 answer existed only as commit diffs (`77d0b67`, `b33b8a6`), discoverable solely by `git log`
 archaeology. The root cause was not "no standard exists" but that the close protocol's memory
 step (step 10) is *discretionary*, and a milestone's rationale fell through the discretionary
@@ -29,19 +29,19 @@ Adopt a lightweight, ADR-derived **Decision Record (DR)** standard:
 - Numbered, immutable markdown records in a self-contained folder `docs/process/decisions/`
   (auto-indexed by RAG under `shared` → discoverable by all agents).
 - The **DR-NNNN ID is the bidirectional join key** between rationale and code (`git log
-  --grep=DR-NNNN`), robust to rebases — no fragile SHA-stamping required.
+  --grep=DR-NNNN`), robust to rebases; no fragile SHA-stamping required.
 - Creation is **folded into `/checkpoint` and `/end`** (the only intentional-history authors),
   never a standalone ritual, with a **narrow trigger** so DRs stay signal, not noise.
 - A **zero-LLM Stop-hook heuristic** detects milestone-shaped commit clusters and rides the
-  existing checkpoint nudge — thorough coverage at ~zero marginal compute.
+  existing checkpoint nudge: thorough coverage at ~zero marginal compute.
 
 ## Alternatives considered
 
-- **Protocol-only (no tooling):** rejected — relies on the same discretionary discipline that
+- **Protocol-only (no tooling):** rejected: relies on the same discretionary discipline that
   already failed once.
-- **Store in `ClaudeCode/memory/` only:** rejected — Claude-Code-siloed, but most milestones are
+- **Store in `ClaudeCode/memory/` only:** rejected: Claude-Code-siloed, but most milestones are
   cross-agent; re-creates the siloing problem the memory-surface-map warns against.
-- **A DR per commit / verbose changelog:** rejected — guarantees rot via noise. The trigger is
+- **A DR per commit / verbose changelog:** rejected: guarantees rot via noise. The trigger is
   deliberately narrow (a handful per month).
 
 ## Changes
@@ -60,7 +60,7 @@ Pinned commits:
 
 ## Consequences
 
-- System milestones now leave a durable, recall-surfaced record tying *why* to *what* — the
+- System milestones now leave a durable, recall-surfaced record tying *why* to *what*; the
   failure mode that produced DR-0001 cannot silently recur.
 - A small recurring obligation at checkpoint/end time, bounded by the narrow trigger.
 - DRs are immutable: revisiting a decision means a new DR that `Supersedes` the old one, so the

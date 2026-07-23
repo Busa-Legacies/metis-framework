@@ -14,7 +14,7 @@ Version: 1.0 (adopted 2026-06-01)
 
 `goal:` and `project:` are required. See [projects.md](projects.md) for the project list and IDs.
 
-**Body** — **always required, no exceptions** (see [task-writing-protocol.md](task-writing-protocol.md)). Minimum required sections:
+**Body**: **always required, no exceptions** (see [task-writing-protocol.md](task-writing-protocol.md)). Minimum required sections:
 ```
   - **Why:** [Trigger — incident, observation, or friction point. Include date if a live event.]
   - **Plan:** [Approach direction + what NOT to do / what was already tried.]
@@ -25,7 +25,7 @@ Optional additions: `**Next action:**`, `**Blocked by:** #NNN`, `**Done when:**`
 ### OPEN_TASKS.md (board view) entries
 
 `OPEN_TASKS.md` is a **read-only projection** auto-rendered from `tasks.json`
-(`render-tier1-state.py`) — never hand-write a board line. Its rendered shape, for reference:
+(`render-tier1-state.py`); never hand-write a board line. Its rendered shape, for reference:
 
 ```
 - [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
@@ -37,8 +37,8 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 
 | Field | Values | Notes |
 |---|---|---|
-| `#NNN` | 001–999 | Sequential, never reused. **Stored canonically with the leading `#`** — the `taskId` field in `tasks.json` is `"#361"`, never `"361"`. See counter + canonical-form note below. |
-| `slug` | `kebab-case` | Verb-noun describing the work. No domain prefix — that's `area`. |
+| `#NNN` | 001–999 | Sequential, never reused. **Stored canonically with the leading `#`**: the `taskId` field in `tasks.json` is `"#361"`, never `"361"`. See counter + canonical-form note below. |
+| `slug` | `kebab-case` | Verb-noun describing the work. No domain prefix; that's `area`. |
 | `type` | `bug` `feat` `chore` `infra` `research` `doc` | Kind of work |
 | `area` | `openclaw` `dashboard` `trading-bot` `example` `infra` `<<MACHINE_2_ID>>` `personal` | Project domain |
 | `goal` | `G1` `G2` `G3` `G4` `G5` `G6` | Active campaign this serves. See [goals.md](goals.md); life-domain vocabulary lives in [taxonomy.yaml](taxonomy.yaml). |
@@ -54,7 +54,7 @@ Type and area tags optional in board view; include `@type:T @area:A` when useful
 ## ID Counter
 
 The counter is **canonical in `docs/process/state/task-counter.json`** (field
-`lastAssigned`) — there is no markdown mirror (#352 removed it; the duplicated
+`lastAssigned`); there is no markdown mirror (#352 removed it; the duplicated
 line raced two concurrent allocs into a merge conflict). Allocate atomically with
 `scripts/agent-work.py alloc-id` (used by `/add-task`); never hand-edit the counter.
 `alloc-id --peek` shows the next id without consuming it; `update-tier1-state.py
@@ -62,10 +62,10 @@ schema` prints the next available id. IDs are never reused, even for cancelled t
 The close gate verifies the counter against canonical state via
 `scripts/lib/close_integrity_canonical.py id-counter`.
 
-### Canonical `taskId` form — leading `#` is mandatory
+### Canonical `taskId` form: leading `#` is mandatory
 
 The stored `taskId` is always `"#NNN"` **with** the hash (e.g. `"#361"`). Note that
-`alloc-id` prints the **bare** number (`361`) — callers must prepend `#` before writing it.
+`alloc-id` prints the **bare** number (`361`); callers must prepend `#` before writing it.
 A prefix-less id (`"361"`) is a bug: it collides on number with a real `#NNN` task and
 misses every `#NNN` exact-match lookup (e.g. the born-governed commit-reference guard).
 `update-tier1-state.py create-task` enforces this: a bare-numeric `taskId` is coerced to
@@ -76,10 +76,10 @@ eval-pipeline tasks; normalized + re-IDed 2026-06-15.)
 ## Scope Notes
 
 **This convention applies to:**
-- `docs/process/task-queue.md` — inbox and free-form sections
-- `workspace/state/OPEN_TASKS.md` — board view entries
+- `docs/process/task-queue.md`: inbox and free-form sections
+- `workspace/state/OPEN_TASKS.md`: board view entries
 
-**Exempt:** The `<!-- GOVERNED:START --> ... <!-- GOVERNED:END -->` section of task-queue.md is managed by <<MACHINE_2_ID>> + `docs/process/state/tasks.json` and uses its own ID scheme (`T02`, `T06`, etc.). Do not manually rename governed entries — they will adopt this convention as <<MACHINE_2_ID>> updates tasks.json.
+**Exempt:** The `<!-- GOVERNED:START --> ... <!-- GOVERNED:END -->` section of task-queue.md is managed by <<MACHINE_2_ID>> + `docs/process/state/tasks.json` and uses its own ID scheme (`T02`, `T06`, etc.). Do not manually rename governed entries; they will adopt this convention as <<MACHINE_2_ID>> updates tasks.json.
 
 **Done tasks** use the same `#NNN slug` format with `status:done` in the fields line. All tasks (open and done) were migrated 2026-06-01.
 

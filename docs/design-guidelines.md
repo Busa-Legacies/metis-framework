@@ -1,12 +1,12 @@
-# Design Guidelines — Metis OS
+# Design Guidelines: Metis OS
 
-**Scope:** All UI/frontend work across Metis OS — dashboards, workspace, web UIs, agent tools.  
+**Scope:** All UI/frontend work across Metis OS: dashboards, workspace, web UIs, agent tools.  
 **Audience:** Claude (via CLAUDE.md auto-load), <<MACHINE_1_ID>>, <<MACHINE_2_ID>>, any agent doing frontend work.  
 **Authority:** These are opinionated rules, not suggestions. Follow them unless explicitly overridden.
 
 ---
 
-## 0. Metis Command — Reinvisioned Design Language (2026-06, #437) — CANONICAL
+## 0. Metis Command: Reinvisioned Design Language (2026-06, #437), CANONICAL
 
 > **This section supersedes §§1–9 for the Control Center.** Sections 1–9 document the legacy
 > dark "command surface" identity (dark-only, monospace-everything, grid/scanline) that shipped
@@ -15,21 +15,21 @@
 > the surfaces they describe. Reference: `docs/plans/PLAN-metis-command-reinvision.md`,
 > `docs/reviews/metis-os-ux-reinvision-audit-2026-06-22.md`.
 
-**Direction locked (2026-06-23): "d1 — Console."** Ant picked d1 of the three W1 directions — the cleanest
+**Direction locked (2026-06-23): "d1: Console."** Ant picked d1 of the three W1 directions: the cleanest
 balance of actionable-insight density with minimal clutter. The tokens and layout below are d1's *actual*
 values (source: `docs/plans/w1-design-directions/d1-console.html`), now canonical.
 
-**Aesthetic: "Calm Focus" — light, airy, editorial.** A surface Ant *wants to live in*, not a dense
+**Aesthetic: "Calm Focus" (light, airy, editorial).** A surface Ant *wants to live in*, not a dense
 console he tolerates. The metric is adoption, not decoration: the UI's job is to tell him what's
-happening, what needs him, and how to act — with as little friction as possible, on desktop and phone.
+happening, what needs him, and how to act, with as little friction as possible, on desktop and phone.
 
 **The attention principle (the one rule everything else serves).** The base is calm neutral (slate on
 near-white); **color is signal, never decoration.** Two layers carry it in d1: (1) each needs-you item is
-**typed by action color** (the §0.2 taxonomy — Decide=amber, Review=blue, Unblock=rose…), so the color
+**typed by action color** (the §0.2 taxonomy: Decide=amber, Review=blue, Unblock=rose…), so the color
 tells Ant *how* to act, not just *that* something waits; (2) the **rose `#e11d48` count badge** on a room
-icon is the at-a-glance "something needs you here." When nothing needs him: no badges, no warm color — the
+icon is the at-a-glance "something needs you here." When nothing needs him: no badges, no warm color; the
 surface rests ("All systems nominal"). *(This refines the earlier single-coral-accent draft to match what
-d1 actually does — flag if you'd rather a single global accent instead of typed action-colors.)*
+d1 actually does; flag if you'd rather a single global accent instead of typed action-colors.)*
 
 ### 0.1 Color tokens *(d1 actual values)*
 | Token | Value | Use |
@@ -46,13 +46,13 @@ d1 actually does — flag if you'd rather a single global accent instead of type
 | `--brand-grad` | `linear-gradient(135deg,#3b82f6,#22d3ee)` | logo + progress bars (the one ornament) |
 | `--radius` | `14px` | cards; buttons 8px, pills/badges 6px |
 
-The signature is **dark rail + light canvas** — not all-light. Light content is the default and the norm
+The signature is **dark rail + light canvas**, not all-light. Light content is the default and the norm
 (overrides §1's "dark only"); the rail is the one dark surface. A full dark theme may come later as an
 option, not the base.
 
 ### 0.2 Action-type taxonomy (new reusable primitive)
 Every item that needs Ant is **typed by the interaction it wants**, and renders the matching control
-inline. This is the core component of the reinvision — used in the Watch briefing, inbox, and anywhere
+inline. This is the core component of the reinvision, used in the Watch briefing, inbox, and anywhere
 work surfaces to Ant. Knowing *that* something needs him is useless without knowing *how* to act.
 
 | Mode | What it asks for | Inline control | Color |
@@ -66,7 +66,7 @@ work surfaces to Ant. Knowing *that* something needs him is useless without know
 | **Unblock** | grant access/scope/credential | Unblock (states what's needed) | rose `#d6455f` / `#fdecef` |
 
 Each item shows: a **mode tag** (color-coded), a one-line *"what you need to do,"* and the affordance.
-Mode colors are for the tag/control only — they do not compete with `--attn` for the eye.
+Mode colors are for the tag/control only; they do not compete with `--attn` for the eye.
 
 ### 0.3 Typography *(d1 scale)*
 System/`Inter` sans for all UI text (this overrides §1's monospace mandate). Monospace
@@ -76,53 +76,53 @@ headers 11–12px **uppercase, .1em tracked, `--ink-3`**; real hierarchy without
 
 ### 0.4 Spacing & density
 Airy by default. Card padding 16–20px; 12–24px gaps between sections; max content width ~1080px so lines
-don't sprawl. White space is a feature — never pack to fill.
+don't sprawl. White space is a feature; never pack to fill.
 
 ### 0.5 Layout *(d1)*
 - **Front door = a briefing** (the Watch room), never an empty terminal. d1's briefing leads with a
   greeting + "since you were away" line, then System chips, a Dispatch field, Needs-you, Goal progress,
-  and Active agents — answering "is it running / what needs me / what's next" above the fold.
-- **Slim dark rail** (`--rail`, ~212px desktop) with two labeled groups — **Rooms** (Watch · Steer · Plan ·
-  **Studio**) then **Context** (the **Personal ↔ Example** toggle — the existing binary `workspace` context,
-  surfaced here instead of buried in Settings) — plus Settings and a foot status line
+  and Active agents, answering "is it running / what needs me / what's next" above the fold.
+- **Slim dark rail** (`--rail`, ~212px desktop) with two labeled groups: **Rooms** (Watch · Steer · Plan ·
+  **Studio**) then **Context** (the **Personal ↔ Example** toggle, the existing binary `workspace` context,
+  surfaced here instead of buried in Settings), plus Settings and a foot status line
   (`● All systems nominal`). Mobile: bottom tab bar. A rose count badge on a room icon = needs-you there.
 - **⌘K command palette is global** (any room), the fast path for navigation + dispatch; a search field
   ("⌕ Search anything… ⌘K") also sits in the top bar.
-- Status is always visible (this §1 rule survives), but calm — a quiet health row, not a dense HUD.
+- Status is always visible (this §1 rule survives), but calm: a quiet health row, not a dense HUD.
 
 ### 0.6 Components
 - **Cards/rows:** white on `--bg`, `--line` border, 14–16px radius, no heavy shadows (at most `0 1px 2px rgba(0,0,0,.03)`).
 - **Buttons:** neutral outline default; the *primary action of a typed item* uses that mode's color;
   the global attention/CTA uses `--attn`. Max one filled button per row.
-- **Action Queue:** the §0.2 primitive — the canonical way work is presented to Ant.
+- **Action Queue:** the §0.2 primitive, the canonical way work is presented to Ant.
 - **Confirms:** in-app `ConfirmActionButton`, never `window.confirm()` (which also breaks the aesthetic).
 - **Back affordance (#450):** every drill-in surface (Studio inner screens, detail panes, line/task
-  detail) returns via the ONE shared `<BackButton>` — an arrow **plus the named destination**
+  detail) returns via the ONE shared `<BackButton>`: an arrow **plus the named destination**
   ("← Studios", never a bare arrow), pinned to the **fixed left** of the header so it never scrolls
   off on a phone, with a ≥44px touch target there. Never bury it at the end of a scrolling toolbar.
 - **Progressive disclosure (#450):** a surface leads with its **primary action**; secondary and rare
   controls collapse behind a single overflow ("⋮") rather than a wall of unlabeled icons. Decorative,
-  label-less icons are noise — drop them (especially on mobile). On a phone the header's action cluster
-  must **wrap or collapse to overflow** — it may never run off the viewport edge.
-- **Drill-in by default — every tile/card/panel is clickable (#458, CANONICAL):** progressive
-  disclosure is not just header layout — it is the **core navigation contract of the OS**. Any tile,
+  label-less icons are noise; drop them (especially on mobile). On a phone the header's action cluster
+  must **wrap or collapse to overflow**; it may never run off the viewport edge.
+- **Drill-in by default, every tile/card/panel is clickable (#458, CANONICAL):** progressive
+  disclosure is not just header layout; it is the **core navigation contract of the OS**. Any tile,
   stat card, or panel that summarizes something with a richer view **must be clickable as a whole** to
   open that view: the *entire* card is the target (it renders as a real `<button>` carrying an
   `actionHint` like "Open Ops"), never a buried "details →" link. **Mechanism:** pass
-  `onClick={() => nav.goto('<mode>'[, opts])}` to the shared `StatusCard`/panel primitive — the
+  `onClick={() => nav.goto('<mode>'[, opts])}` to the shared `StatusCard`/panel primitive; the
   hover/focus affordance + `actionHint` tooltip come for free; bespoke cards must replicate the same
   button semantics. A surface stays non-clickable **only when it is a genuine leaf** (no deeper view
-  exists) — that is the rare, self-evident exception, not the default. This rule is **retroactive
+  exists); that is the rare, self-evident exception, not the default. This rule is **retroactive
   (audit and fix existing tiles), present, and binding on all future UI.** Constraints: a button can't
-  nest buttons — when a card needs inner row-level actions, make the card *header/body* the nav target
+  nest buttons: when a card needs inner row-level actions, make the card *header/body* the nav target
   and keep row actions as sibling affordances (see OverviewSummary "Active Work"). Keyboard/touch: real
   button → Enter/Space activatable, ≥44px target. Pair with the Back affordance above so every drill-in
   returns cleanly.
 
 ### 0.7 Motion
-Restrained and quick (≤150ms ease) — fades and small slides for state changes; the attention accent may
+Restrained and quick (≤150ms ease): fades and small slides for state changes; the attention accent may
 use a single subtle pulse when a *new* needs-you item arrives, then rest. No ambient/looping motion in
-the workspace. (Marketing/public surfaces are out of scope here — see `feedback_motion_context_scope`.)
+the workspace. (Marketing/public surfaces are out of scope here; see `feedback_motion_context_scope`.)
 
 ### 0.8 Mobile (full parity)
 Bottom tab bar (Watch/Steer/Plan/Studio) with the context toggle + Settings under a "You"/overflow;
@@ -134,7 +134,7 @@ read-only companion.
 
 ## 1. Aesthetic Direction
 
-**OS-grade command surface.** Metis OS is an operating environment for multi-agent work — the aesthetic should feel like a beautifully designed mission control surface. Not corporate SaaS, not consumer app, not a generic dev tool. Think: a NASA ground control terminal that was also designed by someone who loves craft.
+**OS-grade command surface.** Metis OS is an operating environment for multi-agent work; the aesthetic should feel like a beautifully designed mission control surface. Not corporate SaaS, not consumer app, not a generic dev tool. Think: a NASA ground control terminal that was also designed by someone who loves craft.
 
 Two contexts exist, both dark:
 
@@ -147,7 +147,7 @@ Both contexts share the same surface system, typography, and spacing. Only the a
 
 **Universal rules:**
 - Dark backgrounds only. Never light mode unless explicitly requested.
-- Monospace font (`SF Mono`, `Fira Code`, `JetBrains Mono`) for all UI text — this IS the aesthetic.
+- Monospace font (`SF Mono`, `Fira Code`, `JetBrains Mono`) for all UI text; this IS the aesthetic.
 - Every screen should feel like it was designed by a developer who cares, not generated.
 - Status is always visible. The system state should never be hidden in a drawer.
 
@@ -157,7 +157,7 @@ Both contexts share the same surface system, typography, and spacing. Only the a
 
 ### 2.1 Background canvas
 
-The base canvas is not flat black. It has depth through **aurora gradients** — two radial glows that sit at the corners of the viewport, giving every surface a sense of depth and atmosphere without competing with content.
+The base canvas is not flat black. It has depth through **aurora gradients**: two radial glows that sit at the corners of the viewport, giving every surface a sense of depth and atmosphere without competing with content.
 
 **Workspace / Metis Command:**
 ```css
@@ -169,7 +169,7 @@ background:
 Cyan glow at top-left (active/interactive energy), violet glow at top-right (atmospheric/system depth). Deep base: `#05060a`.
 
 **Dashboard / informational:**
-The dashboard uses a subtler, flatter version — the aurora can be toned down to `0.08` opacity or omitted for denser data surfaces. Base: `#0b0d14`.
+The dashboard uses a subtler, flatter version; the aurora can be toned down to `0.08` opacity or omitted for denser data surfaces. Base: `#0b0d14`.
 
 ### 2.2 Grid overlay
 
@@ -182,7 +182,7 @@ For workspace surfaces, add a subtle 32px grid underneath content panels:
   background-size: 32px 32px;
 }
 ```
-This creates a "command room" feeling — subtle datum lines that signal structure without adding visual weight. Use on the outermost container of workspace UIs, never on individual panels.
+This creates a "command room" feeling: subtle datum lines that signal structure without adding visual weight. Use on the outermost container of workspace UIs, never on individual panels.
 
 ### 2.3 Brand mark language
 
@@ -193,9 +193,9 @@ The Metis brand mark pattern: **icon + ultra-wide tracking label**.
 <span class="text-xs font-black uppercase tracking-[0.22em] text-cyan-100">Metis Command</span>
 ```
 
-- `tracking-[0.22em]` — instrument panel letter-spacing, not UI label spacing
-- `font-black` (900 weight) — maximum authority at small size
-- `text-cyan-100` — the text reflects the accent, not pure white
+- `tracking-[0.22em]`: instrument panel letter-spacing, not UI label spacing
+- `font-black` (900 weight): maximum authority at small size
+- `text-cyan-100`: the text reflects the accent, not pure white
 - Icon anchors the label on the left; icon color matches the accent
 
 Product-level headers always use this pattern. Never use normal tracking for system/workspace section identity labels.
@@ -217,7 +217,7 @@ For terminals, live feed panels, or hero display elements:
   to { transform: translateY(100%); }
 }
 ```
-Use sparingly — one scanline element per view max. Never on data panels, only on "live terminal" or "active feed" surfaces.
+Use sparingly: one scanline element per view max. Never on data panels, only on "live terminal" or "active feed" surfaces.
 
 ---
 
@@ -227,13 +227,13 @@ Use sparingly — one scanline element per view max. Never on data panels, only 
 
 | Role | Color | Hex | Use |
 |---|---|---|---|
-| **Workspace brand / base** | Midnight blue | `#0b1e3f` | The workspace's signature/brand tone and deep base & panel surfaces. Near-black — a *base*, not a foreground accent (it can't pop on `#05060a`). |
+| **Workspace brand / base** | Midnight blue | `#0b1e3f` | The workspace's signature/brand tone and deep base & panel surfaces. Near-black: a *base*, not a foreground accent (it can't pop on `#05060a`). |
 | **Primary interactive** (workspace) | Cyan | `#34d3ff` | The bright workspace accent used across Metis Command: active states, CTAs, borders, accent text, cursors, brand chrome. Also the codex agent-identity color. |
 | **Workspace highlight** (secondary) | Amber | `#f59e0b` | Secondary highlight for select CTAs / emphasis meant to stand apart from the cyan accent. Distinct from the lighter warning amber `#fbbf24`. |
 | **Primary interactive** (dashboard) | Indigo | `#6366f1` | Active states, CTAs, live indicators |
 | **Atmospheric / ambient** | Violet | `#a78bfa` | System depth; Claude-tier agent identity; aurora/atmospheric glow |
 | **Running / success** | Emerald | `#34d399` | Active agents, passing tests, clean git |
-| **Warning / exited** | Amber (light) | `#fbbf24` | Exited agents awaiting review, warnings, dirty git — a *lighter* amber, distinct from the `#f59e0b` workspace highlight |
+| **Warning / exited** | Amber (light) | `#fbbf24` | Exited agents awaiting review, warnings, dirty git (a *lighter* amber, distinct from the `#f59e0b` workspace highlight) |
 | **Danger / stopped** | Rose | `#fb7185` | Errors, stopped services, dangerous actions |
 | **Evidence / audit** | Indigo (light) | `#a5b4fc` | Evidence counts, audit trails, approval records |
 
@@ -248,7 +248,7 @@ bg-rose-300/15 text-rose-200     /* error / stopped */
 bg-indigo-300/15 text-indigo-200 /* evidence / audit */
 bg-slate-300/10 text-slate-300   /* todo / neutral */
 ```
-Never solid color backgrounds for status chips — they overpower the surface.
+Never solid color backgrounds for status chips; they overpower the surface.
 
 ### 3.3 Agent/lane color identity
 
@@ -266,14 +266,14 @@ Pattern: `text-{color}-200 border-{color}-300/40 bg-{color}-300/10`
 
 ## 4. Surface Elevation System (4 levels)
 
-Shadows don't work on dark backgrounds — elevation is communicated through **surface lightness** and **top-edge border highlights**. Panels float over the aurora gradient rather than sitting on a flat field.
+Shadows don't work on dark backgrounds; elevation is communicated through **surface lightness** and **top-edge border highlights**. Panels float over the aurora gradient rather than sitting on a flat field.
 
 | Level | Variable | Workspace hex | Dashboard hex | Use for |
 |---|---|---|---|---|
-| 0 — Base | `--bg` | `#05060a` | `#0b0d14` | Canvas; log terminals; deepest insets |
-| 1 — Panel | `--panel` | `#0b0e15` | `#13161f` | Main panels; glassy overlays over the aurora |
-| 2 — Nested | `--panel2` | `#111625` | `#1a1d2a` | Nested elements; hover states; inner cards |
-| 3 — Overlay | `--surface3` | `#1a1f32` | `#212435` | Modals; tooltips; deepest hover states |
+| 0: Base | `--bg` | `#05060a` | `#0b0d14` | Canvas; log terminals; deepest insets |
+| 1: Panel | `--panel` | `#0b0e15` | `#13161f` | Main panels; glassy overlays over the aurora |
+| 2: Nested | `--panel2` | `#111625` | `#1a1d2a` | Nested elements; hover states; inner cards |
+| 3: Overlay | `--surface3` | `#1a1f32` | `#212435` | Modals; tooltips; deepest hover states |
 
 **Glassy panel style (workspace):**
 ```css
@@ -287,7 +287,7 @@ Panels should feel like frosted glass floating over the aurora gradient, not sol
 ```css
 border-top-color: rgba(255,255,255,0.06); /* --border-hi */
 ```
-Workspace panels use the `line` variable (`rgba(148, 163, 184, 0.16)`) uniformly — the aurora already creates implied depth; top-edge highlights are optional.
+Workspace panels use the `line` variable (`rgba(148, 163, 184, 0.16)`) uniformly; the aurora already creates implied depth; top-edge highlights are optional.
 
 **Card shadow formula** (dashboard surfaces, two-layer):
 ```css
@@ -302,16 +302,16 @@ Three tiers. If you need a fourth, reconsider structure.
 
 | Tier | Role | Size / Weight / Tracking | Color |
 |---|---|---|---|
-| T0 — Brand mark | Product/system identity labels | `12px / 900 / 0.22em / uppercase` | `text-cyan-100` |
-| T1 — Section label | Tab labels, panel headers, category | `9–10px / 700 / 0.18em / uppercase` | `--muted` / `text-slate-400` |
-| T2 — Primary content | Task names, focus titles, key values | `12–13px / 600` | `--text` / `text-white` |
-| T3 — Secondary / meta | Paths, timestamps, counts, hints | `10–11px / 400` | `--muted` / `text-slate-500` |
+| T0: Brand mark | Product/system identity labels | `12px / 900 / 0.22em / uppercase` | `text-cyan-100` |
+| T1: Section label | Tab labels, panel headers, category | `9–10px / 700 / 0.18em / uppercase` | `--muted` / `text-slate-400` |
+| T2: Primary content | Task names, focus titles, key values | `12–13px / 600` | `--text` / `text-white` |
+| T3: Secondary / meta | Paths, timestamps, counts, hints | `10–11px / 400` | `--muted` / `text-slate-500` |
 
 **Rules:**
 - Brand mark (T0) is reserved for the product identity label only. Use `tracking-[0.22em]` + `font-black`.
-- Section labels (T1) use `tracking-[0.18em]` — wide but not identity-wide.
+- Section labels (T1) use `tracking-[0.18em]`, wide but not identity-wide.
 - Important content (T2) is what draws the eye. Never compete T3 with T2.
-- Never use `font-weight: 100` or `300` on dark backgrounds — they disappear.
+- Never use `font-weight: 100` or `300` on dark backgrounds; they disappear.
 - Monospace stack: `SF Mono, Fira Code, JetBrains Mono, monospace`. **Never `Inter`, `Roboto`, `Arial`, or `system-ui`.**
 
 ---
@@ -334,7 +334,7 @@ Base unit: `4px`. Everything is a multiple of 4.
 
 ## 6.5 Iconography Standard
 
-**Library:** `lucide-react` only — never mix icon sets.
+**Library:** `lucide-react` only; never mix icon sets.
 
 **Size ladder (6 steps, nothing in between, nothing below 12):**
 
@@ -347,9 +347,9 @@ Base unit: `4px`. Everything is a multiple of 4.
 | `24` | Mobile bottom tab bar (HIG tab spec: 24px icon + 12px label) |
 | `28` | Empty-state / placeholder hero |
 
-**Semantic rules — one icon, one meaning:**
+**Semantic rules (one icon, one meaning):**
 - **Mode identity is singular**: the icon registered in `control-center-modes.ts` is THE
-  mode's glyph — reused in nav rail, bottom tabs, and that mode's header. Never a
+  mode's glyph, reused in nav rail, bottom tabs, and that mode's header. Never a
   different icon for the same mode in two places, never that icon for anything else
   (e.g. `Bot` = Agents mode; the trading bot card uses `CandlestickChart`, remote
   access uses `Wifi`).
@@ -357,7 +357,7 @@ Base unit: `4px`. Everything is a multiple of 4.
   for resume/undo semantics.
 - **`Cpu` = machine hardware only.** Provider usage cards get distinct glyphs:
   Claude → `Sparkles`, Codex → `Terminal`, Ollama/local host → `Server`.
-- Sibling cards in one grid must never share a glyph — if two cards would take the
+- Sibling cards in one grid must never share a glyph: if two cards would take the
   same icon, one of them has the wrong icon.
 
 ---
@@ -379,7 +379,7 @@ Base unit: `4px`. Everything is a multiple of 4.
 - No animation longer than 0.3s for UI chrome. Data updates can go to 0.6s.
 - CSS-only animations. No JS animation libraries unless Motion is already imported.
 - One "hero" animation per page load (staggered card entry). Don't scatter micro-interactions.
-- Animate only: `opacity`, `transform`, `box-shadow` — GPU composited, no reflow.
+- Animate only: `opacity`, `transform`, `box-shadow` (GPU composited, no reflow).
 - `scanline` is a single-use dramatic effect, not decoration.
 
 ---
@@ -482,11 +482,11 @@ Each workspace card surfaces:
 - Next suggested lane action (cyan chip with label)
 - Git branch, dirty count, ahead/behind
 
-This is the "workspace scan" — the operator looks at the card and knows the state without opening anything.
+This is the "workspace scan": the operator looks at the card and knows the state without opening anything.
 
 ### 9.4 Evidence-first done state
 
-A task is not done until artifacts are linked. "Done" is not a status flip — it's a gate that requires:
+A task is not done until artifacts are linked. "Done" is not a status flip; it's a gate that requires:
 - At minimum one evidence row (diff / report / test result / commit)
 - Visible checklist before the gate, not a hidden server-side check
 
@@ -497,9 +497,9 @@ The done gate should be visible in the UI as a checklist, not a surprise rejecti
 For risky actions (code generation, external mutations), the flow is:
 1. Show the **lane plan** before dispatch: goal, role, model, scope, risk tier, estimated cost
 2. Low/medium risk: auto-proceeds after showing the plan (brief window to cancel)
-3. High/critical: explicit approval button required — visually distinct from other actions
+3. High/critical: explicit approval button required, visually distinct from other actions
 
-The approval button is never a standard CTA style — it uses a border that makes it feel like a confirmation instrument, not a regular button.
+The approval button is never a standard CTA style; it uses a border that makes it feel like a confirmation instrument, not a regular button.
 
 ---
 
@@ -515,7 +515,7 @@ The approval button is never a standard CTA style — it uses a border that make
 
 ---
 
-## 11. Nielsen's Heuristics — Applied
+## 11. Nielsen's Heuristics, Applied
 
 1. **Visibility of system status:** Agent counts in the header, pulse animations on live indicators, git state per workspace card. Status is never hidden.
 2. **Match the mental model:** Mission control / workspace metaphor = operator mental model. Monospace, structured data, lane outputs.
@@ -542,7 +542,7 @@ The approval button is never a standard CTA style — it uses a border that make
 | Approval as a dialog box | Approval as a visible lane plan + instrument-style confirm |
 | Overusing accent color | Reserve: cyan/indigo for 2–3 uses per panel |
 | Animations on everything | One stagger entry + pulse on live only + scanline on terminals |
-| Pure `#000000` black | `#05060a` (workspace) or `#0b0d14` (dashboard) — near-black with blue tint |
+| Pure `#000000` black | `#05060a` (workspace) or `#0b0d14` (dashboard), near-black with blue tint |
 
 ---
 
@@ -557,7 +557,7 @@ Before shipping any UI work:
 - [ ] Monospace font stack applied
 
 **Color:**
-- [ ] Active states use cyan (workspace) or indigo (dashboard) — not both in the same context
+- [ ] Active states use cyan (workspace) or indigo (dashboard), not both in the same context
 - [ ] Status chips use tinted pattern (`bg-*/15 text-*-200`)
 - [ ] No more than 3 accent-colored elements per panel
 
@@ -587,9 +587,9 @@ Before shipping any UI work:
 
 ## Sources
 
-- [Refactoring UI](https://refactoringui.com/) — Wathan & Schoger
-- [NN/g — 5 Principles of Visual Design in UX](https://www.nngroup.com/articles/principles-visual-design/)
-- [NN/g — Nielsen's 10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/)
-- [Muzli — Dark Mode Design Systems](https://muz.li/blog/dark-mode-design-systems-a-complete-guide-to-patterns-tokens-and-hierarchy/)
-- Metis Command (`projects/metis-command/`) — visual patterns extracted from the workspace build
-- [frontend-design plugin SKILL.md](~/.claude/plugins/marketplaces/claude-plugins-official/plugins/frontend-design/skills/frontend-design/SKILL.md) — Anthropic official
+- [Refactoring UI](https://refactoringui.com/), Wathan & Schoger
+- [NN/g: 5 Principles of Visual Design in UX](https://www.nngroup.com/articles/principles-visual-design/)
+- [NN/g: Nielsen's 10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/)
+- [Muzli: Dark Mode Design Systems](https://muz.li/blog/dark-mode-design-systems-a-complete-guide-to-patterns-tokens-and-hierarchy/)
+- Metis Command (`projects/metis-command/`): visual patterns extracted from the workspace build
+- [frontend-design plugin SKILL.md](~/.claude/plugins/marketplaces/claude-plugins-official/plugins/frontend-design/skills/frontend-design/SKILL.md), Anthropic official

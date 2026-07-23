@@ -8,10 +8,10 @@ rebuild, and tracks the seams that must be clean before any external consumer.
 
 | Phase | Canonical author | metis-os role | Trigger to advance |
 |---|---|---|---|
-| **1 — now** | `metis-os` | authors the framework in-place; publishes to metis-core via `build/publish.py` | — |
-| **2 — productize** | `metis-core` | becomes a *reference consumer* (dogfood); refactored to run from the core | first non-Navore / paying consumer appears |
+| **1: now** | `metis-os` | authors the framework in-place; publishes to metis-core via `build/publish.py` | — |
+| **2: productize** | `metis-core` | becomes a *reference consumer* (dogfood); refactored to run from the core | first non-Navore / paying consumer appears |
 
-Phase 1 (Model B) keeps risk low — nothing in the live metis-os system changes.
+Phase 1 (Model B) keeps risk low: nothing in the live metis-os system changes.
 Phase 2 flips canonicality: metis-core gets independent releases/tests/license,
 and metis-os is migrated to consume it (the invasive but justified step).
 
@@ -24,7 +24,7 @@ and metis-os is migrated to consume it (the invasive but justified step).
 
 ## The core-vs-navore split (MUST happen before external sale)
 
-`navore/` currently holds Navore's content **including business strategy** —
+`navore/` currently holds Navore's content **including business strategy**,
 correct for a repo private to Busa-Legacies + Navore, but it **cannot ship in a
 product sold to others**. The seam is already clean: all Navore content is
 isolated under `navore/`, nothing in the framework core depends on it. The
@@ -42,16 +42,16 @@ Keep this invariant: **no framework-core file may import or reference `navore/`.
 
 - [x] Parameterization seam (`config/infrastructure.json` + `infra_config.py`)
 - [x] Reproducible build/publish pipeline (`build/`)
-- [x] Clean-core CI guard (no leaked IPs/paths — `core-ci.yml`)
+- [x] Clean-core CI guard (no leaked IPs/paths: `core-ci.yml`)
 - [x] Versioning + changelog (`VERSION`, `CHANGELOG.md`)
 - [x] CODEOWNERS review gate (advisory; enforce when org upgrades to GitHub Team)
-- [x] Licensing decision — **FSL-1.1-Apache-2.0** (source-available; blocks
+- [x] Licensing decision: **FSL-1.1-Apache-2.0** (source-available; blocks
       Competing Use, auto-converts to Apache-2.0 two years after each version
       ships). Least-regret: preserves the commercial window now, opens later.
 - [ ] navore/ cut out of the product line (Phase 2)
 - [x] Quickstart / install docs for a fresh consumer (`docs/QUICKSTART.md`)
 - [x] Fill-in walkthrough for `config/infrastructure.json` (folded into QUICKSTART §3)
-- [x] Test coverage on the governance core — `scripts/test-governance-core.py`
+- [x] Test coverage on the governance core: `scripts/test-governance-core.py`
       (forward-only state DAG, done-gate, task-shape/board enums, Kleppmann
       fencing tokens, lease activeness); wired into `core-ci.yml`. reconcile.py
       invariant coverage still open (broader fixture surface).

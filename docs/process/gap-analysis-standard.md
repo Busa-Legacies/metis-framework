@@ -1,11 +1,11 @@
-# Gap-Analysis Standard — Forward-Looking Process
+# Gap-Analysis Standard: Forward-Looking Process
 
 Status: active
 Created: 2026-06-11
 Owner: claude + codex (shared process)
 
 The canonical process for assessing the OS and turning gaps into governed work. It replaces
-ad-hoc "let's do a review" with three named tiers, a fixed cadence, and — critically — a
+ad-hoc "let's do a review" with three named tiers, a fixed cadence, and, critically, a
 **reconciliation gate** for when more than one analysis runs at once (which is now normal:
 claude and codex both assess).
 
@@ -29,51 +29,51 @@ can promote upward (a recurring T1 fragility becomes a T2 gap; a starved goal in
 
 ## 2. What each tier produces
 
-**T1 — Operational audit.** Severity-tiered (P0–P3), file:line evidence or a verification note per
+**T1: Operational audit.** Severity-tiered (P0–P3), file:line evidence or a verification note per
 finding, grouped by severity not by system. Ends with a recommended sequence and a disposition
 block (fixed-inline vs. minted). Generated/assisted by `scripts/system-audit.sh`.
 
-**T2 — Strategic gap analysis.** Canonical section order:
+**T2: Strategic gap analysis.** Canonical section order:
 `North Star → Current State (with task counts) → Gaps (A…N: symptom / target) → phased Roadmap
 (Phase 1…N with milestones + task candidates) → Project/Milestone structure → Next Moves
 (immediate / autonomous / needs-Ant) → Decision Summary`.
 
-**T3 — Portfolio review.** `Direction (maturity arc / working-model evolution / capability bets)
+**T3: Portfolio review.** `Direction (maturity arc / working-model evolution / capability bets)
 → Coverage map (anti-collision) → portfolio evidence grouped by goal → decision table → decision
 summary`. Always opens with the **coverage map** so it doesn't re-litigate T1/T2 work.
 
 **T3 altitude rule (learned 2026-06-11):** a T3 is about **future direction and how the
-way-of-working should evolve** — the maturity stage the OS is in, the shifts in the human↔agent
+way-of-working should evolve**: the maturity stage the OS is in, the shifts in the human↔agent
 working model, the capability bets for the next horizon. Current blockers and task states are
 *supporting evidence*, never the headline. **If a T3 draft reads like a status report or blocker
-triage, it's at the wrong altitude — that's T1/T2 material.** Litmus: every top-level section
+triage, it's at the wrong altitude; that's T1/T2 material.** Litmus: every top-level section
 should still be true and useful if every currently-blocked task unblocked tomorrow.
 
 ## 3. Scoring (all tiers)
 
 Rank every gap by three axes (from the gap-analysis skill):
 
-- **Campaign priority** — G/P1 > G/P2 > G/P3 (map the gap to an active campaign in
+- **Campaign priority**: G/P1 > G/P2 > G/P3 (map the gap to an active campaign in
   `docs/process/goals.md`, and to a life domain in `docs/process/taxonomy.yaml`).
-- **Leverage** — does closing it unblock other work, or is it a leaf?
-- **Agent-executability** — can an agent run it now, or is it human-gated (decision/money/auth)?
+- **Leverage**: does closing it unblock other work, or is it a leaf?
+- **Agent-executability**: can an agent run it now, or is it human-gated (decision/money/auth)?
 
 Decision-type gaps (Ant must choose) are always surfaced even though they aren't agent-runnable.
 
 **Evidence over vibes:** claims about flow ("the board is stale", "we mint faster than we drain")
 must be computed from state, not asserted. Where the schema can't answer (e.g. no `createdAt`),
-say so explicitly — that measurement hole is itself a finding (see T3 2026-06-11, Gap 8).
+say so explicitly; that measurement hole is itself a finding (see T3 2026-06-11, Gap 8).
 
-## 4. The mint gate (decide-and-present) — and the prune pass
+## 4. The mint gate (decide-and-present), and the prune pass
 
-Never auto-mint from a strategic/portfolio run — bulk minting crosses the confirm threshold.
+Never auto-mint from a strategic/portfolio run: bulk minting crosses the confirm threshold.
 
 1. Present **one decision table**: `# | slug | gap | goal | priority | type | agent-runnable?`.
 2. **Prune pass (mandatory for T3, recommended for T2):** an analysis that only *adds* tasks is
    half a process. Review the open board for tasks that are shipped-but-open, obsolete, or carry
    stale/broken metadata, and present a **prune-candidates table** alongside the mint table.
    **"Zero mints + N prunes" is a fully valid analysis outcome.**
-3. Ask **one** approval question covering both: *mint all / a subset / none — and approve/deny the prunes*.
+3. Ask **one** approval question covering both: *mint all / a subset / none, and approve/deny the prunes*.
 4. On approval, per gap: `agent-work.py alloc-id` → `update-tier1-state.py create-task` with
    `origin=collab` and `originRef="gap-analysis <date> <source>"` → `render-tier1-state.py write`.
    Prunes go through the governed close path with a `pruned: gap-analysis <date>` note.
@@ -81,7 +81,7 @@ Never auto-mint from a strategic/portfolio run — bulk minting crosses the conf
 
 A **scheduled/autonomous** run that mints without Ant present tags those tasks `origin=system`.
 
-**Queue-health gate:** before proposing mints, check flow — if the queue is deep and drain is the
+**Queue-health gate:** before proposing mints, check flow: if the queue is deep and drain is the
 constraint (many queued, little in-progress movement), the right output is *fewer* mints, more
 prunes, and effort pointed at execution throughput, not more declared work.
 

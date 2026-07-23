@@ -1,7 +1,7 @@
 # Session Final-Output Standard
 
-**Effective:** 2026-06-05 · **Revised:** 2026-06-07 (v2 — every stop, no trivial-turn skip, hook-enforced)
-**Applies to:** Claude Code (main sessions) — the final in-chat message of EVERY turn that returns control to Ant.
+**Effective:** 2026-06-05 · **Revised:** 2026-06-07 (v2: every stop, no trivial-turn skip, hook-enforced)
+**Applies to:** Claude Code (main sessions): the final in-chat message of EVERY turn that returns control to Ant.
 **Task:** #146
 
 ---
@@ -26,15 +26,15 @@ carry project + task context.
 
 A turn may only END (stop and hand control back to Ant) for one of three reasons:
 
-1. **Input needed** — a decision, credential, or eyes-on check only Ant can provide.
-2. **Work banked** — a task/chunk is complete (done, checkpointed, or session close).
-3. **Blocked** — progress is impossible and the blocker is named.
+1. **Input needed**: a decision, credential, or eyes-on check only Ant can provide.
+2. **Work banked**: a task/chunk is complete (done, checkpointed, or session close).
+3. **Blocked**: progress is impossible and the blocker is named.
 
-"Trivial/conversational" is NOT a stop category — if the turn was trivial, either keep
+"Trivial/conversational" is NOT a stop category: if the turn was trivial, either keep
 working (momentum doctrine) or it was Ant asking a question, which is case 1: he's about
 to act on the answer and needs the same context. **Therefore every stop carries the
 sign-off block.** There is no skip rule. A conversational stop uses the minimal form
-(header + whichever fields apply — at minimum `Next:` or `Asks:`).
+(header + whichever fields apply, at minimum `Next:` or `Asks:`).
 
 ### The sign-off block
 
@@ -55,11 +55,11 @@ the message:
 
 ### Rules
 
-- **R1 — Lead with project + task context.** The header (`area › task`) is mandatory and
+- **R1: Lead with project + task context.** The header (`area › task`) is mandatory and
   comes first, so the sign-off is self-explanatory without scrollback. This is the core ask.
-- **R2 — Terse.** One line per field, bullets not paragraphs. Don't restate what the diff
+- **R2: Terse.** One line per field, bullets not paragraphs. Don't restate what the diff
   already shows. Ant's standing preference is short.
-- **R3 — Verification honesty, two distinct lines** *(split 2026-06-06 — a single `Verify:`
+- **R3: Verification honesty, two distinct lines** *(split 2026-06-06: a single `Verify:`
   read ambiguously as both "what I verified" and "what you must verify")*:
   - `Verified:` = evidence **I** already ran (`46 tests green`, `grep clean`). It is
     reassurance, never a task for Ant.
@@ -70,28 +70,28 @@ the message:
     ✗ `Verify: agent worktrees left alone — if you know they're dead, they're a quick prune`
     (statement; unclear who acts; no answerable question).
   - Never imply success you didn't observe. (See [agent-observation-verification-standard.md](agent-observation-verification-standard.md).)
-- **R4 — Next is an action, not a question.** Give the single highest-value next step; if
-  genuinely ambiguous, name the top 2 — never "should I proceed?".
-- **R5 — Asks only when real.** Include the `Asks` line only when you need a decision or
-  input. Omit it otherwise — no filler.
-- **R6 — Every stop, minimal form allowed** *(v2 2026-06-07 — replaced "skip on trivial
+- **R4: Next is an action, not a question.** Give the single highest-value next step; if
+  genuinely ambiguous, name the top 2; never "should I proceed?".
+- **R5: Asks only when real.** Include the `Asks` line only when you need a decision or
+  input. Omit it otherwise; no filler.
+- **R6: Every stop, minimal form allowed** *(v2 2026-06-07: replaced "skip on trivial
   turns", which became the loophole every session hid in: a 2026-06-05→06-07 transcript
   audit measured 2% compliance across 363 stops)*. Every turn that hands control back to
   Ant ends with the block. For a conversational/answer turn, collapse to the minimal form:
-  the header plus only the fields that apply (≥1 of `Done/Verified/Check/Next/Asks` —
+  the header plus only the fields that apply (≥1 of `Done/Verified/Check/Next/Asks`,
   usually `Next:` or `Asks:`). The header is never optional: Ant reads on mobile and acts
   on the answer; he needs to know which project/task the stop belongs to.
-- **R7 — Multiple tasks → one header line each** (or a compact table if 3+), each with its
+- **R7: Multiple tasks → one header line each** (or a compact table if 3+), each with its
   own status, so nothing blurs together.
-- **R8 — Asks are for Ant, FYIs are for the state layer** (Ant flagged 2026-06-06 after an
+- **R8: Asks are for Ant, FYIs are for the state layer** (Ant flagged 2026-06-06 after an
   "Asks — no action needed" contradiction). An Ask is a direct question or an action only
   Ant can take. Watch items, heads-ups, and anything aimed at a *sibling session* go into
-  `working-context.md` threads or the daily log instead — inter-session coordination routes
+  `working-context.md` threads or the daily log instead; inter-session coordination routes
   through the state layer, never through Ant. If he reads an Ask and there's nothing for
   him to do, it was mis-routed.
-- **R9 — Routine ops are silent** (Ant flagged 2026-06-06: "you tell me far too often that
-  you've merged or cleaned the tree"). Maintenance already governed by a standard — worktree
-  cleanup, commit/push mechanics, lease/board hygiene, memory trims — executes without
+- **R9: Routine ops are silent** (Ant flagged 2026-06-06: "you tell me far too often that
+  you've merged or cleaned the tree"). Maintenance already governed by a standard (worktree
+  cleanup, commit/push mechanics, lease/board hygiene, memory trims) executes without
   narration and without its own Done bullet. Surface only outcomes Ant acts on, deviations,
   or failures. State your rationale only for judgment-call or destructive-edge actions.
 
@@ -102,11 +102,11 @@ the message:
 - The confirm step of `/checkpoint`.
 - The final step of `/end` (after the close ceremony).
 - Any task-completion, blocked, or input-needed turn (no slash-command needed).
-- Conversational stops — minimal form (see R6).
+- Conversational stops: minimal form (see R6).
 
 ### Enforcement
 
-Prose-only compliance failed (2% over the standard's first 48h — the rule lived in
+Prose-only compliance failed (2% over the standard's first 48h: the rule lived in
 `/end` Step 13 and a memory index line, with nothing present at the moment a mid-session
 message was composed). It is now mechanically enforced:
 

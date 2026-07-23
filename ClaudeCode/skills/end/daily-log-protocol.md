@@ -1,6 +1,6 @@
-# Daily Log Protocol — Step 6 of /end
+# Daily Log Protocol: Step 6 of /end
 
-Scribe composes the prose; Claude Code persists it. Never let Scribe write the file directly — it has written to the wrong directory and echoed instruction text as content.
+Scribe composes the prose; Claude Code persists it. Never let Scribe write the file directly; it has written to the wrong directory and echoed instruction text as content.
 
 ## (a0) Git roll-up first
 
@@ -36,7 +36,7 @@ Compose a daily-log entry for $(date +%Y-%m-%d). Format: # Daily Log — YYYY-MM
 Session summary: [summary]"
 ```
 
-**Important:** Call jlane by its absolute path `~/.local/bin/jlane` — the bare `jlane` alias is interactive-shell-only and is `command not found` in Claude Code's non-interactive Bash.
+**Important:** Call jlane by its absolute path `~/.local/bin/jlane`; the bare `jlane` alias is interactive-shell-only and is `command not found` in Claude Code's non-interactive Bash.
 
 Treat Scribe's return as *draft prose*, not a confirmed write. Add anything Scribe missed.
 
@@ -46,7 +46,7 @@ Path: `workspace/memory/YYYY-MM-DD.md`
 - Append if it exists (with `# Daily Log — YYYY-MM-DD` header already present)
 - Create with `# Daily Log — YYYY-MM-DD` header if it does not exist
 
-Use Scribe's prose plus anything Scribe missed. **Cite the short SHA(s)** of the commit(s) this entry describes (from the roll-up `--oneline` list) — the gap guard in step (c) keys off these.
+Use Scribe's prose plus anything Scribe missed. **Cite the short SHA(s)** of the commit(s) this entry describes (from the roll-up `--oneline` list); the gap guard in step (c) keys off these.
 
 ## (c) Guard the roll-up gap, then mark boundary
 
@@ -61,4 +61,4 @@ This loops the gap-check + auto-attribution cycle until the range is fully cover
 
 Then assert: `test -f workspace/memory/YYYY-MM-DD.md && grep -q "$(date +%Y-%m-%d)" workspace/memory/YYYY-MM-DD.md`
 
-If the file doesn't exist or doesn't contain today's date: **STOP and surface the failure** — do not silently continue the close.
+If the file doesn't exist or doesn't contain today's date: **STOP and surface the failure**: do not silently continue the close.

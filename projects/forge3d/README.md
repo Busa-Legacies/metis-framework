@@ -1,14 +1,14 @@
-# Forge3D — code-first 3D design for the Bambu X1C
+# Forge3D: code-first 3D design for the Bambu X1C
 
 For someone who prints well but doesn't model well. The agent triages each part
 to the cheapest path to the right result:
 
-- **Just build it** — trivially simple parts (spacer, bracket, peg, hook). Faster
+- **Just build it**: trivially simple parts (spacer, bracket, peg, hook). Faster
   to model than to search, and exactly to spec.
-- **Source it** — common objects others have already made well: check
+- **Source it**: common objects others have already made well: check
   **MakerWorld** (Bambu's library; profiles open straight in Bambu Studio), then
   **Printables** / **Thingiverse**. The agent searches and recommends.
-- **Custom design** — detailed, particular, or parametric parts. You describe it
+- **Custom design**: detailed, particular, or parametric parts. You describe it
   in plain English; an agent writes it as **parametric OpenSCAD** (text-based
   CAD), renders it to images so we can *look at it together*, and exports a
   print-ready STL. No mouse-driven modeling required.
@@ -40,7 +40,7 @@ projects/forge3d/
 ├── viewer.html               # browser STL viewer with orbit/zoom + bed-fit stats
 └── README.md
 ```
-STLs land in `models/<name>/stl/` and are **git-ignored** — they regenerate from
+STLs land in `models/<name>/stl/` and are **git-ignored**; they regenerate from
 source. PNG renders are committed.
 
 ## Quickstart
@@ -89,10 +89,10 @@ but browser security blocks `?model=...` fetches from `file://` URLs.
 2. Orient so flat faces sit on the bed; minimize overhangs/supports.
 3. Slice, sanity-check the preview, send to the printer.
 
-The model is designed in millimeters at 1:1 — no scaling needed on import.
+The model is designed in millimeters at 1:1; no scaling needed on import.
 
 ## Tooling
-- **OpenSCAD** — `brew install openscad` (mac/<<MACHINE_1_ID>>) or `apt install openscad`.
+- **OpenSCAD**: `brew install openscad` (mac/<<MACHINE_1_ID>>) or `apt install openscad`.
 - `xvfb-run` is used automatically for headless rendering when there's no display
   (cloud sessions); on a desktop it renders directly.
 - Optional: **ImageMagick** (`montage`) produces a 2×2 contact sheet per render.

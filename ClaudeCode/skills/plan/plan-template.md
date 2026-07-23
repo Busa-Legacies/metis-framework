@@ -1,4 +1,4 @@
-# Plan Template — docs/plans/PLAN-<slug>.md
+# Plan Template: docs/plans/PLAN-<slug>.md
 
 ```markdown
 # Plan — <task title>  (<#NNN if governed>)
@@ -32,6 +32,6 @@
 
 ## Notes on the template
 - **Current state must be read, not guessed.** Cite actual file paths. A plan with "I assume the stack is X" in this section is invalid.
-- **Approach must weigh alternatives.** "I chose X" with no rejected alternatives is a decision with no reasoning — future sessions can't tell if the alternative was considered or missed.
+- **Approach must weigh alternatives.** "I chose X" with no rejected alternatives is a decision with no reasoning; future sessions can't tell if the alternative was considered or missed.
 - **Verification must be concrete.** "It works" is not verifiable. "curl http://localhost:8080/api/all returns `system.cpu_pct` field" is.
 - **Keep it tight.** A plan is a decision record, not a design doc. Each section should be scannable in 30 seconds.

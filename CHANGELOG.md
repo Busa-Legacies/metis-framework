@@ -8,41 +8,41 @@ names, script CLIs) may still shift between minor versions.
 
 _Nothing yet._
 
-## [0.1.0] — 2026-07-08
+## [0.1.0]: 2026-07-08
 
 Launch release: the repo went public (source-available, FSL-1.1-Apache-2.0).
 ### Added
-- `scripts/ai-merge-resolver.py` + `docs/process/sync-merge-boundary.md` — Tier-3
+- `scripts/ai-merge-resolver.py` + `docs/process/sync-merge-boundary.md`: Tier-3
   AI author-intent resolver for genuine CODE merge conflicts in the auto-sync
   ladder. Resolves honoring both sides' intent, then proves it through four gates
   (no-markers + blast-radius bound + independent intent-review + compile/tests)
   before anything is staged; any failure defers to the deterministic fail-soft
   abort, so it can only improve on it. `scripts/test-ai-merge-resolver.py` guards
   the pure safety gates and is wired into `core-ci.yml`.
-- `scripts/test-governance-core.py` — dependency-free test suite for the two
+- `scripts/test-governance-core.py`: dependency-free test suite for the two
   safety-critical cores: the forward-only task state DAG + done-gate
   (`update-tier1-state.py`) and Kleppmann fencing tokens + lease activeness
   (`agent-work.py`). ~40 assertions, hermetic (no git/gh/live state), wired into
   `core-ci.yml` next to `test-self-heal.py`. Mutation-checked non-vacuous.
-- `docs/QUICKSTART.md` — fresh-consumer setup walkthrough (subtree vendor →
+- `docs/QUICKSTART.md`: fresh-consumer setup walkthrough (subtree vendor →
   `METIS_HOME` → fill `config/infrastructure.json` field-by-field → smoke-test →
   session lifecycle → sync/troubleshooting). Folds in the config fill-in guide;
   linked from README. All documented commands verified runnable.
 
 ### Changed
 - LICENSE: replaced the proprietary placeholder with **FSL-1.1-Apache-2.0**
-  (Functional Source License — source-available, blocks Competing Use, converts
+  (Functional Source License: source-available, blocks Competing Use, converts
   to Apache-2.0 two years after each version ships). Productization licensing
   decision; see `docs/PRODUCTIZATION.md`.
 
-## [0.1.0] — 2026-06-11
+## [0.1.0]: 2026-06-11
 ### Added
 - Initial extraction of the portable Métis framework from `metis-os`:
   decision/output doctrine, 16 skills, hooks + guards, ~65 governance/sync
   scripts (forward-only task DAG, leases + fencing, merge drivers, self-heal),
   config/settings patterns, templates, portable project frameworks
   (dev-review, metis-command, agent-workbench, forge3d-lib), design system.
-- `config/infrastructure.json` — the single org-config seam (machines, agents,
+- `config/infrastructure.json`: the single org-config seam (machines, agents,
   model, domains, network), read via `scripts/lib/infra_config.py`.
 - Navore content isolated under `navore/` (separate from the framework core).
 - `build/manifest.py` (reproducible seed) and `build/publish.py` (Model B

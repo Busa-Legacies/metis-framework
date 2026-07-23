@@ -29,7 +29,7 @@ This bridge exists so the doctrine layer becomes operationally binding rather th
 The following docs are the main doctrinal sources for operational behavior.
 
 ### Apex (read first)
-- **`docs/process/decision-doctrine.md`** — the act-vs-ask constitution. Overrides any "when in doubt, ask" instinct. Governs all agents, all sessions.
+- **`docs/process/decision-doctrine.md`**: the act-vs-ask constitution. Overrides any "when in doubt, ask" instinct. Governs all agents, all sessions.
 
 ### Shared doctrine
 - `docs/process/agent-operational-doctrine-shared.md`
@@ -167,7 +167,7 @@ But they should still preserve:
 
 ## Practical compliance checks
 
-### Check A — Task-state compliance
+### Check A: Task-state compliance
 When reviewing `tasks.json` or `task-queue.md`, ask:
 - is the current step explicit?
 - is the expected artifact explicit?
@@ -175,25 +175,25 @@ When reviewing `tasks.json` or `task-queue.md`, ask:
 - is blocker-or-none explicit?
 - is next action explicit?
 
-### Check B — Live-focus compliance
+### Check B: Live-focus compliance
 When reviewing `live-focus.json` or `live-status.md`, ask:
 - does the focus summary match real active work?
 - does blocker/waiting state match reality?
 - do the next steps reflect actual possible moves rather than vague continuation language?
 - are the active task IDs still the right drivers of the focus state?
 
-### Check C — Completion-truth compliance
+### Check C: Completion-truth compliance
 When reviewing any completion claim, ask:
 - is the work actually `done`?
 - or is it still `execution_finished` / `needs_verification`?
 - what evidence or check supports closure?
 
-### Check D — Continuity compliance
+### Check D: Continuity compliance
 When a task is interrupted, delegated, or waiting, ask:
 - can someone resume from durable state alone?
 - or would they have to reconstruct from chat memory?
 
-### Check E — Peer-agent compliance
+### Check E: Peer-agent compliance
 When reviewing `<<MACHINE_1_ID>>/` or future peer-agent docs, ask:
 - does the peer inherit doctrine without losing independence?
 - does the peer remain interoperable without collapsing into a merged identity?

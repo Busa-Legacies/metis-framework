@@ -7,7 +7,7 @@
 ## 1. What this is
 
 Metis OS was built Claude-Code-first. This document defines how the system becomes
-**provider-neutral** — so Codex, the OpenClaw local lanes, and any future agent platform
+**provider-neutral**, so Codex, the OpenClaw local lanes, and any future agent platform
 (Gemini CLI, Cursor, Aider, …) can drive the repo with the *same* effectiveness, the *same*
 governance, and run **in parallel** without colliding.
 
@@ -19,14 +19,14 @@ of sync with the canonical command/lifecycle surface.
 
 A single-provider system is a single point of failure and a single quota ceiling. The
 infrastructure already routes *generation* across engines (the engine ladder: Ollama,
-codex/GPT, Anthropic). But the **driver** layer — the thing that runs sessions, claims work,
-keeps memory, and closes out — was Claude-only. Pointing Codex at the repo today gives a
+codex/GPT, Anthropic). But the **driver** layer (the thing that runs sessions, claims work,
+keeps memory, and closes out) was Claude-only. Pointing Codex at the repo today gives a
 degraded, second-class session: no command surface, stale instructions, a forked memory silo,
 and no place in the lease/fencing scheme.
 
 The goal: **any registered platform is a first-class driver.** Parallel sessions across
 Claude Code, Codex, and OpenClaw lanes share one task store, one lease/fencing protocol, one
-memory spine, and one lifecycle — and the system can prove they're in sync.
+memory spine, and one lifecycle, and the system can prove they're in sync.
 
 ## 3. Core concepts / mental model
 
@@ -95,12 +95,12 @@ Every driver implements the same four-verb loop. The *protocol* is neutral; only
 | `checkpoint` | `working-context-update.py`, `git-lock.sh`, `close-push.sh` | Bank a finished task mid-session; keep working |
 | `end` | full close sequence (commit → push → context → memory → handoff) | Synthesize + terminate the session |
 
-These scripts are **provider-neutral** — they take an `--agent <name>` and a session id and
+These scripts are **provider-neutral**: they take an `--agent <name>` and a session id and
 know nothing about which driver called them. That is what makes the surface swappable.
 
 ## 5. Parallel-safety: how multiple drivers share the repo
 
-Concurrent sessions — a Claude Code terminal, a Codex session, and a <<MACHINE_1_ID>> lane — can all touch
+Concurrent sessions (a Claude Code terminal, a Codex session, and a <<MACHINE_1_ID>> lane) can all touch
 the repo at once. Three mechanisms keep them from colliding; **all are already provider-neutral
 and apply to every driver:**
 
@@ -112,7 +112,7 @@ and apply to every driver:**
 2. **The sync lock** (`git-lock.sh`). Commits/pushes wrap in a lock so the auto-sync daemon and
    any other session can't interleave a partial write.
 3. **Session identity** (§5.1). The WIP guard ("one task per session") keys on a *session id*,
-   not the agent name — so two Codex sessions, or a Codex and a Claude session, each get their
+   not the agent name, so two Codex sessions, or a Codex and a Claude session, each get their
    own one-task budget instead of blocking each other.
 
 ### 5.1 Provider-neutral session identity
@@ -134,7 +134,7 @@ names incl. `codex`, `claude`) classifies which leases count as "this machine's 
 ## 6. Unified, compounding memory
 
 The whole point of the memory spine is that the system gets *sharper over time*. A per-provider
-memory silo (the old `~/.codex/memories/` path) breaks that — Codex would learn in a corner
+memory silo (the old `~/.codex/memories/` path) breaks that: Codex would learn in a corner
 Claude never reads.
 
 **Contract:** `ClaudeCode/memory/` is the **shared agent memory store** (a historical name; it
@@ -148,7 +148,7 @@ is not Claude-private). All drivers:
 
 Adapters wire their native memory path to this dir (Codex: `~/.codex/memories` → symlink into
 `ClaudeCode/memory/`, declared in `mirror-manifest.json`). The physical rename of the dir to a
-neutral name (`agent-memory/`) is **staged but not yet run** — it touches both live machines'
+neutral name (`agent-memory/`) is **staged but not yet run**: it touches both live machines'
 symlinks, so it must be done as one atomic per-machine flip. Tooling + procedure are ready:
 [`scripts/migrate-shared-memory.sh`](../../scripts/migrate-shared-memory.sh) (idempotent, two-mode,
 dry-run by default) and the runbook [`shared-memory-migration-runbook.md`](./shared-memory-migration-runbook.md).
@@ -179,21 +179,21 @@ silently. It is read-only and zero-dependency (stdlib JSON only).
 
 To bring up `<tool>` as a first-class driver:
 
-1. **Registry** — add a `platforms[]` entry to `platform-registry.json` (role, status,
+1. **Registry**: add a `platforms[]` entry to `platform-registry.json` (role, status,
    entrypoint, command surface dir/ext, personas dir, memory dir, `sessionIdEnv`, `agentName`).
-2. **Entrypoint** — a global-context file the tool reads on launch, pointing at `AGENTS.md` as
+2. **Entrypoint**: a global-context file the tool reads on launch, pointing at `AGENTS.md` as
    the neutral identity and at this framework. (Codex: `instructions.md`; most tools support an
    `AGENTS.md` natively and need little else.)
-3. **Command surface** — create the adapter dir and add one file per canonical command
+3. **Command surface**: create the adapter dir and add one file per canonical command
    (`start`, `next`, `checkpoint`, `end`, `free-work`). Keep them *thin*: call the neutral
    scripts, don't re-implement the protocol.
-4. **Session identity** — export `AGENT_SESSION_ID` from the tool's session, or add its env var
+4. **Session identity**: export `AGENT_SESSION_ID` from the tool's session, or add its env var
    to `default_session()` and the agent map in `free-work.py`.
-5. **Memory** — point the tool's memory path at `ClaudeCode/memory/` (symlink via the mirror
+5. **Memory**: point the tool's memory path at `ClaudeCode/memory/` (symlink via the mirror
    manifest); follow the frontmatter standard.
-6. **Mirror** — add any symlinks to `ClaudeCode/mirror-manifest.json` so both machines stay
+6. **Mirror**: add any symlinks to `ClaudeCode/mirror-manifest.json` so both machines stay
    wired.
-7. **Verify** — `python3 scripts/platform-parity-check.py` must pass.
+7. **Verify**: `python3 scripts/platform-parity-check.py` must pass.
 
 ## 9. Current state (2026-06-06)
 
@@ -208,9 +208,9 @@ To bring up `<tool>` as a first-class driver:
 
 ### What this pass delivered
 - This framework doc + the machine-readable `platform-registry.json`.
-- `platform-parity-check.py` — drift/sync enforcement across platforms.
-- `.agents/skills/` — Codex's repo skill surface, symlinked to `ClaudeCode/skills/`.
-- `.codex/prompts/` — Codex's legacy slash adapter surface, generated from Claude skills/commands
+- `platform-parity-check.py`: drift/sync enforcement across platforms.
+- `.agents/skills/`: Codex's repo skill surface, symlinked to `ClaudeCode/skills/`.
+- `.codex/prompts/`: Codex's legacy slash adapter surface, generated from Claude skills/commands
   by `scripts/sync-codex-surface.py`.
 - Corrected `ClaudeCode/codex/instructions.md` (removed the dead Google-Drive commit path; use
   the repo-native `git-lock.sh`/`close-push.sh` flow; synced model guidance; shared memory).
@@ -219,7 +219,7 @@ To bring up `<tool>` as a first-class driver:
 
 ## 10. Common pitfalls
 
-- **Re-implementing the protocol in an adapter.** Adapters must stay thin — call the neutral
+- **Re-implementing the protocol in an adapter.** Adapters must stay thin: call the neutral
   scripts. Duplicated step-lists drift; the parity check only catches *missing* files, not
   semantic divergence.
 - **Forking memory.** Writing to a tool-private memory dir breaks compounding. Always land in
@@ -228,13 +228,13 @@ To bring up `<tool>` as a first-class driver:
   guard degrades to "manual" (lock still protects correctness, but two of that tool's sessions
   can each hold a task). Prefer a real id.
 - **Renaming `ClaudeCode/`.** Tempting for neutrality, but it breaks live symlinks on both
-  machines and the project-memory symlink. Treat it as a planned, atomic mirror migration — not
+  machines and the project-memory symlink. Treat it as a planned, atomic mirror migration, not
   a casual rename.
 
 ## 11. Related docs
-- [`platform-registry.json`](./platform-registry.json) — machine-readable registry
-- [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md) — engine ladder + <<MACHINE_1_ID>>-lane routing
-- [`../../ClaudeCode/codex/instructions.md`](../../ClaudeCode/codex/instructions.md) — Codex entrypoint
-- [`./hearth-lanes.md`](./hearth-lanes.md) — the executor lanes (dispatch; formerly jay-lanes)
-- [`../../ClaudeCode/mirror-manifest.json`](../../ClaudeCode/mirror-manifest.json) — two-machine sync contract
-- [`../../AGENTS.md`](../../AGENTS.md) — the neutral identity/workspace entrypoint every driver reads
+- [`platform-registry.json`](./platform-registry.json): machine-readable registry
+- [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md): engine ladder + <<MACHINE_1_ID>>-lane routing
+- [`../../ClaudeCode/codex/instructions.md`](../../ClaudeCode/codex/instructions.md): Codex entrypoint
+- [`./hearth-lanes.md`](./hearth-lanes.md): the executor lanes (dispatch; formerly jay-lanes)
+- [`../../ClaudeCode/mirror-manifest.json`](../../ClaudeCode/mirror-manifest.json): two-machine sync contract
+- [`../../AGENTS.md`](../../AGENTS.md): the neutral identity/workspace entrypoint every driver reads

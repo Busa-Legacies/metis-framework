@@ -54,7 +54,7 @@ out before the seed is clean; this is the open work:
 ## Status · SEEDED 2026-06-11
 
 - **Parameterization: in progress (#434).** **0 real credentials, 0 hardcoded IPs,
-  0 home paths** in core — those are scrubbed at publish + enforced by the CI guard.
+  0 home paths** in core; those are scrubbed at publish + enforced by the CI guard.
   The config seam is now load-bearing: `free-work.py` (machine detection + agent map),
   `update-tier1-state.py` (`VALID_MACHINES`), `queue-runner.py`, `task-domain.py`, and the
   network/mirror/settings helpers read `config/infrastructure.json` via
@@ -62,7 +62,7 @@ out before the seed is clean; this is the open work:
 - **Board/workspace path resolution: DONE (#434 path-resolution sweep).** The persona-named
   board+working-context dir (`Hearth/state`, `Hearth/memory` in metis-os) previously scrubbed
   to an *unresolved* `<<MACHINE_1_ID>>/state` literal that `render-tier1-state.py` would create
-  as a directory literally named `<<MACHINE_1_ID>>` — breaking a fresh consumer's cold-start
+  as a directory literally named `<<MACHINE_1_ID>>`, breaking a fresh consumer's cold-start
   loop. It now resolves to a neutral, portable `workspace/` (87 refs across 37 files);
   `publish.py` has a path-aware scrub (`Hearth/<child>` → `workspace/`, prose `Hearth` still
   → `<<MACHINE_1_ID>>`); `init-board.py` seeds `workspace/state` + `workspace/memory`;

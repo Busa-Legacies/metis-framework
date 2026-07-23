@@ -7,7 +7,7 @@ description: "Read goals + task board, identify uncovered work, present a scored
 
 ## Steps
 
-### 1. Pre-flight — read sources
+### 1. Pre-flight: read sources
 
 ```bash
 # Live task board state
@@ -27,11 +27,11 @@ for p in json.load(sys.stdin)['projects']:
 
 Read `workspace/memory/working-context.md` for open threads that may already address a gap.
 
-### 2. Compute gaps — two passes
+### 2. Compute gaps: two passes
 
-**Pass A — mechanical:** parse `coverage-lint.py --json` output. Each `"gaps"` entry is a declared-but-unminted gap from a strategy doc. These are the highest-confidence gaps (an author already wrote them down).
+**Pass A (mechanical):** parse `coverage-lint.py --json` output. Each `"gaps"` entry is a declared-but-unminted gap from a strategy doc. These are the highest-confidence gaps (an author already wrote them down).
 
-**Pass B — judgment:** for each goal in `goals.md` and each project in `projects.json` with non-`done` status, ask: does at least one open or in-progress task directly advance the `doneWhen` criterion? If not, flag as a judgment gap with the goal/project ID.
+**Pass B (judgment):** for each goal in `goals.md` and each project in `projects.json` with non-`done` status, ask: does at least one open or in-progress task directly advance the `doneWhen` criterion? If not, flag as a judgment gap with the goal/project ID.
 
 ### 3. Score gaps
 
@@ -40,9 +40,9 @@ Rank each gap by:
 - **Leverage** (does this unblock other work or is it a leaf?)
 - **Agent-executability** (can the agent do it now, or is it human-gated?)
 
-Log the full suggestion list to the task queue immediately without pausing — per standing pref (`feedback_log_suggestions_always`). Even gaps that won't be minted this session should be visible.
+Log the full suggestion list to the task queue immediately without pausing, per standing pref (`feedback_log_suggestions_always`). Even gaps that won't be minted this session should be visible.
 
-### 4. Present — decide-and-present
+### 4. Present: decide-and-present
 
 Emit one table:
 
@@ -89,15 +89,15 @@ Present the diff to Ant (don't silently rewrite unless Ant says go).
 
 ## Notes
 
-- **Governing standard:** `docs/process/gap-analysis-standard.md` — defines the three tiers
+- **Governing standard:** `docs/process/gap-analysis-standard.md`: defines the three tiers
   (T1 operational audit · T2 strategic · T3 portfolio), cadence, file naming, and the
   **parallel-run reconciliation gate**. This skill automates the per-run mechanics; that doc
   governs *which* tier, *when*, and how concurrent runs merge.
 - **Parallel runs don't mint alone.** If another analysis (e.g. codex) is live, open with a
-  coverage map, dedup candidates by slug *and intent*, and do a single merged mint — never two
+  coverage map, dedup candidates by slug *and intent*, and do a single merged mint; never two
   independent mints. See §5 of the standard.
-- **origin=collab** on every minted task — agent proposed from gap analysis, Ant approved the mint.
+- **origin=collab** on every minted task: agent proposed from gap analysis, Ant approved the mint.
 - If a **future scheduled run** auto-mints without Ant approval, those tasks get `origin=system`.
-- **Warn-only gaps** (WARN lines from coverage-lint) are informational — they count toward the table but are not FAILs and do not block close.
+- **Warn-only gaps** (WARN lines from coverage-lint) are informational: they count toward the table but are not FAILs and do not block close.
 - Degrade gracefully: if coverage-lint.py fails, skip Pass A and run Pass B (judgment only); note the degradation.
 - Run `/gap-analysis` at the start of any strategic planning session or whenever the working-context `## Next action` says "claim next free task from free-work.py" and the board looks thin.

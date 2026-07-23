@@ -2,26 +2,26 @@
 name: Sync Tasks
 slug: sync-tasks
 version: 1.0.0
-description: "Reconcile drift between task-queue.md and OPEN_TASKS.md — mark done items complete, surface orphans and missing entries."
+description: "Reconcile drift between task-queue.md and OPEN_TASKS.md: mark done items complete, surface orphans and missing entries."
 ---
 
 > **Governed-model note (#514):** `OPEN_TASKS.md` and `task-queue.md` are now **read-only
 > projections** auto-rendered from `docs/process/state/tasks.json` (`render-tier1-state.py`).
-> The real fix for a mismatch between them is re-rendering, not hand-editing either file — so
+> The real fix for a mismatch between them is re-rendering, not hand-editing either file, so
 > this reconcile is largely superseded. Change task state via `update-tier1-state.py` and let
 > the projections re-render. (Deprecation/rewrite tracked as a follow-up task.)
 
 ## What this fixes
-Legacy pre-governed-model drift: `OPEN_TASKS.md` and `task-queue.md` could drift apart when they were hand-maintained — tasks marked done in one but not the other, or dropped from the queue without being closed on the board. Under the governed model both re-render from `tasks.json`.
+Legacy pre-governed-model drift: `OPEN_TASKS.md` and `task-queue.md` could drift apart when they were hand-maintained: tasks marked done in one but not the other, or dropped from the queue without being closed on the board. Under the governed model both re-render from `tasks.json`.
 
-## Step 1 — Read both files
+## Step 1: Read both files
 ```bash
 cat ~/metis-os/docs/process/task-queue.md
 cat ~/metis-os/workspace/state/OPEN_TASKS.md
 ```
 
-## Step 2 — Find done-in-queue, open-on-board
-Scan task-queue.md for entries with `status:done` or `✅ DONE` / `✓ DONE`. Use **line-by-line matching** — a line must contain both the task label AND a DONE marker on the same line. Do NOT use a multi-line/DOTALL regex (causes false positives).
+## Step 2: Find done-in-queue, open-on-board
+Scan task-queue.md for entries with `status:done` or `✅ DONE` / `✓ DONE`. Use **line-by-line matching**: a line must contain both the task label AND a DONE marker on the same line. Do NOT use a multi-line/DOTALL regex (causes false positives).
 
 ```python
 import re
@@ -38,13 +38,13 @@ for line in queue.splitlines():
 
 For each match found with `[ ]` (open) in OPEN_TASKS.md: change `[ ]` → `[x]`.
 
-## Step 3 — Find open-in-queue entries missing from board
-Scan task-queue.md for `status:open` / `status:queued` / `status:in-progress` entries. Check if each has a corresponding entry in OPEN_TASKS.md. Report missing ones — do NOT auto-add (may be intentionally absent), just list them.
+## Step 3: Find open-in-queue entries missing from board
+Scan task-queue.md for `status:open` / `status:queued` / `status:in-progress` entries. Check if each has a corresponding entry in OPEN_TASKS.md. Report missing ones; do NOT auto-add (may be intentionally absent), just list them.
 
-## Step 4 — Find board entries with no queue record
-Both markdown files are **projections** of `tasks.json`, so a board `[ ]` entry with no matching `task-queue.md` record means the render is stale — re-run `render-tier1-state.py` rather than hand-adding. List any such mismatch for the user; never hand-edit the projections.
+## Step 4: Find board entries with no queue record
+Both markdown files are **projections** of `tasks.json`, so a board `[ ]` entry with no matching `task-queue.md` record means the render is stale; re-run `render-tier1-state.py` rather than hand-adding. List any such mismatch for the user; never hand-edit the projections.
 
-## Step 5 — Report and apply
+## Step 5: Report and apply
 Print summary before changes:
 ```
 TASK SYNC REPORT
@@ -63,4 +63,4 @@ No changes yet. Apply fixes to OPEN_TASKS.md? (yes/no)
 
 Wait for confirmation before writing. After applying: `✓ OPEN_TASKS.md updated — <N> items closed.`
 
-Do NOT commit — leave that to the next `/checkpoint`.
+Do NOT commit; leave that to the next `/checkpoint`.
