@@ -48,7 +48,7 @@ def dr_number(p: Path) -> int:
 
 def read_field(text: str, regex: re.Pattern) -> str:
     m = regex.search(text)
-    return m.group(2).strip() if m else "—"
+    return m.group(2).strip() if m else "-"
 
 
 def title_of(text: str, fallback: str = "(untitled)") -> str:

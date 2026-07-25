@@ -245,8 +245,8 @@ def scan_transcript(path, machine):
                                 "machine": machine,
                                 "category": "routing_miss",
                                 "ts": turn["ts"],
-                                "user": "(no user turn — structural)",
-                                "context": f"{tu['name']} {tu['input'].get('file_path', '')} — {n} lines inline, no <<MACHINE_1_ID>>-lane call in session",
+                                "user": "(no user turn, structural)",
+                                "context": f"{tu['name']} {tu['input'].get('file_path', '')}: {n} lines inline, no <<MACHINE_1_ID>>-lane call in session",
                             }
                         )
         if turn["role"] == "user" and (

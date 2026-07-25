@@ -66,7 +66,7 @@ python3 scripts/task-domain.py "<next-task-label>"
 
 ## Step 5: Confirm and surface the next move
 At minimum:
-- `✓ checkpoint: <area> › <label> (<short-sha>) — banked` (or `→ pivoting`)
+- `checkpoint: <area> › <label> (<short-sha>): banked` (or `pivoting`)
 - `→ next: <single highest-value next action>` from `## Next action` + open threads just refreshed
 - If anything needs Ant to verify or decide: add a `Check:` (direct question with an easy y/n answer) / `Asks:` line; don't bury it. `Verified:` is for evidence you already ran, never a chore for Ant.
 

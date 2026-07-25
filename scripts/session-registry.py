@@ -329,8 +329,8 @@ def print_registry(reg: dict) -> None:
     print(header)
     print("  " + "-" * (len(header) - 2))
     for s in sorted_sessions:
-        pid = str(s.get("pid") or "—")
-        uptime = s.get("etime_str") or "—"
+        pid = str(s.get("pid") or "-")
+        uptime = s.get("etime_str") or "-"
         last = (s.get("last_human_ts") or s.get("last_ts") or "")[:16].replace("T", " ").replace("+00:00","")
         label = (s.get("tmux_label") or s.get("slug") or s["session_id"][:8])[:22]
         cwd = (s.get("cwd") or s.get("pane_cwd") or "")[-35:]

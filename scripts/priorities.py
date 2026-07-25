@@ -155,7 +155,7 @@ def _systems() -> dict:
 
 
 def _row(s: dict) -> str:
-    gl = ",".join(s["goals"]) or "—"
+    gl = ",".join(s["goals"]) or "none"
     return (f"  {s['score']:>5.1f}  {s['priority'] or '--':<3} {s['state'] or '':<16} "
             f"[{gl:<6}] {s['taskId'] or '':<6} {(s['title'] or '')[:54]}")
 

@@ -667,7 +667,7 @@ def render_project_board(rows: list[dict], machine: str, projects: list[dict]) -
         for g in goals:
             gp = _progress.goal_rollup(projects, g)
             if gp is None:
-                print(f"  {g}  {'—' * 10}        (no seeded active projects)")
+                print(f"  {g}  {'-' * 10}        (no seeded active projects)")
             else:
                 print(f"  {g}  {_progress.bar(gp)} {gp * 100:4.0f}%")
         print()
@@ -723,7 +723,7 @@ def render_project_status(slug: str, projects: list[dict]) -> int:
     prog, shipped, total = _progress.project_progress(proj)
     print(f"=== {proj.get('name', slug)} ({slug}) ===")
     print(f"Goal {proj.get('goal', '?')} · {proj.get('priority', '?')} · status {proj.get('status', '?')}")
-    print(f"doneWhen: {proj.get('doneWhen', '—')}")
+    print(f"doneWhen: {proj.get('doneWhen', 'none')}")
     if prog is None:
         print("\n(no milestones — evergreen or unseeded)")
         return 0
