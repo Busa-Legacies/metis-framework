@@ -90,7 +90,7 @@ python3 scripts/update-tier1-state.py create-task --actor claude --patch '{
 (`update-tier1-state.py create-task`) and the board line renders itself. Its rendered shape:
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
+- [P2] [ ] **#NNN slug**: brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
 
 ## Goals and projects reference

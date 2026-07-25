@@ -8,7 +8,7 @@ Version: 1.0 (adopted 2026-06-01)
 
 **Header + fields line:**
 ```
-- **#NNN `slug`** — one-line description
+- **#NNN `slug`**: one-line description
   - type:T | area:A | goal:GN | project:slug | priority:P | effort:E | agent:X | machine:Y | status:S
 ```
 
@@ -28,7 +28,7 @@ Optional additions: `**Next action:**`, `**Blocked by:** #NNN`, `**Done when:**`
 (`render-tier1-state.py`); never hand-write a board line. Its rendered shape, for reference:
 
 ```
-- [P2] [ ] **#NNN slug** — brief context note @agent:smith @machine:<<MACHINE_1_ID>>
+- [P2] [ ] **#NNN slug**: brief context note @agent:smith @machine:<<MACHINE_1_ID>>
 ```
 
 Type and area tags optional in board view; include `@type:T @area:A` when useful for filtering.

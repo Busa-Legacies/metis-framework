@@ -114,7 +114,7 @@ scripts/close-lock.sh release
 ```
 
 ## Step 13: Session sign-off
-Close the turn with the sign-off block per [session-output-standard.md](../../docs/process/session-output-standard.md): `**<area> › <#id slug>** — <done|banked|blocked|in-progress>` header, then the applicable fields `Done:` / `Verified:` (MY evidence, never a chore for Ant) / `Check:` (only if Ant must eyeball it) / `Next:` / `Asks:`. This is the last thing Ant reads; it must carry project + task context so the hand-back is self-explanatory.
+Close the turn with the sign-off block per [session-output-standard.md](../../docs/process/session-output-standard.md): `**<area> › <#id slug>**: <done|banked|blocked|in-progress>` header, then the applicable fields `Done:` / `Verified:` (MY evidence, never a chore for Ant) / `Check:` (only if Ant must eyeball it) / `Next:` / `Asks:`. This is the last thing Ant reads; it must carry project + task context so the hand-back is self-explanatory.
 
 ## Run-all gate
 Run all steps 6–11 whenever: files were edited, OR tasks were discussed, OR the session was 3+ turns. Skip only when ALL three are false. Step 10 may additionally be skipped if nothing durable and non-obvious surfaced.

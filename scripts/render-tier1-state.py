@@ -197,7 +197,7 @@ def render_queue(tasks_doc):
             continue
 
         for task in state_tasks:
-            out.append(f"- **{task['taskId']} — {task['title']}**\n")
+            out.append(f"- **{task['taskId']}: {task['title']}**\n")
             out.append(f"  - Priority: {task.get('priority', 'P?')}\n")
             out.append(f"  - Owner: {task.get('owner', '')}\n")
             out.append(f"  - Project: {task.get('project', 'ops')}\n")
@@ -323,7 +323,7 @@ def render_open_tasks(tasks_doc, areas_doc):
                 tags += " @status:blocked"
             line = f"- [{prio}] [ ] **{tid} {title}**"
             if summary:
-                line += f" — {summary}"
+                line += f": {summary}"
             line += tags + "\n"
             out.append(line)
         out.append("\n")

@@ -154,7 +154,7 @@ print(json.dumps({
         "block — every stop returns control to Ant and must carry project+task context "
         "(docs/process/session-output-standard.md). Do NOT redo or continue any work. "
         "Emit ONE short message that is just the sign-off block: header "
-        "`**<area> › <#id slug | ad-hoc label>** — <done|banked|blocked|in-progress>` "
+        "`**<area> › <#id slug | ad-hoc label>**: <done|banked|blocked|in-progress>` "
         "followed by the applicable fields (Done: / Verified: / Check: / Next: / Asks:). "
         "Minimal form (header + Next: or Asks:) is fine for conversational turns."
     ),

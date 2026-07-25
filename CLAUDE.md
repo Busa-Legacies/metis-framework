@@ -37,11 +37,11 @@ A turn may only end for three reasons: **input needed** · **work banked** ·
 **blocked**. Never stop just to narrate progress.
 
 ```
-**<area> › <#id slug | label>** — <done|banked|blocked|in-progress>
+**<area> › <#id slug | label>**: <done|banked|blocked|in-progress>
 - Done: <what landed>
 - Verified: <evidence you ran>
 - Next: <single highest-value action>
-- Asks: <explicit blocker/action for the human — omit if none>
+- Asks: <explicit blocker/action for the human (omit if none)>
 ```
 
 Full spec: `docs/process/session-output-standard.md`.
