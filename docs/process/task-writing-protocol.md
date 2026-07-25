@@ -24,7 +24,7 @@ Why/Plan/Main files are required on every task entry. There is no "trivial" esca
 ## Required body sections
 
 ```markdown
-- **#NNN `slug`** — one-line description
+- **#NNN `slug`**: one-line description
   - type:T | area:A | priority:P | effort:E | agent:X | machine:Y | status:S
   - **Why:** What surfaced this. The concrete incident, friction point, or observation — not "it would be nice." Include date if it was a live event (e.g. "hit live 2026-06-02"). This is the most important section: it tells the next session why this matters and whether it's still worth doing.
   - **Plan:** What to do and — critically — what NOT to do or what was already tried. Not a full spec. One paragraph or a short bullet list. Include: approach direction, key constraints, which patterns/solutions to avoid and why.
@@ -46,7 +46,7 @@ Why/Plan/Main files are required on every task entry. There is no "trivial" esca
 ## Template (copy-paste)
 
 ```markdown
-- **#NNN `verb-noun-slug`** — one-line description
+- **#NNN `verb-noun-slug`**: one-line description
   - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|smith|scout | machine:<<MACHINE_1_ID>>|<<MACHINE_2_ID>>|either | status:open
   - **Why:** [What triggered this — incident, observation, friction point, date if live]
   - **Plan:** [Approach direction, constraints, what to avoid. Be specific enough that a fresh session can start without asking.]

@@ -42,9 +42,9 @@ End **every** turn that returns control to Ant with this block as the last thing
 the message:
 
 ```
-**<Project/area> › <#id slug | ad-hoc label>** — <status>
-- Done: <what landed — 1-3 bullets, not a re-paste of the diff>
-- Verified: <evidence I already ran — "46 tests green", "grep clean" — reassurance, never a chore>
+**<Project/area> › <#id slug | ad-hoc label>**: <status>
+- Done: <what landed, 1-3 bullets, not a re-paste of the diff>
+- Verified: <evidence I already ran, "46 tests green" or "grep clean"; reassurance, never a chore>
 - Check: <ONLY if Ant must verify something himself — a direct question with an easy answer; omit otherwise>
 - Next: <single highest-value next action>
 - Asks: <decision/input you need from Ant — omit the line entirely if none>
@@ -66,8 +66,8 @@ the message:
   - `Check:` = something only **Ant** can verify (TUI/UI behavior, trackpad, external/live
     state). Include it ONLY then, and phrase it as a **direct question with an easy answer**:
     name the exact action + the expected observation so he can answer y/n or A/B from his
-    phone. ✓ `Check: open the dashboard drawer on mobile — does it scroll past item 10? (y/n)`
-    ✗ `Verify: agent worktrees left alone — if you know they're dead, they're a quick prune`
+    phone. Good: `Check: open the dashboard drawer on mobile; does it scroll past item 10? (y/n)`
+    Bad: `Verify: agent worktrees left alone; if you know they're dead, they're a quick prune`
     (statement; unclear who acts; no answerable question).
   - Never imply success you didn't observe. (See [agent-observation-verification-standard.md](agent-observation-verification-standard.md).)
 - **R4: Next is an action, not a question.** Give the single highest-value next step; if
@@ -122,10 +122,10 @@ message was composed). It is now mechanically enforced:
 ## Example
 
 ```
-**OpenClaw Infra › #146 session-final-output-standard** — done
+**OpenClaw Infra › #146 session-final-output-standard**: done
 - Done: wrote the standard doc; wired it into /end + /checkpoint; added feedback memory.
-- Verified: docs only, no runtime — grep confirms /end + /checkpoint reference the standard.
-- Check: read the example block on your phone — is it scannable without scrolling? (y/n)
+- Verified: docs only, no runtime; grep confirms /end + /checkpoint reference the standard.
+- Check: read the example block on your phone; is it scannable without scrolling? (y/n)
 - Next: #138 repo-root-path-drift, or pick the next free task.
 - Asks: want any fields cut/reordered?
 ```
