@@ -98,7 +98,7 @@ canonical `tasks.json`: render, don't hand-edit.
 
 Memory files use YAML frontmatter (`name`, `description`, `metadata.type` of
 user|feedback|project|reference, `tags`, `updated`). One fact per file. The
-`MEMORY.md` index carries one line per memory (title — hook — tags), capped.
+`MEMORY.md` index carries one line per memory (title: hook, tags), capped.
 Raw session logs go to dated daily-log files, not the index. Lessons that should
 change behavior are routed UP to the governing skill/doc (see
 `docs/process/correction-protocol.md`), with the memory entry a short breadcrumb.

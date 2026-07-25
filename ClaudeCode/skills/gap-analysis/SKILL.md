@@ -80,7 +80,7 @@ Present the diff to Ant (don't silently rewrite unless Ant says go).
 ### 7. Confirm
 
 ```
-✓ gap-analysis — banked
+gap-analysis: banked
 - Minted: #NNN <slug>, #NNN <slug>, ...
 - Covered goals: G1 (queue-runner), G3 (example-grant)
 - Tracked gaps remaining: N (see strategy docs)

@@ -61,6 +61,6 @@ TASK SYNC REPORT
 No changes yet. Apply fixes to OPEN_TASKS.md? (yes/no)
 ```
 
-Wait for confirmation before writing. After applying: `✓ OPEN_TASKS.md updated — <N> items closed.`
+Wait for confirmation before writing. After applying: `OPEN_TASKS.md updated: <N> items closed.`
 
 Do NOT commit; leave that to the next `/checkpoint`.

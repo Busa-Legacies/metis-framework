@@ -175,9 +175,9 @@ def parse_block(block):
 
     # required-field fallbacks (backfill of pre-schema tasks)
     if not task["why"]:
-        task["why"] = "(migrated — rationale not separately recorded; see summary)"
+        task["why"] = "(migrated: rationale not separately recorded; see summary)"
     if not task["how"]:
-        task["how"] = "(migrated — approach not separately recorded; see summary)"
+        task["how"] = "(migrated: approach not separately recorded; see summary)"
     # clean optional empties
     if not task["blockerOrNone"]:
         task["blockerOrNone"] = "none"

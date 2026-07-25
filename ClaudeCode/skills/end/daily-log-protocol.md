@@ -31,7 +31,7 @@ Any actionable signals not already queued become tasks per step 7.
 ```bash
 ~/.local/bin/jlane --agent scribe --message "OUTPUT ONLY THE LOG FILE BODY — no preamble, no 'I have composed', no closing remarks. First word of your response = first word of the file.
 
-Compose a daily-log entry for $(date +%Y-%m-%d). Format: # Daily Log — YYYY-MM-DD, then ## What happened / ## Ant preferences noted / ## Open threads / ## Lessons (omit sections with nothing to say).
+Compose a daily-log entry for $(date +%Y-%m-%d). Format: # Daily Log: YYYY-MM-DD, then ## What happened / ## Ant preferences noted / ## Open threads / ## Lessons (omit sections with nothing to say).
 
 Session summary: [summary]"
 ```
@@ -43,8 +43,8 @@ Treat Scribe's return as *draft prose*, not a confirmed write. Add anything Scri
 ## (b) Claude Code writes the file
 
 Path: `workspace/memory/YYYY-MM-DD.md`
-- Append if it exists (with `# Daily Log — YYYY-MM-DD` header already present)
-- Create with `# Daily Log — YYYY-MM-DD` header if it does not exist
+- Append if it exists (with `# Daily Log: YYYY-MM-DD` header already present)
+- Create with `# Daily Log: YYYY-MM-DD` header if it does not exist
 
 Use Scribe's prose plus anything Scribe missed. **Cite the short SHA(s)** of the commit(s) this entry describes (from the roll-up `--oneline` list); the gap guard in step (c) keys off these.
 

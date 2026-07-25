@@ -141,7 +141,7 @@ def collect(buckets: dict, task_details: dict) -> tuple[dict, list, list]:
         section = get_section(label) or "unknown"
         td = task_details.get(tid or "", {})
         lanes.setdefault(section, []).append(
-            {"id": tid or "—", "prio": prio or "", "label": label,
+            {"id": tid or "-", "prio": prio or "", "label": label,
              "owner": owner or "", "agent": td.get("agent", ""),
              "why": td.get("why", ""),
              "status": status, "note": note}
