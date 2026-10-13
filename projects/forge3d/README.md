@@ -40,17 +40,17 @@ projects/forge3d/
 ├── viewer.html               # browser STL viewer with orbit/zoom + bed-fit stats
 └── README.md
 ```
-STLs land in `models/<name>/stl/` and are **git-ignored**; they regenerate from
+STLs land in `models/<name>/stl/` and are **git-ignored**: they regenerate from
 source. PNG renders are committed.
 
 ## Quickstart
 ```bash
 # Render an existing model (4 angles + STL + bed-fit check)
-scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad
+scripts/forge3d-render.sh projects/forge3d/models/rivian-ballmount/rivian-ballmount.scad
 
-# Override parameters without editing the file — try 6 cables, 8mm each
-scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad \
-    -D slots=6 -D cable_dia=8
+# Override parameters without editing the file — try a 20mm ball on a 15mm neck
+scripts/forge3d-render.sh projects/forge3d/models/rivian-ballmount/rivian-ballmount.scad \
+    -D ball_dia=20 -D neck_height=15
 
 # Just preview, skip the STL export
 scripts/forge3d-render.sh .../model.scad --no-stl
@@ -58,7 +58,7 @@ scripts/forge3d-render.sh .../model.scad --no-stl
 # Add a turntable fallback for chat/mobile review.
 # Writes renders/<name>-turntable/frame-000.png... plus a GIF when ffmpeg or
 # ImageMagick is installed.
-scripts/forge3d-render.sh projects/forge3d/models/cable-clip/cable-clip.scad --turntable
+scripts/forge3d-render.sh projects/forge3d/models/rivian-ballmount/rivian-ballmount.scad --turntable
 
 # Split a too-big model: assembled preview + one STL per piece + a fit report.
 # The model must expose a `piece` var (-1 = assembled, 0..N-1 = a printable piece,
@@ -77,7 +77,7 @@ repo-relative model path:
 
 ```bash
 python3 -m http.server 8765 --directory projects/forge3d
-open 'http://127.0.0.1:8765/viewer.html?model=models/cable-clip/stl/cable-clip.stl'
+open 'http://127.0.0.1:8765/viewer.html?model=models/rivian-ballmount/stl/rivian-ballmount.stl'
 ```
 
 The viewer supports orbit, zoom, pan, drag-and-drop, and local file selection.
@@ -89,7 +89,7 @@ but browser security blocks `?model=...` fetches from `file://` URLs.
 2. Orient so flat faces sit on the bed; minimize overhangs/supports.
 3. Slice, sanity-check the preview, send to the printer.
 
-The model is designed in millimeters at 1:1; no scaling needed on import.
+The model is designed in millimeters at 1:1: no scaling needed on import.
 
 ## Tooling
 - **OpenSCAD**: `brew install openscad` (mac/<<MACHINE_1_ID>>) or `apt install openscad`.

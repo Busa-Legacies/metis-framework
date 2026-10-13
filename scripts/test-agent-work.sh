@@ -88,4 +88,49 @@ else
   echo "claim-next concurrency test SKIPPED — <2 free items for <<MACHINE_1_ID>>" >&2
 fi
 
+# --- #750: terminal-row self-bounding on every mutation ---------------------
+# Seed a bloated state (100 old terminal + 3 young terminal + 1 live, high
+# fenceCounter), run a mutation through locked_state, and assert the file
+# self-bounds without regressing the fence floor or dropping live/young rows.
+PRUNESTATE="$(mktemp "${TMPDIR:-/tmp}/agent-work-prune-state.XXXXXX")"
+python3 - "$PRUNESTATE" <<'PY'
+import json, sys, datetime as dt
+now = dt.datetime.now(dt.timezone.utc)
+def iso(t): return t.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+rows = []
+# 1 live lease, active for another hour — reap must not expire it.
+rows.append({"issue": 999500, "agent": "claude", "status": "checked-out",
+             "fenceToken": 5, "leaseStartedAt": iso(now - dt.timedelta(minutes=5)),
+             "leaseExpiresAt": iso(now + dt.timedelta(hours=1)), "title": "live"})
+# 100 old terminal rows (ended 5 days ago) — most should be pruned.
+for i in range(100):
+    rows.append({"issue": 999600 + i, "agent": "queue-runner", "status": "released",
+                 "fenceToken": 100 + i, "endedAt": iso(now - dt.timedelta(days=5, seconds=i)),
+                 "title": f"old-{i}"})
+# 3 young terminal rows (ended 10 min ago) — protected by the min-age window.
+for j, iss in enumerate((999700, 999701, 999702)):
+    rows.append({"issue": iss, "agent": "queue-runner", "status": "released",
+                 "fenceToken": 300 + j, "endedAt": iso(now - dt.timedelta(minutes=10)),
+                 "title": f"young-{j}"})
+json.dump({"version": 1, "updatedAt": iso(now), "fenceCounter": 99999, "checkouts": rows},
+          open(sys.argv[1], "w"), indent=2)
+PY
+scripts/agent-work.py --state "$PRUNESTATE" reap >/dev/null
+python3 - "$PRUNESTATE" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+cos = d["checkouts"]
+term = [c for c in cos if c["status"] != "checked-out"]
+live = [c for c in cos if c["status"] == "checked-out"]
+assert d["fenceCounter"] == 99999, f"fence floor regressed: {d['fenceCounter']}"
+assert len(live) == 1 and live[0]["issue"] == 999500, "live lease must survive prune"
+assert len(term) <= 40, f"terminal rows not bounded: {len(term)}"
+kept = {c["issue"] for c in term}
+for iss in (999700, 999701, 999702):
+    assert iss in kept, f"young terminal row {iss} wrongly pruned"
+assert 999699 not in kept, "oldest terminal row should have been pruned"
+PY
+rm -f "$PRUNESTATE" "$PRUNESTATE.lock"
+echo "  ✓ #750 terminal-row self-bounding"
+
 echo "agent-work tests passed"

@@ -7,7 +7,7 @@ validate against — or derive from — this one module, instead of each
 re-implementing its own partial reconciliation. That fragmentation is why drift
 kept recurring as point bugs (#131; umbrella over #130/#124/#123/#100).
 
-`verify` (read-only) runs invariants I1-I8. `--fix` (Phase 4) plans and, with
+`verify` (read-only) runs invariants I1-I17. `--fix` (Phase 4) plans and, with
 `--apply`, executes idempotent repairs for the fixable invariants I1/I2 (stale &
 duplicate leases) and I5 (crash-orphaned in_progress tasks — #283
 session-crash-recovery) — dry-run by default. Lease mutations go only through
@@ -168,6 +168,7 @@ def check_I4(opens: list, tasks: list, leases: list, owner_is_mine=None) -> list
     if owner_is_mine is None:
         owner_is_mine = lambda _o: False  # noqa: E731
     canonical = {(t.get("title") or "").lower(): t for t in tasks}
+    canonical_ids = {t.get("taskId"): t for t in tasks if t.get("taskId")}
     lease_titles = {lease_label(c).lower() for c in leases if lease_label(c)}
     # Id-first lease coverage: lease '#316 command-center-ui-polish' covers board
     # item '#316 command-center UI polish pass (...)' even though neither title
@@ -183,11 +184,15 @@ def check_I4(opens: list, tasks: list, leases: list, owner_is_mine=None) -> list
             continue  # claimed by a live lease (matched by task id)
         if any(len(lt) > 6 and (lt in label_l or label_l in lt) for lt in lease_titles):
             continue  # claimed by a live lease
-        matched = None
-        for ct_title, ct in canonical.items():
-            if len(ct_title) > 6 and (ct_title in label_l or label_l in ct_title):
-                matched = ct
-                break
+        # Id-first canonical match, mirroring the lease logic above: a frontier
+        # board label '... browser-use 0.13.4 (#849)' maps to task #849 even
+        # though neither title substring-contains the other.
+        matched = canonical_ids.get(label_id) if label_id else None
+        if matched is None:
+            for ct_title, ct in canonical.items():
+                if len(ct_title) > 6 and (ct_title in label_l or label_l in ct_title):
+                    matched = ct
+                    break
         if matched is None:
             out.append(
                 viol(
@@ -256,22 +261,57 @@ def check_I6(last_assigned, doc_ids: list, governed_ids: list) -> list:
 
 
 # A crashed create between alloc-id and the governed write leaks the odd id, so a
-# small lead is normal; a 25+ lead means ids are being burned in bulk.
+# small lead is normal; 25+ LEAKED MINTS means ids are being burned in bulk.
+#
+# The threshold counts mints, not raw ids, because the #1246 strided allocator makes
+# those two different numbers. Each machine mints only in its own residue lane
+# (n % M == residue), so one perfectly healthy mint advances the counter by up to M
+# and leaves M-1 ids permanently unused BY DESIGN. With M=5 a raw threshold of 25
+# false-FAILs after as few as seven ordinary mints — a hard reconcile fail that gates
+# every session's pre-merge-check with nothing actually wrong (observed 2026-09-10:
+# next-available #5721, mint landed #5725, both congruent to the minting lane).
 I15_MAX_COUNTER_LEAD = 25
+
+
+def _id_lane_modulus() -> int:
+    """Topology-wide stride modulus for task ids (#1246), or 1 when unavailable.
+
+    machine_stride() degrades to the (0, 1) legacy lane on any failure, and modulus 1
+    makes every id its own lane — so the fallback is byte-for-byte the old raw check."""
+    try:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _sys.path.insert(0, str(_Path(__file__).resolve().parent / "lib"))
+        from task_id_alloc import machine_stride
+        _, modulus = machine_stride()
+        return max(1, int(modulus))
+    except Exception:
+        return 1
 
 
 def check_I15(last_assigned, doc_ids: list) -> list:
     """Counter runaway — the inverse of I6. lastAssigned far ABOVE the highest id
     that actually exists means ids are being burned without tasks: the 2026-07-08
     sandbox leak (#678) jumped the counter 648->901 and 234 ids vanished, unnoticed
-    until Ant asked why numbering skipped from the 600s to the 900s (#679)."""
+    until Ant asked why numbering skipped from the 600s to the 900s (#679).
+
+    Measured in LANE STEPS so the strided allocator's designed skips don't read as a
+    burn. That still catches #678 — 233 raw ids is ~46 lane steps at M=5, well over
+    the threshold — while an ordinary run of mints stays clean."""
     if last_assigned is None or not doc_ids:
         return []
-    lead = int(last_assigned) - max(doc_ids)
-    if lead > I15_MAX_COUNTER_LEAD:
+    highest = max(doc_ids)
+    lead = int(last_assigned) - highest
+    if lead <= 0:
+        return []
+    modulus = _id_lane_modulus()
+    lane_lead = lead // modulus
+    if lane_lead > I15_MAX_COUNTER_LEAD:
+        detail = f"{lane_lead} mints' worth of ids ({lead} raw, stride {modulus})" \
+            if modulus > 1 else f"{lead} ids"
         return [viol("I15", "fail",
-                     f"counter runaway: last-assigned #{last_assigned} is {lead} ahead of the "
-                     f"highest real task id #{max(doc_ids)} — ids are being burned without tasks",
+                     f"counter runaway: last-assigned #{last_assigned} is {detail} ahead of the "
+                     f"highest real task id #{highest} — ids are being burned without tasks",
                      False)]
     return []
 
@@ -330,7 +370,11 @@ def check_I9(tasks: list) -> list:
 
 
 def check_I10(presence: list) -> list:
-    """Presence records must be well-formed (required fields present, expiresAt parseable)."""
+    """Presence records must be well-formed.
+
+    Advisory fields are allowed; only required presence fields and expiry shape are
+    validated here.
+    """
     REQUIRED = {"session", "agent", "machine", "project", "since", "lastSeen", "expiresAt"}
     out = []
     for i, p in enumerate(presence):
@@ -523,6 +567,147 @@ def check_I11(tasks: list) -> list:
             fill = m.get("fill") or 0
             if m.get("status") == "done" and 0 < fill < 1:
                 out.append(viol("I11", "warn", f"project '{slug}' milestone {m.get('id')} is done but only {int(round(fill * 100))}% filled (unfinished tasks under a done milestone)", False))
+    return out
+
+
+# I16: shipped-but-open drift (2026-07-27). Three consecutive board "next" picks
+# (#972, #936, #824) were each ALREADY fully shipped but still non-terminal —
+# sessions build + feat(#id)-commit + checkpoint without reconciling the task to
+# done, so the board shows phantom-open work and every pick evaporates on
+# inspection. A commit-subject sweep proved insufficient (600 commits -> 4 matches,
+# 0 real drift; the 3 genuine cases weren't id-in-commit at all). The reliable,
+# cheap signal is the task's OWN declared deliverable: a non-terminal task that
+# named where its output lives, and all of that output now exists on disk, is a
+# close candidate. WARN + fixable=False on purpose — artifact existence is
+# NECESSARY, NOT SUFFICIENT (a queued task may list files it only plans to edit),
+# so this surfaces for a human verify+close and NEVER auto-closes. in_progress is
+# excluded: partial artifacts mid-build are normal, not drift. Tasks that never
+# declared a deliverable path (empty mainFiles, prose-only expectedArtifact) can't
+# be judged here and are skipped — which is itself an argument for populating
+# mainFiles (the create-time surfacing, #972, nudges that).
+# Skip terminal states (nothing to close), in_progress (partial artifacts mid-build
+# are normal), AND the honest post-build states needs_verification/execution_finished
+# — those STATES already say "build complete, awaiting sign-off", so a complete
+# deliverable there is expected, not drift. I16 targets a state that LIES about
+# completeness: a pre-execution task (queued/waiting/open/accepted/inbox) whose whole
+# deliverable already exists — shipped without ever moving through the lifecycle.
+_I16_SKIP_STATES = {
+    "done", "dropped", "cancelled", "archived", "superseded",
+    "in_progress", "needs_verification", "execution_finished",
+}
+
+
+def _i16_declared_paths(task: dict) -> list:
+    """Repo-relative deliverable paths a task declared: explicit mainFiles, plus any
+    genuine path token (contains '/' and a file extension) in expectedArtifact.
+    Prose-only expectedArtifact yields nothing — bare words are never treated as paths."""
+    out = []
+    for p in (task.get("mainFiles") or []):
+        p = (p or "").strip()
+        if p:
+            out.append(p)
+    ea = task.get("expectedArtifact")
+    if isinstance(ea, str):
+        for tok in re.findall(r"[A-Za-z0-9_][\w./-]*\.[A-Za-z0-9]{1,6}", ea):
+            if "/" in tok:  # a real path, not a bare "word.done" sentence token
+                out.append(tok)
+    seen, uniq = set(), []
+    for p in out:
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq
+
+
+# Precision guard (2026-08-01): a task carrying a LIVE blocker is parked on a pending
+# gate (human action, external unblock, soft-dep, apply-and-verify), so its declared
+# files existing is staged work waiting on the gate — NOT shipped-but-open drift. This
+# was the dominant I16 false-positive class: an all-candidates triage found 18/22 were
+# blocker-parked (create a GitHub repo, hire an attorney, buy a UPS, share sheets, apply
+# an unapplied lane artifact). Suppress them. A leading "none …" explanatory blocker
+# counts as no blocker (some tasks write "none — <context>"). We deliberately DON'T also
+# suppress on a structured doneWhen (check/criteria): existence is weak evidence there,
+# but the sound fix is to RUN the check via the tests_pass / --verify-shipped hook, not
+# to hide the candidate — suppressing them would regress genuine test-gated drift
+# detection (e.g. the #1109 close, caught by existence then confirmed by running tests).
+_I16_NULL_BLOCKERS = {"none", "n/a", "na", "null", "nil", "-", "tbd"}
+
+
+def _i16_has_live_blocker(task: dict) -> bool:
+    b = str(task.get("blockerOrNone") or "").strip()
+    if not b:
+        return False
+    lead = re.split(r"[\s.,;:—–-]+", b.lower(), maxsplit=1)[0]
+    return lead not in _I16_NULL_BLOCKERS
+
+
+def check_I16(tasks: list, artifact_exists=None, tests_pass=None) -> list:
+    """A non-terminal (and not in_progress) task whose ENTIRE declared deliverable
+    already exists on disk = a shipped-but-open drift candidate. Surface it for a
+    human verify+close; never auto-close (fixable=False). A candidate carrying a live
+    blockerOrNone is parked on a pending gate, not shipped — suppressed (see above).
+
+    `artifact_exists(path)->bool` and `tests_pass(task)->bool|None` are injectable so
+    unit tests run fully in memory. Default `artifact_exists` resolves paths under
+    REPO_ROOT. `tests_pass` is the opt-in gate (a future `--verify-shipped` mode can
+    pass a real runner): when provided, a candidate is dropped if its named tests are
+    red; the default hot path (evaluate()) leaves it None and NEVER executes tests —
+    reconcile runs in pre-push/CI, so it must stay cheap and side-effect-free."""
+    if artifact_exists is None:
+        artifact_exists = lambda p: (REPO_ROOT / p).exists()
+    out = []
+    for t in tasks:
+        state = (t.get("state") or "").lower()
+        if state in _I16_SKIP_STATES:
+            continue
+        paths = _i16_declared_paths(t)
+        if not paths:
+            continue
+        if _i16_has_live_blocker(t):
+            continue
+        if not all(artifact_exists(p) for p in paths):
+            continue
+        if tests_pass is not None and tests_pass(t) is False:
+            continue
+        shown = ", ".join(paths[:3]) + ("…" if len(paths) > 3 else "")
+        out.append(viol(
+            "I16", "warn",
+            f"task {t.get('taskId')} is {state} but its whole declared deliverable already "
+            f"exists ({shown}) — likely shipped; verify + close (correct-state -> done)",
+            False,
+        ))
+    return out
+
+
+def check_I17(tasks: list) -> list:
+    """Duplicate-TASK clusters (#1274): the SAME logical task — identical immutable
+    createdAt (#285) + title — sitting at MORE THAN ONE taskId. The 2026-07-28
+    cross-clone storm minted 12-18 such clones each; union-by-id never re-converged
+    them and NO invariant flagged duplicate TASKS (I6 flags duplicate IDs only), so
+    ~140 phantoms silently inflated every board. The merge driver now converges these
+    on merge; this is the standing alarm for any that exist in a clean tree (pre-cleanup
+    or a future regression). Non-terminal only — done/archived clones are harmless
+    history. fixable=False: cleanup is a governed correct-state/dismiss, not a lease
+    release, and picking the survivor needs the most-progressed judgment."""
+    groups: dict = {}
+    for t in tasks:
+        if (t.get("state") or "").lower() in ("done", "archived", "dropped"):
+            continue
+        ca, title = t.get("createdAt"), t.get("title")
+        if ca and title:
+            groups.setdefault((ca, title), []).append(t.get("taskId"))
+    out = []
+    for (ca, title), ids in sorted(groups.items()):
+        uniq = sorted({i for i in ids if i},
+                      key=lambda x: int(re.sub(r"\D", "", str(x)) or 0))
+        if len(uniq) > 1:
+            out.append(viol(
+                "I17", "warn",
+                f"{len(uniq)} duplicate OPEN tasks share createdAt+title {str(title)[:40]!r}: "
+                f"{', '.join(uniq)} — same logical task cloned; converge to {uniq[0]} "
+                f"(governed dedup, keep most-progressed)",
+                False,
+            ))
     return out
 
 
@@ -753,11 +938,15 @@ def _read_last_assigned():
 
 
 def _scan_ids(path: Path) -> list:
+    """Ids of task ENTRIES in a queue/archive projection. Anchored to the
+    rendered entry header (`- **#NNN`) — a bare `#\\d+` scan also swallowed
+    prose mentions in Why/How text (incident ids like #912), making I6 report
+    a phantom counter regression and I15 blind (2026-07-09)."""
     try:
         text = path.read_text()
     except OSError:
         return []
-    return [int(n) for n in re.findall(r"#(\d{2,})", text)]
+    return [int(n) for n in re.findall(r"^-\s+\*\*#(\d{2,})", text, re.M)]
 
 
 def _working_context_thread_ids() -> list:
@@ -857,7 +1046,7 @@ def apply_fixes(actions: list) -> list:
 
 # ---- evaluator -------------------------------------------------------------
 def evaluate() -> dict:
-    """Load every source, run I1-I13, return {violations, ok}. ok == no fails."""
+    """Load every source, run I1-I17, return {violations, ok}. ok == no fails."""
     raw_checkouts = free_work.load_json(free_work.CHECKOUTS) or {}
     checkouts = raw_checkouts.get("checkouts", [])
     presence = raw_checkouts.get("presence", [])
@@ -879,7 +1068,9 @@ def evaluate() -> dict:
     violations += check_I1(leases, tasks)
     violations += check_I2(leases, tasks)
     violations += check_I3(leases, tasks)
-    violations += check_I4(opens, tasks, leases)
+    # Frontier items have their own governance (frontier-scan); skip them in I4.
+    governed_opens = [o for o in opens if o.get("section") != "frontier"]
+    violations += check_I4(governed_opens, tasks, leases)
     violations += check_I5(leases, tasks)
     violations += check_I6(last_assigned, doc_ids, governed_ids)
     violations += check_I15(last_assigned, doc_ids)
@@ -888,6 +1079,8 @@ def evaluate() -> dict:
     violations += check_I9(tasks)
     violations += check_I10(presence)
     violations += check_I11(tasks)
+    violations += check_I16(tasks)  # shipped-but-open drift (artifact-existence heuristic)
+    violations += check_I17(tasks)  # duplicate-TASK clusters (same createdAt+title, diff ids) #1274
     violations += check_I12(_load_skill_slugs(), _load_skill_index_text())
     _em_out = ecosystem_map.OUT
     violations += check_I13(_em_out.read_text() if _em_out.exists() else "",
@@ -949,7 +1142,7 @@ def _run_fix(args) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Reconcile canonical state against the invariant catalog (I1-I8).")
+    ap = argparse.ArgumentParser(description="Reconcile canonical state against the invariant catalog (I1-I16).")
     ap.add_argument("mode", nargs="?", default="verify", choices=["verify"], help="verify (read-only)")
     ap.add_argument("--json", action="store_true", help="emit JSON")
     ap.add_argument(

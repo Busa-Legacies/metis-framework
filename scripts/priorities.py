@@ -4,12 +4,19 @@
 Connects the two halves that were sitting disconnected:
   - docs/process/goals.json  (G1-G6 campaigns, weights, project/area->campaign mapping)
   - docs/process/state/tasks.json  (governed task state)
+  - docs/process/state/projects.json  (milestones — project-progress-contract.md)
 
 It maps each active task to a campaign (explicit `goalIds`, else by `project`,
 else by legacy `area`), scores it on a transparent matrix (campaign weight × urgency ×
-readiness), and ranks the result
+readiness × milestone), and ranks the result
 per priority-system. Orphans (no campaign) are surfaced for triage. Fully derived from
 governed state — no manual upkeep.
+
+The milestone term is a CONSERVATIVE nudge (task → project → milestone via the
+`taskIds` backlink): a task backing its project's NEXT undone milestone gets a small
+boost; everything else — later milestone, done milestone, no resolvable milestone,
+no projects data at all — stays at exactly the base score (neutral 1.0), so prior
+ordering is preserved wherever milestone data doesn't apply.
 
     python3 scripts/priorities.py matrix         # the full ranked decision matrix
     python3 scripts/priorities.py next -n 8       # top actionable work, system-wide
@@ -19,7 +26,6 @@ governed state — no manual upkeep.
 """
 import argparse
 import json
-import sys
 from pathlib import Path
 
 
@@ -35,11 +41,15 @@ def find_repo_root(start=None):
 REPO = find_repo_root()
 GOALS_FILE = REPO / "docs" / "process" / "goals.json"
 TASKS_FILE = REPO / "docs" / "process" / "state" / "tasks.json"
+PROJECTS_FILE = REPO / "docs" / "process" / "state" / "projects.json"
 
 # A task in one of these states is finished — never ranked.
 TERMINAL_STATES = {"done", "rejected", "cancelled", "dropped", "archived"}
 # Urgency weight by task priority.
 URGENCY = {"P1": 3.0, "P2": 2.0, "P3": 1.0}
+# Milestone-criticality boost for a task backing its project's NEXT undone milestone.
+# Deliberately below the readiness multipliers (1.2/1.3) so it nudges, never dominates.
+MILESTONE_FRONT = 1.15
 
 
 # ── pure engine ───────────────────────────────────────────────────────────────
@@ -69,6 +79,41 @@ def map_task_goals(task: dict, goals: list) -> list:
     return _field_to_goals(goals, "areas").get(task.get("area") or "", [])
 
 
+def projects_by_slug(projects: list) -> dict:
+    return {p["slug"]: p for p in projects or [] if p.get("slug")}
+
+
+def current_milestone(project: dict):
+    """First non-done milestone in declared order — the project's live front
+    (same rule as scripts/lib/progress.py)."""
+    for m in project.get("milestones") or []:
+        if m.get("status") != "done":
+            return m
+    return None
+
+
+def milestone_factor(task: dict, by_slug: dict) -> tuple:
+    """Milestone-criticality component → (factor, milestoneId).
+
+    Resolves task → project (task['project'] slug) → milestone (the `taskIds`
+    backlink). MILESTONE_FRONT when that milestone IS the project's next undone
+    one; neutral 1.0 for everything else (later/done milestone, no backlink,
+    no project) so a task with no resolvable front scores exactly as before.
+    """
+    proj = by_slug.get(task.get("project") or "")
+    if not proj:
+        return 1.0, None
+    tid = task.get("taskId")
+    mine = next((m for m in proj.get("milestones") or []
+                 if tid and tid in (m.get("taskIds") or [])), None)
+    if not mine:
+        return 1.0, None
+    front = current_milestone(proj)
+    if front is not None and mine.get("id") == front.get("id"):
+        return MILESTONE_FRONT, mine.get("id")
+    return 1.0, mine.get("id")
+
+
 def _readiness(task: dict) -> float:
     """How actionable a task is right now."""
     state = (task.get("state") or "").lower()
@@ -82,21 +127,28 @@ def _readiness(task: dict) -> float:
     return 1.0
 
 
-def score_task(task: dict, goals: list) -> dict:
-    """The matrix row: goal weight × urgency × readiness, with components exposed."""
+def score_task(task: dict, goals: list, projects: list = None) -> dict:
+    """The matrix row: goal weight × urgency × readiness × milestone, components exposed.
+
+    `base_score` (goal_weight × urgency × readiness) stays the primary, explainable
+    signal; the milestone factor is a separate inspectable nudge on top of it.
+    """
     gids = map_task_goals(task, goals)
     by_id = goals_by_id(goals)
     goal_weight = max((by_id[g]["weight"] for g in gids), default=0.0)
     urgency = URGENCY.get((task.get("priority") or "").upper(), 1.0)
     readiness = _readiness(task)
-    score = round(goal_weight * urgency * readiness, 2)
+    milestone, milestone_id = milestone_factor(task, projects_by_slug(projects))
+    base_score = round(goal_weight * urgency * readiness, 2)
+    score = round(goal_weight * urgency * readiness * milestone, 2)
     system = next((by_id[g]["system"] for g in gids), None)
     return {
         "taskId": task.get("taskId"), "title": task.get("title"),
         "priority": task.get("priority"), "state": task.get("state"),
         "area": task.get("area"), "goals": gids, "system": system,
         "goal_weight": goal_weight, "urgency": urgency, "readiness": readiness,
-        "score": score, "orphan": not gids,
+        "milestone": milestone, "milestoneId": milestone_id,
+        "base_score": base_score, "score": score, "orphan": not gids,
     }
 
 
@@ -104,10 +156,10 @@ def active_tasks(tasks: list) -> list:
     return [t for t in tasks if (t.get("state") or "").lower() not in TERMINAL_STATES]
 
 
-def rank(tasks: list, goals: list) -> dict:
+def rank(tasks: list, goals: list, projects: list = None) -> dict:
     """Ranked decision matrix: scored active tasks split by priority-system, plus
     the orphan list (active tasks that map to no campaign)."""
-    scored = [score_task(t, goals) for t in active_tasks(tasks)]
+    scored = [score_task(t, goals, projects) for t in active_tasks(tasks)]
     ranked = sorted((s for s in scored if not s["orphan"]),
                     key=lambda s: (s["score"], URGENCY.get((s["priority"] or "").upper(), 0)),
                     reverse=True)
@@ -150,21 +202,31 @@ def load_tasks() -> list:
     return d["tasks"] if isinstance(d, dict) and "tasks" in d else d
 
 
+def load_projects() -> list:
+    """Milestone data (project-progress-contract.md). Missing/bad file → [] (neutral)."""
+    try:
+        d = json.loads(PROJECTS_FILE.read_text())
+        return d.get("projects", []) if isinstance(d, dict) else d
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
 def _systems() -> dict:
     return {int(k): v for k, v in json.loads(GOALS_FILE.read_text()).get("systems", {}).items()}
 
 
 def _row(s: dict) -> str:
-    gl = ",".join(s["goals"]) or "none"
+    gl = ",".join(s["goals"]) or "—"
+    ms = f"  ↑{s['milestoneId']}" if s.get("milestone", 1.0) > 1.0 else ""
     return (f"  {s['score']:>5.1f}  {s['priority'] or '--':<3} {s['state'] or '':<16} "
-            f"[{gl:<6}] {s['taskId'] or '':<6} {(s['title'] or '')[:54]}")
+            f"[{gl:<6}] {s['taskId'] or '':<6} {(s['title'] or '')[:54]}{ms}")
 
 
 def cmd_matrix(args):
-    goals, tasks = load_goals(), load_tasks()
-    r = rank(tasks, goals)
+    goals, tasks, projects = load_goals(), load_tasks(), load_projects()
+    r = rank(tasks, goals, projects)
     systems = _systems()
-    print("══ PRIORITY DECISION MATRIX  (score = goal_weight × urgency × readiness) ══")
+    print("══ PRIORITY DECISION MATRIX  (score = goal_weight × urgency × readiness × milestone; ↑M = next milestone) ══")
     for sysid in sorted(r["by_system"]):
         rows = r["by_system"][sysid]
         print(f"\n── System {sysid}: {systems.get(sysid, '?')}  ({len(rows)} active) ──")
@@ -178,8 +240,8 @@ def cmd_matrix(args):
 
 
 def cmd_next(args):
-    goals, tasks = load_goals(), load_tasks()
-    r = rank(tasks, goals)
+    goals, tasks, projects = load_goals(), load_tasks(), load_projects()
+    r = rank(tasks, goals, projects)
     rows = r["ranked"]
     if args.system:
         rows = [s for s in rows if s["system"] == args.system]
@@ -202,7 +264,7 @@ def cmd_goals(args):
 
 def cmd_orphans(args):
     goals, tasks = load_goals(), load_tasks()
-    orphans = rank(tasks, goals)["orphans"]
+    orphans = rank(tasks, goals, load_projects())["orphans"]
     print(f"══ ORPHANS — {len(orphans)} active task(s) with no campaign (drop, defer, or assign goalIds) ══")
     for s in sorted(orphans, key=lambda s: URGENCY.get((s["priority"] or "").upper(), 0), reverse=True):
         print(f"  {s['priority'] or '--':<3} {s['state'] or '':<16} {s['area'] or 'None':<22} "
@@ -211,8 +273,8 @@ def cmd_orphans(args):
 
 def cmd_blocked(args):
     """Important-but-stuck work — high score yet not actionable (readiness 0.5)."""
-    goals, tasks = load_goals(), load_tasks()
-    scored = [score_task(t, goals) for t in active_tasks(tasks)]
+    goals, tasks, projects = load_goals(), load_tasks(), load_projects()
+    scored = [score_task(t, goals, projects) for t in active_tasks(tasks)]
     blocked = [s for s in scored if s["readiness"] == 0.5]
     print(f"══ BLOCKED — {len(blocked)} active task(s) stuck (unblock to action) ══")
     print("  score  pri state            goal   id     title")

@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-02
-- **Supersedes:** —
-- **Superseded-by:** —
+- **Supersedes:** n/a
+- **Superseded-by:** n/a
 ## Context
 
 Git reliably captures *what changed* (diffs + intentional commit messages under the
@@ -29,7 +29,7 @@ Adopt a lightweight, ADR-derived **Decision Record (DR)** standard:
 - Numbered, immutable markdown records in a self-contained folder `docs/process/decisions/`
   (auto-indexed by RAG under `shared` → discoverable by all agents).
 - The **DR-NNNN ID is the bidirectional join key** between rationale and code (`git log
-  --grep=DR-NNNN`), robust to rebases; no fragile SHA-stamping required.
+  --grep=DR-NNNN`), robust to rebases: no fragile SHA-stamping required.
 - Creation is **folded into `/checkpoint` and `/end`** (the only intentional-history authors),
   never a standalone ritual, with a **narrow trigger** so DRs stay signal, not noise.
 - A **zero-LLM Stop-hook heuristic** detects milestone-shaped commit clusters and rides the
@@ -60,7 +60,7 @@ Pinned commits:
 
 ## Consequences
 
-- System milestones now leave a durable, recall-surfaced record tying *why* to *what*; the
+- System milestones now leave a durable, recall-surfaced record tying *why* to *what*: the
   failure mode that produced DR-0001 cannot silently recur.
 - A small recurring obligation at checkpoint/end time, bounded by the narrow trigger.
 - DRs are immutable: revisiting a decision means a new DR that `Supersedes` the old one, so the

@@ -2,10 +2,10 @@
 
 How every agent (Claude Code, Codex, OpenClaw lanes) gets the right protocol context **just-in-time**
 instead of paying for all of it on every session. The goal is two things at once: **lower always-on
-token cost** AND **guaranteed protocol adherence**; the second is non-negotiable, so adherence is
+token cost** AND **guaranteed protocol adherence**: the second is non-negotiable, so adherence is
 enforced by mechanism (kernel + hooks), not by hoping always-loaded prose is read.
 
-Status: **proposal (2026-06-09)**; supersedes the "round 1 trim" in `token-optimization.md` with a
+Status: **proposal (2026-06-09)**: supersedes the "round 1 trim" in `token-optimization.md` with a
 systemic model. Implementation is phased; see §6.
 
 ## 1. The problem (measured)
@@ -33,9 +33,9 @@ Two structural problems, not just verbosity:
 - **Just-in-time retrieval.** Load lightweight identifiers always; pull the heavy detail only when the
   current activity needs it. (`anthropic.com/engineering/effective-context-engineering-for-ai-agents`)
 - **Single canonical source.** Each protocol lives in exactly one provider-neutral doc. Per-provider
-  files are thin **routers** that point at it; never re-inline it. Parity is enforced, not copy-pasted.
+  files are thin **routers** that point at it: never re-inline it. Parity is enforced, not copy-pasted.
 - **Enforce, don't hope.** When a rule's detail is on-demand, adherence is guaranteed by (a) the kernel
-  always *naming* the rule, and (b) a hook that *blocks* the non-compliant action, not by trusting the
+  always *naming* the rule, and (b) a hook that *blocks* the non-compliant action: not by trusting the
   agent to have read prose. This is the answer to "how do we ensure adherence without always-on."
 - **Isolate verbose work.** Research/log-heavy/throwaway work runs in subagents or free local lanes (MLX-LM) so
   its tokens never enter the main window.
@@ -47,7 +47,7 @@ The irreducible minimum an agent must hold in context to act safely and know whe
 - **Identity**: who/what (condensed IDENTITY + USER).
 - **Hard rules, stated tersely**: the 6 act-vs-ask guardrails; red lines; the sign-off *requirement*
   (one line + pointer); the redaction one-liner ("money is never logged").
-- **The Router**: an index table: *"for activity X, load pack Y."* This is the heart of the system;
+- **The Router**: an index table: *"for activity X, load pack Y."* This is the heart of the system:
   it makes JIT retrieval reliable because the agent always sees the map even when it doesn't hold the territory.
 
 Replaces the bulk of inline prose now in `ClaudeCode/CLAUDE.md` and `AGENTS.md`.
@@ -57,13 +57,13 @@ Pulled when the triggering activity begins. Each is ONE canonical doc/skill, pro
 
 | Pack | Canonical source | Loaded when |
 |---|---|---|
-| Decision doctrine (full) | `docs/process/decision-doctrine.md` | rarely; kernel holds the 6 guardrails |
+| Decision doctrine (full) | `docs/process/decision-doctrine.md` | rarely: kernel holds the 6 guardrails |
 | Session lifecycle | `skills/{start,checkpoint,end,next}` (already skills ✓) | start / checkpoint / close |
 | Agent routing + lanes | `docs/process/jay-lanes.md` | delegating to a lane |
 | Design guidelines | `docs/design-guidelines.md` | any UI/frontend work |
 | Memory standard | `docs/process/memory-standard.md` (extract) | writing a memory file |
 | Task lifecycle | `docs/process/task-pickup-and-lifecycle-standard.md` | claim / close a task |
-| **Assistant comms** (heartbeat, Discord, group-chat, reactions) | `docs/process/assistant-comms.md` (extract from AGENTS.md) | **only** gateway/heartbeat context, never repo-work sessions |
+| **Assistant comms** (heartbeat, Discord, group-chat, reactions) | `docs/process/assistant-comms.md` (extract from AGENTS.md) | **only** gateway/heartbeat context: never repo-work sessions |
 
 ### Tier 2: Retrieved session context (JIT-injected, not blanket)
 Pulled by activity/keyword via hooks or agent action, instead of unconditional injection:
@@ -94,17 +94,17 @@ mechanically enforced or genuinely judgment-shaped (you can't hook-block "should
 
 | Protocol | Enforcement | Mechanism |
 |---|---|---|
-| Lease/checkout before editing a claimed file | **mechanical** | `checkout-guard.sh` (PreToolUse Edit\|Write; blocks) |
+| Lease/checkout before editing a claimed file | **mechanical** | `checkout-guard.sh` (PreToolUse Edit\|Write, blocks) |
 | File-write guards (wrong-dir, concurrent-edit) | **mechanical** | `file-guard.sh` (Pre/PostToolUse) |
-| Sign-off block on every stop | **mechanical (Claude)** · self-enforced (Codex) | `hook-signoff-gate.sh` (Stop; blocks). Codex has no Stop-hook → documented delta |
-| Context budget (no always-on regrowth) | **mechanical** | `context-budget-check.py` (close-integrity #11; fails close) |
+| Sign-off block on every stop | **mechanical (Claude)** · self-enforced (Codex) | `hook-signoff-gate.sh` (Stop, blocks). Codex has no Stop-hook → documented delta |
+| Context budget (no always-on regrowth) | **mechanical** | `hook-context-budget-gate.sh` (PreToolUse Edit\|Write, **denies** an edit that would push an always-on group over budget, #3424) + `context-budget-check.py` (close-integrity #11 backstop). Escape hatch: `CONTEXT_BUDGET_GATE_OVERRIDE=1` or a `context-budget-override` marker in the new content. |
 | Rate-limit / plan-mode nudges | mechanical (advisory) | `hook-prompt-guard.sh`, `hook-plan-nudge.sh` (UserPromptSubmit) |
 | Act-vs-ask decision doctrine | judgment | kernel names the 6 guardrails; full doctrine on demand |
 | Design guidelines | judgment | path-scoped `.claude/rules/design.md` (auto-loads on UI files) |
 | Lane routing | judgment | kernel Router → `jay-lanes.md` |
-| **Redaction (money never logged)** | **mechanical** | `hook-redaction-guard.sh` (PreToolUse Edit\|Write; denies). Tightly scoped to personal-log / `#personal` memory writes, so code edits with `$` are untouched; high-confidence money patterns ($-amounts, k/m/bn, money words, comma-grouped thousands) → `deny` with a redact-and-retry reason. |
+| **Redaction (money never logged)** | **mechanical** | `hook-redaction-guard.sh` (PreToolUse Edit\|Write, denies). Tightly scoped to personal-log / `#personal` memory writes, so code edits with `$` are untouched; high-confidence money patterns ($-amounts, k/m/bn, money words, comma-grouped thousands) → `deny` with a redact-and-retry reason. |
 
-Every protocol is now either mechanically enforced or genuinely judgment-shaped; no on-demand
+Every protocol is now either mechanically enforced or genuinely judgment-shaped: no on-demand
 placement silently weakens a guarantee. The redaction guard closed the last gap (enforcement-hardening).
 
 ## 5. Cross-provider mechanism (reuse what exists)
@@ -148,7 +148,7 @@ hook. Target: shave the ~2.3k injection to ~0.8k typical.
   instruction surface per provider (Claude Code / Codex / <<MACHINE_1_ID>> gateway / shared identity), path-scoped
   `.claude/rules/` correctly excluded, and fails if any group exceeds its char ceiling (current size +
   ~12% headroom). Wired as check #11 in `scripts/close-integrity-check.sh` so silent regrowth fails the
-  session-close gate; bumping a ceiling now requires a conscious commit. Negative-tested (trips on
+  session-close gate, bumping a ceiling now requires a conscious commit. Negative-tested (trips on
   over-budget) and passing live (claude-code 16,797/19,000 · codex 17,257/19,500 · jay 2,383/3,500 ·
   identity 8,177/9,500).
 - ✅ **Pack parity in `platform-parity-check.py`.** The registry now declares `tier1Packs` + `packRouter`;
@@ -158,10 +158,10 @@ hook. Target: shave the ~2.3k injection to ~0.8k typical.
 
 **Phase 4: Enforcement hardening.** For each on-demand protocol, confirm a hook backstop exists so
 adherence is mechanical, not prose-dependent.
-- ✅ Audit complete; see §4 "Enforcement status." Checkout, file-guards, sign-off, and the context
+- ✅ Audit complete: see §4 "Enforcement status." Checkout, file-guards, sign-off, and the context
   budget are mechanically enforced; doctrine/design/routing are genuinely judgment-shaped.
 - ✅ **Redaction gap closed.** `hook-redaction-guard.sh` (PreToolUse Edit\|Write) denies money amounts
-  in personal-log / `#personal` memory writes, scoped so code edits are untouched. Wired into
+  in personal-log / `#personal` memory writes: scoped so code edits are untouched. Wired into
   `settings.shared.json` + `mirror-manifest.json`. 8-case tested (4 deny / 4 allow). All on-demand
   protocols are now mechanically enforced or genuinely judgment-shaped.
 
@@ -176,7 +176,7 @@ All load-bearing knobs were checked against the official docs. Confirmed real an
 |---|---|---|
 | Skill body load | name+description always (~tiny); **body only on invoke** | Tier-1 packs |
 | `disable-model-invocation: true` | description hidden from context; loads only on explicit `/name`; also blocks subagent preload | user-only ops (`/end`, `/deploy`) |
-| `user-invocable: false` | hide from `/` menu; background knowledge Claude pulls when relevant | reference packs |
+| `user-invocable: false` | hide from `/` menu: background knowledge Claude pulls when relevant | reference packs |
 | `allowed-tools` / `disallowed-tools` | grant/remove tools while skill active | autonomous/guarded skills |
 | **`context: fork` + `agent:`** | run the skill **as an isolated subagent** (own context window) | protocol-heavy ops that shouldn't bloat the main window |
 | **Dynamic injection `` !`cmd` ``** | runs a shell command and inlines its output before Claude sees the skill | JIT session context (free-work/live-status on demand, not blanket) |
@@ -189,7 +189,7 @@ All load-bearing knobs were checked against the official docs. Confirmed real an
 | `InstructionsLoaded` hook | logs which instruction files loaded, when, why | the Phase-3 context-budget regression check |
 
 **Confirmed: Claude Code reads `CLAUDE.md`, not `AGENTS.md`.** So AGENTS.md's 14.7 KB is auto-loaded by
-**Codex**, not by Claude Code; it only enters a Claude session if the startup checklist makes the agent
+**Codex**, not by Claude Code: it only enters a Claude session if the startup checklist makes the agent
 `Read` it. This sharpens the §8 split: trim AGENTS.md primarily to cut Codex's always-on cost and the
 checklist read, and stop the startup checklist from pulling assistant-comms into repo-work sessions.
 
@@ -200,24 +200,24 @@ Invented settings that do **not** exist (the design avoids them): `skillListingB
 
 The tier model is **provider-neutral at the canonical layer, provider-specific at the adapter layer**.
 The canonical layer (`docs/process/*.md` + the AGENTS.md kernel) is the single source for every tier and
-pack; each provider implements the three jobs (*progressive disclosure*, *JIT session context*, and
-*enforcement*) with its own native mechanism. Parity is asserted by `scripts/platform-parity-check.py`.
+pack; each provider implements the three jobs: *progressive disclosure*, *JIT session context*, and
+*enforcement*: with its own native mechanism. Parity is asserted by `scripts/platform-parity-check.py`.
 
 | Job | Claude Code | Codex | OpenClaw lanes |
 |---|---|---|---|
 | **Kernel (Tier 0)** | `ClaudeCode/CLAUDE.md` (auto-loaded) | `codex/instructions.md` + AGENTS.md kernel (auto-loaded) | `bootstrap.md` per lane |
 | **Activity packs (Tier 1)** | skills (`.claude/skills/`) + path-scoped `.claude/rules/` | `.codex/prompts/` adapters + pointer-pattern doc reads | dispatch injects the pack into the lane prompt per task |
 | **JIT session context (Tier 2)** | `context: fork` skills + dynamic `` !`cmd` `` injection | prompt adapters run the same neutral scripts on demand | task payload only (no standing context) |
-| **Enforcement** | PreToolUse / Stop hooks (`hook-signoff-gate.sh`, file-guard); hard block | `~/.codex/hooks.json` (hash-trusted) + self-enforced sign-off | arbiter/warden review gate on lane output |
+| **Enforcement** | PreToolUse / Stop hooks (`hook-signoff-gate.sh`, file-guard): hard block | `~/.codex/hooks.json` (hash-trusted) + self-enforced sign-off | arbiter/warden review gate on lane output |
 
 Design rules that keep the providers in parity:
 - **One canonical doc per protocol.** Adapters point at it; they never re-inline it. (Today doctrine +
-  sign-off are inlined in *both* `CLAUDE.md` and `codex/instructions.md`; collapse to a shared kernel
+  sign-off are inlined in *both* `CLAUDE.md` and `codex/instructions.md`, collapse to a shared kernel
   pointer once the canonical docs hold the full text.)
 - **Same lifecycle verbs everywhere** (`start/next/checkpoint/end`) over the **same neutral scripts**
-  (`free-work.py`, `agent-work.py`, `working-context-update.py`); only the invocation surface differs.
+  (`free-work.py`, `agent-work.py`, `working-context-update.py`), only the invocation surface differs.
 - **Enforcement parity is explicit, not assumed.** Claude blocks via hooks; Codex has no Stop-hook so its
-  sign-off is self-enforced (documented delta); for any *new* on-demand protocol, add the Codex
+  sign-off is self-enforced (documented delta): for any *new* on-demand protocol, add the Codex
   `hooks.json` equivalent where a hard guarantee is required, or record it as a known self-enforced delta.
 - **Extend `platform-parity-check.py`** to assert every provider exposes the same pack set and points at
-  the same canonical docs, the cross-PROVIDER analogue of the cross-MACHINE mirror check.
+  the same canonical docs: the cross-PROVIDER analogue of the cross-MACHINE mirror check.

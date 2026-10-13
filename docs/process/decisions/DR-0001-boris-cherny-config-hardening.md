@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-01
-- **Supersedes:** —
-- **Superseded-by:** —
+- **Supersedes:** n/a
+- **Superseded-by:** DR-0006 (autoCompactWindow only)
 
 ## Context
 
@@ -45,8 +45,8 @@ Pinned commits:
 
 ## Consequences
 
-- Long sessions are robust against context compaction, a foundational reliability gain that
+- Long sessions are robust against context compaction: a foundational reliability gain that
   later changes (e.g. the auto-checkpoint loop) build on.
 - The free-local-Ollama constraint is now an explicit, recorded rule rather than tribal knowledge.
 - **Meta-consequence:** this milestone leaving a trace in `git` but not in the recall path is
-  what exposed the need for a Decision Record standard; see [DR-0002](DR-0002-decision-record-standard.md).
+  what exposed the need for a Decision Record standard: see [DR-0002](DR-0002-decision-record-standard.md).

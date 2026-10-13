@@ -11,10 +11,8 @@ from __future__ import annotations
 
 import glob
 import json
-import os
 import re
 import subprocess
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,8 +24,15 @@ METRICS_GLOB = "/tmp/claude-session-*.metrics"
 STALE_THRESHOLD_S = 86400 * 4  # 4 days — matches RETIRE_TTL from the plan
 
 
-def _run(cmd: str) -> str:
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout.strip()
+def _run(argv: list) -> str:
+    """Run a fixed argv (never a shell string — #6500: the three call sites are constant
+    commands, so there is nothing a shell adds except an injection surface). stderr is
+    dropped (tmux prints 'no server running' when idle), a missing binary is an empty
+    result rather than a raise, matching the old `2>/dev/null` behaviour."""
+    try:
+        return subprocess.run(argv, capture_output=True, text=True).stdout.strip()
+    except (FileNotFoundError, OSError):
+        return ""
 
 
 def _parse_etime(etime: str) -> int:
@@ -51,7 +56,7 @@ def _parse_etime(etime: str) -> int:
 
 def get_process_tree() -> dict[int, dict]:
     proc_tree: dict[int, dict] = {}
-    for line in _run("ps -eo pid,ppid,etime,command").splitlines()[1:]:
+    for line in _run(["ps", "-eo", "pid,ppid,etime,command"]).splitlines()[1:]:
         parts = line.split(None, 3)
         if len(parts) == 4:
             try:
@@ -71,7 +76,7 @@ def get_tmux_pane_map() -> dict[int, dict]:
     """Map pane shell PID -> tmux metadata."""
     pane_map: dict[int, dict] = {}
     fmt = "#{session_name}|#{window_name}|#{pane_pid}|#{pane_current_path}|#{window_active}"
-    for line in _run(f"tmux list-windows -a -F '{fmt}' 2>/dev/null").splitlines():
+    for line in _run(["tmux", "list-windows", "-a", "-F", fmt]).splitlines():
         parts = line.split("|", 4)
         if len(parts) == 5:
             sess, win, ppid_str, path, active = parts
@@ -199,6 +204,14 @@ def infer_state(entry: dict) -> str:
     except Exception:
         age_s = 999999
 
+    # Uptime-floored idle (#2040): a live process cannot have been idle longer than it
+    # has existed. A young PID that resumed an OLD transcript reads a stale last_ts, which
+    # would otherwise over-report idle and wrongly retire a busy unattended session. Cap
+    # the idle age at the process uptime so recency reflects the PID, not the transcript.
+    etime_s = entry.get("etime_s")
+    if pid and isinstance(etime_s, (int, float)) and etime_s > 0:
+        age_s = min(age_s, etime_s)
+
     if age_s > STALE_THRESHOLD_S:
         return "D"  # retired — very old
 
@@ -226,11 +239,66 @@ def infer_state(entry: dict) -> str:
     return "B"  # could be C — supervisor will refine with IDLE_TTL
 
 
+def get_attached_tmux_sessions() -> set:
+    """tmux session names that currently have an ATTACHED client — the "true attach"
+    signal (#2040). A session with no client is running unattended. Empty on any error
+    (tmux absent / no server) so this never fails the registry build."""
+    attached = set()
+    for line in _run(["tmux", "list-clients", "-F", "#{client_session}"]).splitlines():
+        line = line.strip()
+        if line:
+            attached.add(line)
+    return attached
+
+
+def _iso_to_epoch(ts: str):
+    """ISO8601 (…Z or +00:00) -> epoch seconds, or None if unparseable/empty."""
+    if not ts:
+        return None
+    try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def match_pids_by_starttime(pid_starts: dict, session_firsts: dict, tol_s: int = 240) -> dict:
+    """#2040 fallback match: pair a live claude PID to a JSONL session when their START
+    times agree within tol_s. cwd-match collides because most sessions share one cwd
+    ($HOME), so ~a third of live PIDs went unmatched and fell back to
+    uptime-as-idle. A process's start (now - etime) closely tracks its session's first
+    transcript timestamp, so start-time proximity re-attributes those.
+
+    PURE: pid_starts {pid: start_epoch}, session_firsts {sid: first_ts_epoch} for the
+    STILL-UNMATCHED pids/sessions only. Greedy nearest-first, each session used once.
+    Deterministic: candidates sorted by |delta| then (pid, sid). Returns {pid: sid}."""
+    candidates = []
+    for pid, pstart in pid_starts.items():
+        if pstart is None:
+            continue
+        for sid, fts in session_firsts.items():
+            if fts is None:
+                continue
+            delta = abs(pstart - fts)
+            if delta <= tol_s:
+                candidates.append((delta, pid, sid))
+    candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+    used_sessions, used_pids, matched = set(), set(), {}
+    for _delta, pid, sid in candidates:
+        if pid in used_pids or sid in used_sessions:
+            continue
+        matched[pid] = sid
+        used_pids.add(pid)
+        used_sessions.add(sid)
+    return matched
+
+
 def build_registry() -> dict:
     proc_tree = get_process_tree()
     pane_map = get_tmux_pane_map()
     metrics = get_metrics_sessions()
     jsonl = get_jsonl_sessions()
+    attached_tmux = get_attached_tmux_sessions()
+    now_epoch = datetime.now(timezone.utc).timestamp()
 
     # Claude PIDs
     claude_pids = {
@@ -258,38 +326,63 @@ def build_registry() -> dict:
         if not existing or entry.get("last_ts", "") > entries[existing].get("last_ts", ""):
             cwd_to_best_session[cwd] = sid
 
-    for pid, info in claude_pids.items():
-        tmux_info = find_tmux(pid, proc_tree, pane_map)
+    def _apply_pid(sid: str, pid: int, info: dict, tmux_info):
         pane_cwd = tmux_info["pane_cwd"] if tmux_info else ""
-        tmux_label = tmux_info["tmux_label"] if tmux_info else "detached"
+        tmux_session = tmux_info["tmux_session"] if tmux_info else ""
+        entries[sid]["pid"] = pid
+        entries[sid]["etime_s"] = info["etime_s"]
+        entries[sid]["etime_str"] = info["etime_str"]
+        entries[sid]["tmux_label"] = tmux_info["tmux_label"] if tmux_info else "detached"
+        entries[sid]["pane_cwd"] = pane_cwd
+        entries[sid]["session_attached"] = bool(tmux_session and tmux_session in attached_tmux)
 
-        # Find best matching session by pane cwd
+    # Pass 1 — cwd match (best-effort; collides when sessions share one cwd).
+    pid_tmux = {pid: find_tmux(pid, proc_tree, pane_map) for pid in claude_pids}
+    matched_pids = set()
+    for pid, info in claude_pids.items():
+        tmux_info = pid_tmux[pid]
+        pane_cwd = tmux_info["pane_cwd"] if tmux_info else ""
         matched_sid = cwd_to_best_session.get(pane_cwd)
-        if matched_sid and matched_sid in entries:
-            entries[matched_sid]["pid"] = pid
-            entries[matched_sid]["etime_s"] = info["etime_s"]
-            entries[matched_sid]["etime_str"] = info["etime_str"]
-            entries[matched_sid]["tmux_label"] = tmux_label
-            entries[matched_sid]["pane_cwd"] = pane_cwd
-        else:
-            # Unmatched PID — create a placeholder
-            placeholder_sid = f"pid-{pid}"
-            entries[placeholder_sid] = {
-                "session_id": placeholder_sid,
-                "pid": pid,
-                "etime_s": info["etime_s"],
-                "etime_str": info["etime_str"],
-                "tmux_label": tmux_label,
-                "pane_cwd": pane_cwd,
-                "cwd": pane_cwd,
-                "slug": "",
-                "first_ts": "",
-                "last_ts": "",
-                "last_human_ts": "",
-                "last_tool_ts": "",
-                "jsonl_path": "",
-                "metrics": {},
-            }
+        if matched_sid and matched_sid in entries and entries[matched_sid].get("pid") is None:
+            _apply_pid(matched_sid, pid, info, tmux_info)
+            matched_pids.add(pid)
+
+    # Pass 2 — #2040 start-time fallback for the PIDs cwd-match missed. A live PID's
+    # start (now - etime) tracks its session's first transcript ts within ~240s.
+    unmatched_pids = {pid: info for pid, info in claude_pids.items() if pid not in matched_pids}
+    pid_starts = {pid: now_epoch - info["etime_s"] for pid, info in unmatched_pids.items()}
+    session_firsts = {sid: _iso_to_epoch(e.get("first_ts", ""))
+                      for sid, e in entries.items() if e.get("pid") is None}
+    for pid, sid in match_pids_by_starttime(pid_starts, session_firsts).items():
+        _apply_pid(sid, pid, unmatched_pids[pid], pid_tmux[pid])
+        matched_pids.add(pid)
+
+    # Pass 3 — anything still unmatched becomes a placeholder (an orphan PID with no
+    # discoverable transcript).
+    for pid, info in claude_pids.items():
+        if pid in matched_pids:
+            continue
+        tmux_info = pid_tmux[pid]
+        pane_cwd = tmux_info["pane_cwd"] if tmux_info else ""
+        tmux_session = tmux_info["tmux_session"] if tmux_info else ""
+        placeholder_sid = f"pid-{pid}"
+        entries[placeholder_sid] = {
+            "session_id": placeholder_sid,
+            "pid": pid,
+            "etime_s": info["etime_s"],
+            "etime_str": info["etime_str"],
+            "tmux_label": tmux_info["tmux_label"] if tmux_info else "detached",
+            "pane_cwd": pane_cwd,
+            "cwd": pane_cwd,
+            "slug": "",
+            "first_ts": "",
+            "last_ts": "",
+            "last_human_ts": "",
+            "last_tool_ts": "",
+            "jsonl_path": "",
+            "session_attached": bool(tmux_session and tmux_session in attached_tmux),
+            "metrics": {},
+        }
 
     # Infer state and finalize
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -329,8 +422,8 @@ def print_registry(reg: dict) -> None:
     print(header)
     print("  " + "-" * (len(header) - 2))
     for s in sorted_sessions:
-        pid = str(s.get("pid") or "-")
-        uptime = s.get("etime_str") or "-"
+        pid = str(s.get("pid") or "—")
+        uptime = s.get("etime_str") or "—"
         last = (s.get("last_human_ts") or s.get("last_ts") or "")[:16].replace("T", " ").replace("+00:00","")
         label = (s.get("tmux_label") or s.get("slug") or s["session_id"][:8])[:22]
         cwd = (s.get("cwd") or s.get("pane_cwd") or "")[-35:]

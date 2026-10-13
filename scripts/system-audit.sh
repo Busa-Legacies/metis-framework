@@ -18,10 +18,11 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
 # --- Resolve repo root (portable, no hardcoded per-machine paths) ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/discord-curl.sh" 2>/dev/null || true
 REPO="${REPO:-$(cd "$SCRIPT_DIR/.." && git rev-parse --show-toplevel 2>/dev/null || echo "$SCRIPT_DIR/..")}"
 
 DATE="${DATE:-$(date +%Y-%m-%d)}"
-AUDIT_DIR="$REPO/docs/process/audits"
+AUDIT_DIR="$REPO/workspace/state/audits"
 REPORT="$AUDIT_DIR/system-audit-$DATE.md"
 LOG_DIR="${LOG_DIR:-$HOME/.openclaw/logs}"
 LOG="$LOG_DIR/system-audit.log"
@@ -90,18 +91,61 @@ discord_post() {
   local token
   token=$(python3 -c "import json; d=json.load(open('$OPENCLAW_JSON')); print(d['channels']['discord']['token'])" 2>/dev/null || echo "")
   [ -z "$token" ] && return
-  "$CURL_BIN" -s -X POST "https://discord.com/api/v10/channels/$DISCORD_CHANNEL/messages" \
-    -H "Authorization: Bot $token" \
+  discord_curl "$token" -s -X POST "https://discord.com/api/v10/channels/$DISCORD_CHANNEL/messages" \
     -H "Content-Type: application/json" \
     -d "{\"content\": \"$msg\"}" > /dev/null || true
 }
+
+# Repoint the audit onto the ops pool so this scheduled full-repo pass doesn't drain the
+# interactive 5h/weekly window (#1345). Override with CLAUDE_SPAWN_ACCOUNT (default ops);
+# 'personal' keeps the ambient login. Applied before the budget band so the personal-window
+# SKIP is bypassed when we're spending ops (ops has its own headroom).
+source "$SCRIPT_DIR/lib/claude-account.sh"
+claude_account_apply
+[ "$CLAUDE_SPAWN_ACCOUNT_ACTIVE" != "personal" ] && echo "system-audit: Claude on account $CLAUDE_SPAWN_ACCOUNT_ACTIVE"
+
+# --- Budget guard (#730): size the run to the REAL 5h window before launch ---
+# The 2026-07-04 burn was a fixed-size subagent fan-out with no ceiling. Now the
+# wrapper probes the account-wide 5h budget (server-derived via claude_budget.py's
+# ledger, #482) and either SKIPS a thin window (defers to the next scheduled run)
+# or injects a "+Nk" token-target directive that arms the harness's Workflow
+# budget — making any fan-out inside the run mechanically self-limiting.
+BAND_JSON=$(python3 "$REPO/scripts/lib/claude_budget.py" band 2>/dev/null || echo '{}')
+BAND_SKIP=$(printf '%s' "$BAND_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('skip', False))" 2>/dev/null || echo "False")
+BAND_TARGET_K=$(printf '%s' "$BAND_JSON" | python3 -c "import json,sys; v=json.load(sys.stdin).get('token_target_k'); print(v if v else '')" 2>/dev/null || echo "")
+BAND_PCT=$(printf '%s' "$BAND_JSON" | python3 -c "import json,sys; v=json.load(sys.stdin).get('pct_left_5h'); print(v if v is not None else '?')" 2>/dev/null || echo "?")
+# The band reads the PERSONAL 5h window; only honor its SKIP when we're actually spending
+# personal. A run repointed to ops has its own headroom, so a thin personal window must not
+# defer it (#1345). The token-target directive below is a coarse self-limiting cap and stays
+# harmless either way.
+if [ "$BAND_SKIP" = "True" ] && [ "$CLAUDE_SPAWN_ACCOUNT_ACTIVE" = "personal" ]; then
+  echo "=== SKIPPED: 5h window too thin (${BAND_PCT}% left) — deferring to next scheduled run ==="
+  discord_post "⏭️ System audit skipped ($DATE): 5h window at ${BAND_PCT}% — deferring rather than burning a thin window (#730)"
+  date > "${HEARTBEAT_FILE:-/tmp/system-audit-last-run}"
+  exit 0
+fi
+BUDGET_DIRECTIVE=""
+if [ -n "$BAND_TARGET_K" ]; then
+  BUDGET_DIRECTIVE="+${BAND_TARGET_K}k
+Budget rule for this run: the +${BAND_TARGET_K}k token target above is sized to the
+account's remaining 5h window (${BAND_PCT}% left) — spend up to it on deeper, more
+thorough inline reading. This is a NON-INTERACTIVE headless run: audit INLINE with
+your own Read/Grep/Glob calls. Do NOT launch background work (Workflow) or a
+Task/subagent fan-out and 'wait for a notification' — there is no interactive loop to
+receive one, so the process would exit before a report is composed. You MUST emit the
+complete Markdown report in THIS response before you finish. If scope is large,
+prioritize P1/P2 correctness + security findings over exhaustive P3 coverage.
+
+"
+  echo "Budget guard: 5h ${BAND_PCT}% left → +${BAND_TARGET_K}k target injected"
+fi
 
 # --- The audit prompt: full-architecture, read-only, markdown to stdout ---
 read -r -d '' AUDIT_PROMPT <<'PROMPT' || true
 You are running an unattended FULL-ARCHITECTURE health audit of this repository
 (an AI-assistant infrastructure monorepo). Audit the ENTIRE system, not any one
 component: the OpenClaw multi-agent framework, the FastAPI dashboard
-(projects/dashboard), the Kraken trading-bot (projects/trading-bot), the
+(projects/dashboard), the trading bot (projects/trading-bot), the
 scripts/ automation + LaunchAgents, the git auto-sync machinery, the memory/RAG
 layer, and the docs/process governance (tasks.json, task-queue.md, leases).
 
@@ -135,8 +179,8 @@ AUDIT_EXIT=0
 # same inherited CLAUDE.md context a real session does. Output is a human-read report, so a
 # trailing sign-off block is harmless. See docs/process/claude-code-background-task-policy.md §6.
 run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
-  "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --model "$AUDIT_MODEL" \
-  --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
+  "$CLAUDE_BIN" -p "${BUDGET_DIRECTIVE}${AUDIT_PROMPT}" --model "$AUDIT_MODEL" \
+  --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*)' \
   || AUDIT_EXIT=$?
 
 if [ "$AUDIT_EXIT" -eq 124 ]; then
@@ -144,8 +188,8 @@ if [ "$AUDIT_EXIT" -eq 124 ]; then
   discord_post "⏱️ System audit timed out — retrying with reduced scope (max-turns 10)"
   RETRY_EXIT=0
   run_to_file "$CLAUDE_TIMEOUT_SECONDS" "$TEMP_OUTPUT" \
-    "$CLAUDE_BIN" -p "$AUDIT_PROMPT" --model "$AUDIT_MODEL" --max-turns 10 \
-    --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*),Task' \
+    "$CLAUDE_BIN" -p "${BUDGET_DIRECTIVE}${AUDIT_PROMPT}" --model "$AUDIT_MODEL" --max-turns 10 \
+    --allowedTools 'Read,Grep,Glob,Bash(ls *),Bash(find *),Bash(git log *),Bash(git status*)' \
     || RETRY_EXIT=$?
   if [ "$RETRY_EXIT" -ne 0 ]; then
     echo "[ERROR] Retry also failed (exit $RETRY_EXIT) — writing degraded report"
@@ -179,5 +223,23 @@ P1_COUNT=$(awk '/^## P1/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c+0}' "
 P2_COUNT=$(awk '/^## P2/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c+0}' "$REPORT")
 P3_COUNT=$(awk '/^## P3/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c+0}' "$REPORT")
 
-discord_post "🔍 System audit ready ($DATE) — P1:$P1_COUNT P2:$P2_COUNT P3:$P3_COUNT. Review report: docs/process/audits/system-audit-$DATE.md"
+discord_post "🔍 System audit ready ($DATE) — P1:$P1_COUNT P2:$P2_COUNT P3:$P3_COUNT. Review report: workspace/state/audits/system-audit-$DATE.md"
+
+# --- Route findings to the board (#529): P1/P2 -> inbox tasks (deduped by
+# fingerprint so recurring findings refresh, not re-mint); P1 -> Discord page.
+# An audit whose findings nobody actions manufactures false confidence.
+ROUTE_OUT=$(python3 "$REPO/scripts/route-audit-findings.py" --report "$REPORT" --apply 2>>"$LOG" || true)
+echo "$ROUTE_OUT"
+PAGES_JSON=$(printf '%s\n' "$ROUTE_OUT" | sed -n 's/^PAGES_JSON=//p' | tail -1)
+if [ -n "$PAGES_JSON" ]; then
+  # Page each newly-filed P1 individually so a real critical finding can't hide
+  # inside the count digest above.
+  printf '%s' "$PAGES_JSON" | python3 -c "import json,sys
+try: titles=json.load(sys.stdin)
+except Exception: titles=[]
+[print(t) for t in titles]" | while IFS= read -r title; do
+    [ -n "$title" ] && discord_post "🚨 New P1 audit finding ($DATE): ${title} — filed to inbox. Report: workspace/state/audits/system-audit-$DATE.md"
+  done
+fi
+
 echo "=== System audit complete. P1:$P1_COUNT P2:$P2_COUNT P3:$P3_COUNT → $REPORT ==="

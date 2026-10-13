@@ -7,7 +7,7 @@
 ## 1. What this is
 
 Metis OS was built Claude-Code-first. This document defines how the system becomes
-**provider-neutral**, so Codex, the OpenClaw local lanes, and any future agent platform
+**provider-neutral**: so Codex, the OpenClaw local lanes, and any future agent platform
 (Gemini CLI, Cursor, Aider, …) can drive the repo with the *same* effectiveness, the *same*
 governance, and run **in parallel** without colliding.
 
@@ -202,7 +202,7 @@ To bring up `<tool>` as a first-class driver:
 | Claude Code | driver, engine | **live** | reference implementation |
 | Codex CLI | driver, engine | **live** | command surface (`.codex/prompts/`), fixed instructions, shared memory, session id |
 | OpenClaw lanes | executor, engine | **live** | documented as a role in the registry |
-| Antigravity CLI (ex-Gemini) | driver, engine | **on-hold** | Google deprecates **Gemini CLI** for free/Pro/Ultra individual tiers on **2026-06-18** → don't build against it. Antigravity CLI is the successor and runs on the existing Google AI tier, **but** only adopt if usage is *bundled* in that tier (not metered pay-per-API). Not open-source. |
+| Antigravity CLI (ex-Gemini) | driver, engine | **declined** | Bundling gate PASSES (Pro/Ultra get bundled Antigravity rate limits, not metered pay-per-API) but the **quota fails**: post-March-2026 credits cut Pro to ~100 req/day with an effectively weekly hard cap and multi-day lockouts reported. A rung that can lock out for a week violates the ladder's never-down property. Gemini is already in the ladder as <<MACHINE_1_ID>> fallback 3 on a FREE API key, so the paid tier adds no lane capacity: Ant downgrading to storage-only (2026-07-29). If Gemini is ever needed in a lane, use a metered AI Studio key, not the consumer tier. |
 | GitHub Copilot | driver | **blocked** | CLI + cloud agent, both read `AGENTS.md`; cheapest paid agent ($10/mo) and best GitHub-native fit. New Pro/Pro+/Max **signups paused since 2026-04-20** → `scripts/copilot-signup-watch.py` (daily) alerts when they reopen; build the adapter then. |
 | Cursor | driver | **declined** | $20/mo agentic IDE w/ headless CLI; editor surface is redundant with Claude Code + Codex for a headless framework. Revisit only if an IDE surface is wanted. |
 
@@ -228,13 +228,13 @@ To bring up `<tool>` as a first-class driver:
   guard degrades to "manual" (lock still protects correctness, but two of that tool's sessions
   can each hold a task). Prefer a real id.
 - **Renaming `ClaudeCode/`.** Tempting for neutrality, but it breaks live symlinks on both
-  machines and the project-memory symlink. Treat it as a planned, atomic mirror migration, not
+  machines and the project-memory symlink. Treat it as a planned, atomic mirror migration: not
   a casual rename.
 
 ## 11. Related docs
 - [`platform-registry.json`](./platform-registry.json): machine-readable registry
 - [`../../ClaudeCode/CLAUDE.md`](../../ClaudeCode/CLAUDE.md): engine ladder + <<MACHINE_1_ID>>-lane routing
 - [`../../ClaudeCode/codex/instructions.md`](../../ClaudeCode/codex/instructions.md): Codex entrypoint
-- [`./hearth-lanes.md`](./hearth-lanes.md): the executor lanes (dispatch; formerly jay-lanes)
+- [`./<<MACHINE_1_ID>>-lanes.md`](./<<MACHINE_1_ID>>-lanes.md): the executor lanes (dispatch; formerly jay-lanes)
 - [`../../ClaudeCode/mirror-manifest.json`](../../ClaudeCode/mirror-manifest.json): two-machine sync contract
 - [`../../AGENTS.md`](../../AGENTS.md): the neutral identity/workspace entrypoint every driver reads

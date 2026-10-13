@@ -110,6 +110,11 @@ def load_task_details() -> dict:
     return details
 
 
+def _norm(s: str) -> str:
+    """Lowercase + whitespace-collapse for exact-title matching."""
+    return " ".join((s or "").lower().split())
+
+
 def is_ant_gated(blocker: str) -> bool:
     b = (blocker or "").lower()
     days = ("saturday", "sunday", "monday", "tuesday", "wednesday", "thursday", "friday")
@@ -124,16 +129,27 @@ def collect(buckets: dict, task_details: dict) -> tuple[dict, list, list]:
     # WIP = leases this machine already holds. Collect their identifiers first so a
     # held task is never also rendered as READY — a stale lease can still surface in
     # free-work's `free` bucket, which would otherwise double-list it.
-    held_keys: set[str] = set()
+    held_titles: set[str] = set()
+    held_ids: set[str] = set()
     for w in buckets.get("wip", []):
         title = w.get("title") or w.get("branch") or w.get("claimId", "?")
         held.append(title)
-        for tok in title.replace("#", " ").split():
-            held_keys.add(tok.lower())
+        held_titles.add(_norm(title))
+        # A WIP record may carry an id, or embed one in its title ("#1578 declutter…").
+        if w.get("id"):
+            held_ids.add(str(w["id"]))
+        for tok in title.split():
+            if tok.startswith("#") and tok[1:].isdigit():
+                held_ids.add(tok[1:])
 
     def is_held(label, tid) -> bool:
-        key = f"{tid or ''} {label}".lower()
-        return any(k in key for k in held_keys if len(k) > 2)
+        # A WIP lease marks a task held ONLY when it is the SAME task — matched by
+        # id or by exact (normalised) title. The prior loose token-overlap test
+        # flagged any task sharing a stopword ("the"/"and"/"work") with a WIP title,
+        # which falsely marked most of the board [HELD!].
+        if tid and str(tid) in held_ids:
+            return True
+        return _norm(label) in held_titles
 
     def add(label, tid, prio, owner, status, note=""):
         if status == "ready" and is_held(label, tid):
@@ -141,7 +157,7 @@ def collect(buckets: dict, task_details: dict) -> tuple[dict, list, list]:
         section = get_section(label) or "unknown"
         td = task_details.get(tid or "", {})
         lanes.setdefault(section, []).append(
-            {"id": tid or "-", "prio": prio or "", "label": label,
+            {"id": tid or "—", "prio": prio or "", "label": label,
              "owner": owner or "", "agent": td.get("agent", ""),
              "why": td.get("why", ""),
              "status": status, "note": note}

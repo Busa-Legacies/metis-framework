@@ -32,9 +32,30 @@ ROOT = Path(os.environ.get("REPO_ROOT") or os.environ.get("METIS_HOME") or Path(
 DEFAULT_STATE = ROOT / "docs/process/state/active-checkouts.json"
 DEFAULT_WORKTREES = ROOT.parent / f"{ROOT.name}-worktrees"  # self-adjusts to repo dir name
 DEFAULT_LEASE_HOURS = 4
-TERMINAL = {"done", "released", "blocked", "expired", "stolen"}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib import lease_state as _lease  # noqa: E402  (stdlib-only; cheap at import)
+
+# Lease-status terminal set — ONE definition, shared with free-work.py and reconcile.py
+# via lib/lease_state.py. It used to live here as a literal while free-work carried an
+# allowlist of the single status "checked-out", so the two disagreed about any other
+# non-terminal status in the unsafe direction. See lib/lease_state.py.
+TERMINAL = _lease.TERMINAL
+# Task-STATE (tasks.json) terminal set — distinct from the lease-status TERMINAL above.
+# A task in one of these is already resolved; re-leasing it silently is how the #509 miss
+# happened (a `done` task got re-worked and its recorded decision contradicted). See
+# guard_terminal_task_state().
+TERMINAL_TASK_STATES = {"done", "archived", "dropped", "failed"}  # #887: archived = terminal
 AUTOSYNC_PLIST = Path.home() / "Library/LaunchAgents/ant.openclaw-git-sync.plist"
 TASK_COUNTER = ROOT / "docs/process/state/task-counter.json"
+# Self-bounding of the lease state file (#750). Terminal rows (released/expired/…)
+# have no live function once the lease ends — fenceCounter is a persisted floor
+# (see load_json), the merge driver picks a side wholesale, and git holds the full
+# audit trail. queue-runner churns ~275 terminal rows/day, so without a bound the
+# file crosses Read's 256KB cap in <2 days. Every mutation trims terminal rows to
+# the KEEP_RECENT_TERMINAL most-recent, except any younger than PRUNE_MIN_AGE_HOURS
+# (a safety window so a row a concurrent fence-merge may still touch is never cut).
+KEEP_RECENT_TERMINAL = 40
+PRUNE_MIN_AGE_HOURS = 1
 
 
 def utcnow() -> dt.datetime:
@@ -65,6 +86,26 @@ def run(cmd: list[str], cwd: Path = ROOT, check: bool = True) -> subprocess.Comp
 
 def git(*args: str, cwd: Path = ROOT, check: bool = True) -> subprocess.CompletedProcess[str]:
     return run(["git", *args], cwd=cwd, check=check)
+
+
+def ff_base_current() -> None:
+    """#2097 WS-C C3: fast-forward the base ROOT tree to origin BEFORE a branch/worktree is
+    cut from HEAD, so 'source worktrees' start from pulled-current source rather than a base
+    that has drifted behind origin (the freshness the daemon's continuous pull provides today,
+    which C2 will retire). Delegates to pull-source-on-demand.sh — ff-only + fail-soft +
+    kill-switched, so it can never merge, clobber, or block a checkout. Purely best-effort:
+    ANY failure (missing script, offline, timeout, dirty/diverged base) is swallowed and the
+    checkout proceeds off local HEAD exactly as before."""
+    script = Path(__file__).resolve().parent / "pull-source-on-demand.sh"
+    if not script.exists():
+        return
+    try:
+        subprocess.run(
+            ["bash", str(script), str(ROOT)],
+            cwd=str(ROOT), text=True, capture_output=True, timeout=30, check=False,
+        )
+    except Exception:
+        pass  # freshness is best-effort; never let it break checkout
 
 
 def gh_available() -> bool:
@@ -119,6 +160,7 @@ def locked_state(path: Path):
         fcntl.flock(lock, fcntl.LOCK_EX)
         data = load_json(path)
         yield data
+        prune_terminal_rows(data)  # #750: self-bound the file on every mutation
         save_json(path, data)
         fcntl.flock(lock, fcntl.LOCK_UN)
 
@@ -133,26 +175,79 @@ def next_fence(data: dict[str, Any]) -> int:
     return data["fenceCounter"]
 
 
+def _terminal_ended_at(row: dict[str, Any], now: dt.datetime) -> dt.datetime:
+    """Best-effort completion time for a terminal row; falls back to now on any
+    missing/unparseable stamp so a malformed row sorts as most-recent (kept)."""
+    for key in ("endedAt", "leaseExpiresAt", "leaseStartedAt", "lastRenewedAt"):
+        val = row.get(key)
+        if val:
+            try:
+                return parse_time(val)
+            except (ValueError, TypeError):
+                continue
+    return now
+
+
+def prune_terminal_rows(
+    data: dict[str, Any],
+    keep_recent: int = KEEP_RECENT_TERMINAL,
+    min_age_hours: int = PRUNE_MIN_AGE_HOURS,
+) -> int:
+    """Drop old terminal checkout rows so the live state file stays under Read's
+    size cap (#750). Keeps every non-terminal row untouched, plus the `keep_recent`
+    most-recent terminal rows, plus any terminal row younger than `min_age_hours`.
+    Returns the number of rows dropped.
+
+    Safe because terminal rows carry no live authority: fenceCounter is a persisted
+    monotonic floor (load_json backfills it and next_fence only bumps it), so
+    dropping even the highest-token terminal row never regresses fencing; the
+    leasestate merge driver copies one whole side by fenceCounter and never needs
+    row history; and every prior state is in git. The min_age window keeps rows a
+    concurrent fence-merge on the peer machine might still be reconciling.
+    """
+    rows = data.get("checkouts", [])
+    terminal = [r for r in rows if r.get("status") in TERMINAL]
+    if len(terminal) <= keep_recent:
+        return 0
+    now = utcnow()
+    cutoff = now - dt.timedelta(hours=min_age_hours)
+    ranked = sorted(terminal, key=lambda r: _terminal_ended_at(r, now), reverse=True)
+    keep_ids = {id(r) for r in ranked[:keep_recent]}
+    kept = [
+        r
+        for r in rows
+        if r.get("status") not in TERMINAL
+        or id(r) in keep_ids
+        or _terminal_ended_at(r, now) > cutoff
+    ]
+    dropped = len(rows) - len(kept)
+    if dropped:
+        data["checkouts"] = kept
+    return dropped
+
+
 def max_token_for(data: dict[str, Any], issue: int) -> int:
     return max((int(r.get("fenceToken", 0)) for r in find_records(data, issue)), default=0)
 
 
 def active(record: dict[str, Any], now: dt.datetime) -> bool:
-    status = record.get("status")
-    if status in TERMINAL:
-        return False
     try:
-        return parse_time(record["leaseExpiresAt"]) > now
+        expires = parse_time(record["leaseExpiresAt"])
     except Exception:
-        return False
+        expires = None
+    return _lease.is_live(record.get("status"), expires, now)
 
 
 def find_records(data: dict[str, Any], issue: int) -> list[dict[str, Any]]:
+    # Label leases (claim / claim-next) carry issue=None and the task as taskId "#N"; matching
+    # only `issue` left finish/renew/release unable to find a governor-claimed lease (#6115
+    # landing: finish merged nothing and reported "no checkout").
     def issue_of(r: dict[str, Any]) -> int:
         try:
             return int(r.get("issue"))
         except (TypeError, ValueError):
-            return -1
+            m = re.fullmatch(r"#0*(\d+)", str(r.get("taskId") or ""))
+            return int(m.group(1)) if m else -1
 
     return [r for r in data["checkouts"] if issue_of(r) == issue]
 
@@ -201,6 +296,38 @@ def resolve_task_id(
         if (t.get("title") or "").strip().lower() == norm:
             return t.get("taskId")
     return None
+
+
+def guard_terminal_task_state(
+    task_id: str | None, tasks: list[dict[str, Any]], reopen: bool = False
+) -> None:
+    """Refuse to lease a task already in a terminal/resolved state unless --reopen.
+
+    The #509 miss (2026-07-10): a task another session had marked `done` was re-claimed,
+    and its recorded `currentStep` — which held a deliberate decision ("self-review.py
+    exclusion NOT taken, root-caused instead") — was contradicted, producing a bad commit
+    that had to be reverted. A prose "check recorded progress first" rule already existed
+    and did NOT fire. This is the structural gate: on a terminal task it prints the state +
+    the prior session's recorded resolution and STOPS, so re-opening is a conscious choice
+    (--reopen), never a silent lease."""
+    if task_id is None or reopen:
+        return
+    task = next((t for t in tasks if t.get("taskId") == task_id), None)
+    if task is None:
+        return
+    state = task.get("state")
+    if state not in TERMINAL_TASK_STATES:
+        return
+    step = " ".join((task.get("currentStep") or "").split())
+    if len(step) > 800:
+        step = step[:800] + " … (truncated — read the full task before re-opening)"
+    step_msg = f"\n  recorded resolution (currentStep):\n    {step}" if step else ""
+    raise SystemExit(
+        f"task {task_id} is already '{state}' — refusing to lease it.\n"
+        f"  a prior session may have deliberately closed it; read its recorded resolution"
+        f" before re-working it, or you risk contradicting a decision.{step_msg}\n"
+        f"  to re-open anyway (conscious choice): re-run with --reopen"
+    )
 
 
 def lease_task_id(
@@ -254,11 +381,44 @@ def gh_labels(issue: int, add: list[str] = [], remove: list[str] = []) -> None:
         run(["gh", "issue", "edit", str(issue), "--add-label", ",".join(add)], check=False)
 
 
+def is_primary_tree(root: Path = ROOT) -> bool:
+    """True when root is the repo's main checkout (not a linked worktree): its git dir IS the
+    common dir. Unknown (git error) -> False, so the guard below never blocks a non-repo."""
+    try:
+        out = subprocess.run(["git", "rev-parse", "--absolute-git-dir", "--git-common-dir"],
+                             cwd=root, capture_output=True, text=True, timeout=15)
+        gd, cd = out.stdout.split("\n")[:2]
+        return out.returncode == 0 and Path(gd).resolve() == (root / cd).resolve()
+    except Exception:
+        return False
+
+
+def guard_primary_branch_switch(worktree: Path | None, no_git: bool, auto_path: Path,
+                                branch: str, primary: bool | None = None) -> Path | None:
+    """Never switch the SHARED primary checkout onto a task branch (2026-10-08): a session's
+    `checkout --in-place` moved ~/metis-os onto agent-claude-2820-... then -6500-..., and every
+    other writer's commits (other sessions, the drain, the sync daemon) landed on a branch with no
+    upstream; the #2820 fix itself was marked done but never reached main. An in-place cut in the
+    primary tree becomes an isolated worktree instead. AGENT_WORK_ALLOW_PRIMARY_BRANCH=1 overrides."""
+    if worktree is not None or no_git:
+        return worktree
+    if os.environ.get("AGENT_WORK_ALLOW_PRIMARY_BRANCH") == "1":
+        return worktree
+    if not (is_primary_tree() if primary is None else primary):
+        return worktree  # already inside a linked worktree: an in-place cut there is isolated
+    print(f"agent-work: not switching the shared primary tree onto {branch} (it strands other "
+          f"sessions' commits). Isolated worktree instead -> cd {auto_path}", file=sys.stderr)
+    return auto_path
+
+
 def create_branch_or_worktree(
     branch: str, worktree: Path | None, allow_dirty: bool, no_git: bool = False
 ) -> Path:
     if no_git:
         return worktree or ROOT
+    # C3 (#2097): ff the base tree current so the branch/worktree cut below starts from
+    # pulled-current source. Best-effort + fail-soft (see ff_base_current); never blocks.
+    ff_base_current()
     if worktree:
         if worktree.exists() and any(worktree.iterdir()):
             raise SystemExit(f"worktree path exists and is not empty: {worktree}")
@@ -271,6 +431,72 @@ def create_branch_or_worktree(
         )
     git("checkout", "-b", branch)
     return ROOT
+
+
+def resolve_task_claim_worktree(args, agent: str, ident_slug: str, title: str):
+    """Worktree resolution for a task-backed claim (claim / claim-next), #3925 S5.
+
+    Returns (branch, worktree_str, base_sha) for the checkout record. Unlike issue
+    `checkout` (auto-worktree on by default), task claims stay **in-place by default** —
+    creation happens ONLY when `--auto-worktree` is passed. This preserves the existing
+    advisory-only meaning of claim-next's `--worktree`/`--branch` presence flags: without
+    `--auto-worktree` they annotate presence but never cut a tree. `--worktree PATH`
+    chooses the location; otherwise an auto path under DEFAULT_WORKTREES is used. The
+    branch/worktree/baseSha land in the claim record so the lease is worktree-aware while
+    the lease/fence ownership in active-checkouts.json is unchanged.
+    """
+    no_git = getattr(args, "no_git", False)
+    if no_git or not getattr(args, "auto_worktree", False):
+        # in-place (or advisory-only --worktree): unchanged record shape.
+        return None, str(ROOT), git("rev-parse", "HEAD", check=False).stdout.strip()
+    branch = getattr(args, "branch", None) or (
+        f"agent-{slugify(agent, 18)}-{slugify(ident_slug, 12)}-{slugify(title, 24)}"
+    )
+    wt_arg = getattr(args, "worktree", None)
+    if wt_arg:
+        worktree = Path(wt_arg).expanduser().resolve()
+    else:
+        worktree = (
+            DEFAULT_WORKTREES / f"{slugify(ident_slug, 14)}-{slugify(agent, 14)}-{slugify(title, 30)}"
+        ).resolve()
+    checkout_path = create_branch_or_worktree(
+        branch, worktree, getattr(args, "allow_dirty", False), no_git
+    )
+    base_sha = git("rev-parse", "HEAD", cwd=checkout_path, check=False).stdout.strip()
+    return branch, str(checkout_path), base_sha
+
+
+def primary_root(root: Path | None = None) -> Path:
+    """The main clone (where governed state lives on main), from any linked worktree."""
+    root = root or ROOT
+    try:
+        cd = git("rev-parse", "--git-common-dir", cwd=root, check=False).stdout.strip()
+        return (root / cd).resolve().parent if cd else root
+    except Exception:
+        return root
+
+
+def _bridge_task_state(issue, event) -> None:
+    """Drive the governed task state from a lease event (#922, re-landed #8025): checkout ->
+    in_progress, finish -> needs_verification. Runs the PRIMARY clone's update-tier1-state with
+    REPO_ROOT there, so a worker in a worktree advances main's tasks.json, not its own copy.
+    Fail-soft: the lease op already landed; a miss degrades to check-task-state-drift.py."""
+    tid = str(issue) if str(issue).startswith("#") else f"#{issue}"
+    prim = primary_root()
+    try:
+        r = subprocess.run(
+            [sys.executable, str(prim / "scripts" / "update-tier1-state.py"), "lifecycle-advance",
+             "--task-id", tid, "--event", event],
+            capture_output=True, text=True, timeout=180,
+            env=dict(os.environ, REPO_ROOT=str(prim)))
+        out = (r.stdout or "").strip().splitlines()
+        if r.returncode == 0 and out and "no change" not in out[-1]:
+            print(f"  task-state: {out[-1]} (lease-{event} bridge)")
+        elif r.returncode != 0:
+            raise RuntimeError((r.stderr or r.stdout or "").strip().splitlines()[-1:] or "failed")
+    except Exception as e:
+        print(f"  NOTE: task-state bridge skipped ({type(e).__name__}: {e}); "
+              f"check-task-state-drift.py will catch any drift", file=sys.stderr)
 
 
 def cmd_checkout(args: argparse.Namespace) -> None:
@@ -295,6 +521,7 @@ def cmd_checkout(args: argparse.Namespace) -> None:
         # include it so checkout can't mint a second live lease on the task.
         tasks = _tasks_list()
         issue_tid = resolve_task_id(f"#{args.issue}", tasks)
+        guard_terminal_task_state(issue_tid, tasks, getattr(args, "reopen", False))
         seen_ids = {id(r) for r in actives}
         if issue_tid is not None:
             actives += [
@@ -316,6 +543,10 @@ def cmd_checkout(args: argparse.Namespace) -> None:
                 r["endedAt"] = iso(now)
                 r["stolenBy"] = args.agent
 
+        worktree = guard_primary_branch_switch(
+            worktree, args.no_git,
+            (DEFAULT_WORKTREES / f"{args.issue}-{slugify(args.agent, 14)}-{slugify(title, 30)}").resolve(),
+            branch)
         checkout_path = create_branch_or_worktree(branch, worktree, args.allow_dirty, args.no_git)
         token = next_fence(
             data
@@ -355,6 +586,7 @@ def cmd_checkout(args: argparse.Namespace) -> None:
     print(
         f"  (pass --fence-token {token} on renew/block/release/finish to prove you still hold this lease)"
     )
+    _bridge_task_state(args.issue, "claimed")
 
 
 def cmd_status(args: argparse.Namespace) -> None:
@@ -394,6 +626,7 @@ def cmd_status(args: argparse.Namespace) -> None:
 def mutate_issue(args: argparse.Namespace, status: str) -> None:
     now = utcnow()
     changed = False
+    advisory = _presence_advisory(args)
     with locked_state(args.state) as data:
         all_recs = find_records(data, args.issue)
         max_token = max((int(x.get("fenceToken", 0)) for x in all_recs), default=0)
@@ -448,6 +681,10 @@ def mutate_issue(args: argparse.Namespace, status: str) -> None:
         if status == "checked-out":
             r["leaseExpiresAt"] = iso(now + dt.timedelta(hours=args.hours))
             r["lastRenewedAt"] = iso(now)
+            for p in data.get("presence", []):
+                if p.get("session") == getattr(args, "session", None) and parse_time(p["expiresAt"]) > now:
+                    p["lastSeen"] = iso(now)
+                    _apply_presence_advisory(p, advisory)
         else:
             r["status"] = status
             r["endedAt"] = iso(now)
@@ -517,6 +754,50 @@ def _live_presence(data: dict[str, Any], now: dt.datetime) -> list[dict[str, Any
     ]
 
 
+def _presence_advisory(args: argparse.Namespace) -> dict[str, Any]:
+    """Optional project-presence context. Empty/omitted values are not written."""
+    out: dict[str, Any] = {}
+    for attr, key in (
+        ("current_task", "currentTaskId"),
+        ("current_step", "currentStep"),
+        ("intent", "intent"),
+        ("worktree", "worktree"),
+        ("branch", "branch"),
+    ):
+        value = getattr(args, attr, None)
+        if isinstance(value, str):
+            value = value.strip()
+        if value:
+            out[key] = value
+    touched = getattr(args, "touched_paths", None)
+    if touched:
+        paths = [p.strip() for p in touched.split(",") if p.strip()]
+        if paths:
+            out["touchedPaths"] = paths
+    return out
+
+
+def _apply_presence_advisory(record: dict[str, Any], advisory: dict[str, Any]) -> None:
+    if advisory:
+        record.update(advisory)
+
+
+def add_presence_advisory_flags(parser: argparse.ArgumentParser, *, include_branch: bool = True) -> None:
+    parser.add_argument("--current-task", dest="current_task",
+                        help="advisory current task id for project presence (for example #3925)")
+    parser.add_argument("--current-step", dest="current_step",
+                        help="advisory current step shown to sibling project sessions")
+    parser.add_argument("--intent",
+                        help="advisory work intent shown to sibling project sessions")
+    parser.add_argument("--worktree",
+                        help="advisory worktree path shown to sibling project sessions")
+    if include_branch:
+        parser.add_argument("--branch",
+                            help="advisory branch shown to sibling project sessions")
+    parser.add_argument("--touched-paths", dest="touched_paths",
+                        help="comma-separated advisory paths touched by this session")
+
+
 def cmd_join(args: argparse.Namespace) -> None:
     """Join a project workspace (informational presence; never blocks any claim)."""
     fw = _load_free_work()
@@ -531,6 +812,7 @@ def cmd_join(args: argparse.Namespace) -> None:
 
     now = utcnow()
     expires = now + dt.timedelta(hours=args.hours)
+    advisory = _presence_advisory(args)
 
     with locked_state(args.state) as data:
         if "presence" not in data:
@@ -544,13 +826,14 @@ def cmd_join(args: argparse.Namespace) -> None:
                 p["expiresAt"] = iso(expires)
                 p["agent"] = args.agent
                 p["machine"] = machine
+                _apply_presence_advisory(p, advisory)
                 roster = [
                     q for q in data["presence"]
                     if q.get("project") == args.project and parse_time(q["expiresAt"]) > now
                 ]
                 break
         else:
-            data["presence"].append({
+            record = {
                 "session": args.session,
                 "agent": args.agent,
                 "machine": machine,
@@ -558,7 +841,9 @@ def cmd_join(args: argparse.Namespace) -> None:
                 "since": iso(now),
                 "lastSeen": iso(now),
                 "expiresAt": iso(expires),
-            })
+            }
+            _apply_presence_advisory(record, advisory)
+            data["presence"].append(record)
             roster = [
                 p for p in data["presence"]
                 if p.get("project") == args.project and parse_time(p["expiresAt"]) > now
@@ -608,6 +893,27 @@ def cmd_reap(args: argparse.Namespace) -> None:
                 r["status"] = "expired"
                 r["endedAt"] = iso(now)
                 expired_count += 1
+        if getattr(args, "governor_orphans", False):
+            # #6355 hardening: actively expire pace-* governor leases older than the max dispatch
+            # lifetime — orphans a hard-killed governor left behind (its worker is long dead). The
+            # extend-lease age-gate already stops RENEWING these, but this clears them immediately
+            # (invoked on governor startup) instead of waiting out their TTL, so a queued task does
+            # not show as CLAIMED for up to the full 4h TTL. Age-gated (leaseStartedAt), so a live
+            # worker's lease from an overlapping governor invocation (< max dispatch lifetime) is
+            # never touched.
+            for r in data["checkouts"]:
+                if (r.get("status") == "checked-out"
+                        and (r.get("session") or "").startswith(GOVERNOR_SESSION_PREFIX)):
+                    started = r.get("leaseStartedAt")
+                    if not started:
+                        continue
+                    try:
+                        if (now - parse_time(started)) > dt.timedelta(minutes=GOVERNOR_LEASE_MAX_AGE_MIN):
+                            r["status"] = "expired"
+                            r["endedAt"] = iso(now)
+                            expired_count += 1
+                    except Exception:
+                        pass
         if cutoff is not None:
             before = len(data["checkouts"])
             data["checkouts"] = [
@@ -649,6 +955,7 @@ def cmd_claim(args: argparse.Namespace) -> None:
     # uniqueness check on it — '#229' and the task's bare title are the same claim.
     tasks = _tasks_list()
     task_id = resolve_task_id(args.label, tasks)
+    guard_terminal_task_state(task_id, tasks, getattr(args, "reopen", False))
 
     with locked_state(args.state) as data:
         for r in data["checkouts"]:
@@ -668,6 +975,9 @@ def cmd_claim(args: argparse.Namespace) -> None:
                 )
         claim_id = str(uuid.uuid4())[:8]
         token = next_fence(data)
+        branch, worktree_str, base_sha = resolve_task_claim_worktree(
+            args, args.agent, claim_id, args.label
+        )
         rec = {
             "issue": None,
             "claimId": claim_id,
@@ -676,22 +986,23 @@ def cmd_claim(args: argparse.Namespace) -> None:
             "agent": args.agent,
             "session": args.session,
             "status": "checked-out",
-            "branch": None,
-            "worktree": str(ROOT),
+            "branch": branch,
+            "worktree": worktree_str,
             "repo": repo_slug(),
             "fenceToken": token,
             "leaseStartedAt": iso(now),
             "leaseExpiresAt": iso(expires),
             "lastRenewedAt": iso(now),
-            "baseSha": git("rev-parse", "HEAD", check=False).stdout.strip(),
+            "baseSha": base_sha,
         }
         data["checkouts"].append(rec)
 
+    wt_line = f"\nworktree: {worktree_str} (branch {branch})" if branch else ""
     print(
         f"claimed '{args.label}'\n"
         f"claim-id: {claim_id}\n"
         f"fence token: {token}\n"
-        f"lease: {iso(expires)}\n"
+        f"lease: {iso(expires)}{wt_line}\n"
         f"  (release with: python3 scripts/agent-work.py unclaim {claim_id})"
     )
 
@@ -748,6 +1059,52 @@ def cmd_unclaim(args: argparse.Namespace) -> None:
     print(f"released claim '{label}' ({args.claim_id})")
     if not getattr(args, "no_checkpoint", False):
         _auto_checkpoint_on_close(title)
+
+
+# Non-interactive / proxy session sentinels (#5675). A lease carrying one of these was minted
+# by a PROXY on behalf of work that has no live interactive session of its own to justify
+# perpetual heartbeat renewal: "manual" (the default_session() fallback when no session env is
+# set), "dashboard" (the Metis Command governed-claim endpoint), "mcp" (the <<MACHINE_1_ID>>-mcp
+# claim_next tool). The blanket --all heartbeat must let these expire on their own TTL — renewing
+# them is exactly what made dead-session claims immortal (#5610). An empty session is treated the
+# same. A real per-session id (Claude Code UUID, Codex, etc.) is NOT here and is still renewed.
+PROXY_SESSIONS = frozenset({"", "manual", "dashboard", "mcp"})
+
+# Governor-minted sessions: weekly-pace-governor.py mints a "pace-<uuid>" session per dispatched
+# task (#5675). These LOOK like real per-session UUIDs, so the PROXY_SESSIONS skip above does NOT
+# catch them — and the blanket --all heartbeat renewed them unconditionally, keeping an orphaned
+# governor claim IMMORTAL after the governor was hard-killed before its worker-exit release ran
+# (the pace-* orphans observed as phantom WIP: #725/#2812/#1360/#1655). Gate their renewal on the
+# governor process actually being alive.
+GOVERNOR_SESSION_PREFIX = "pace-"
+
+# Orphan-age ceiling for pace-* governor leases (#6355). A dispatched worker is wall-clock-killed
+# at its deadline = max(10, max_run_5h_spend_pct*3) minutes = at most 120 min (GovernorConfig
+# max_run_5h_spend_pct=40), and it self-releases via dispatch_task's finally well before then; the
+# heartbeat's first renewal of a lease only fires at age ~= CLAIM_TTL(4h) - if_within(15m) = 225 min.
+# So a pace-* lease still alive past this ceiling is PROVABLY an orphan (its worker is dead) — never
+# renew it, even while a governor invocation is briefly alive, or a later governor re-immortalizes a
+# prior crash's orphan (the #2812 phantom-WIP recurrence 2026-09-17). Must sit between the max
+# dispatch lifetime (120) and the renewal-onset age (225); revisit if max_run_5h_spend_pct is raised
+# past ~60. macOS `ps -Aeww` does not expose a worker's env, so per-worker liveness is unavailable —
+# this provable age bound is the gate.
+GOVERNOR_LEASE_MAX_AGE_MIN = 180
+
+
+def _governor_alive() -> bool:
+    """True if a weekly-pace-governor process is running on this machine — the liveness gate for
+    heartbeat-renewing pace-* (governor-minted) leases. Alive => an active dispatch may still need
+    its lease topped up (a dispatch deadline can exceed the 4h claim TTL). Dead => every pace-*
+    lease is orphaned and should expire on its own TTL rather than be renewed forever. pgrep
+    uncertainty (missing binary / error / timeout) returns True — fail toward RENEW, never toward
+    expiring what might be a live lease (the #720/#262 clobber-outage floor); a flaky tick just
+    defers an orphan's expiry to the next clean tick."""
+    try:
+        r = subprocess.run(["pgrep", "-f", "weekly-pace-governor"],
+                           capture_output=True, text=True, timeout=5)
+        return bool(r.stdout.strip())
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        return True
 
 
 def default_session() -> str:
@@ -827,6 +1184,57 @@ def _resolve_lane_filter(args: argparse.Namespace, explicit_project: str | None)
     return set(projs), lane
 
 
+def _is_example_project_slug(proj) -> bool:
+    return "example" in str(proj or "").lower()
+
+
+def _candidate_is_example(c: dict) -> bool:
+    """Cheap, in-process Example-TOPIC check from a candidate's structured fields (project/area) —
+    no subprocess, so it's safe to call under the claim lock. Mirrors example_context's
+    project/area signals (scripts/lib/example_context.py). Topic ≠ delegable: this says the work
+    is *about* Example Market, NOT that it is safe to hand to a repo-isolated Partner-seat session — see
+    _candidate_is_delegable."""
+    if _is_example_project_slug(c.get("project")):
+        return True
+    return str(c.get("area") or "").strip().lower() == "example market"
+
+
+_TAG_EXAMPLE_DELEGABLE = "example-delegable"
+
+
+def _candidate_is_delegable(c: dict) -> bool:
+    """Is this task EXPLICITLY opted in to run as a Partner-seat session in the example-ops repo (which has
+    no metis-os / private-repo access)? The gate is a human-set flag, never inferred from topic —
+    so metis-dependent Example-topic work is never mis-delegated to Partner-seat (Ant 2026-08-17 policy:
+    delegate self-contained work only). Two equivalent opt-ins: delegable == "example-ops", or the
+    "example-delegable" tag. Everything unflagged stays claimable by a metis session (which may
+    itself run on the Example account for compute, via the pace-router — a separate path)."""
+    if str(c.get("delegable") or "").strip().lower() == "example-ops":
+        return True
+    tags = c.get("tags")
+    return isinstance(tags, (list, tuple)) and _TAG_EXAMPLE_DELEGABLE in [str(t).strip().lower() for t in tags]
+
+
+def _example_autodelegate(task_ids) -> None:
+    """Best-effort: hand Example tasks a metis claude session can't work (example accounts are
+    read-only on our repos) to the Partner-seat queue via the delegation bridge. GATED to a host that
+    HAS the bridge (delegate-to-example.py + the example-ops checkout) so it's a no-op on
+    Air/<<MACHINE_2_ID>> — those simply leave the task for <<MACHINE_1_ID>>/Partner-seat. Idempotent per source task (the
+    bridge checks its ledger). NEVER raises into the claim path. Kill switch:
+    METIS_NO_EXAMPLE_AUTODELEGATE=1."""
+    if not task_ids or os.environ.get("METIS_NO_EXAMPLE_AUTODELEGATE"):
+        return
+    bridge = ROOT / "scripts" / "delegate-to-example.py"
+    if not bridge.exists() or not os.path.isdir("$HOME/code/example-ops"):
+        return  # not the bridge host — leave these for <<MACHINE_1_ID>>/Partner-seat
+    for tid in dict.fromkeys(task_ids):  # de-dup, preserve order
+        try:
+            subprocess.run([sys.executable, str(bridge), "--from-task", str(tid)],
+                           capture_output=True, timeout=180)
+        except Exception:  # noqa: BLE001 — auto-delegation must never break claim-next
+            pass
+
+
 def cmd_claim_next(args: argparse.Namespace) -> None:
     """Atomically pick the highest-priority FREE task for this machine and claim it.
 
@@ -863,6 +1271,15 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
             except Exception:
                 pass
         free = fw.build(machine).get("free", [])
+        _excl_p = {str(x).lstrip("#") for x in (getattr(args, "exclude", None) or [])}
+        free = [it for it in free if str(it.get("id") or "").lstrip("#") not in _excl_p
+                and (it.get("label") or "") not in _excl_p]
+        # Preview must match the real path: hide only tasks EXPLICITLY flagged delegable (they
+        # auto-delegate to Partner-seat, never claimed by a metis session). Example-topic work that isn't
+        # flagged stays visible/claimable. A caller explicitly targeting a example project still
+        # sees flagged ones (deliberate opt-in).
+        if not _is_example_project_slug(project_filter):
+            free = [it for it in free if not _candidate_is_delegable(it)]
         if project_filter:
             free = [it for it in free if it.get("project") == project_filter]
             if not free:
@@ -887,6 +1304,7 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
 
     now = utcnow()
     expires = now + dt.timedelta(hours=args.hours)
+    advisory = _presence_advisory(args)
 
     picked = claim_id = token = None
     with locked_state(args.state) as data:
@@ -944,12 +1362,27 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
             candidates = [c for c in candidates if c.get("project") == pf]
         elif lane_set:
             candidates = [c for c in candidates if c.get("project") in lane_set]
+        # --exclude: a caller that already tried a task this run (the pace governor) skips it,
+        # instead of being handed the same top task back once its lease is released.
+        _excl = {str(x).lstrip("#") for x in (getattr(args, "exclude", None) or [])}
+        if _excl:
+            candidates = [c for c in candidates
+                          if str(c.get("id") or "").lstrip("#") not in _excl
+                          and (c.get("label") or "") not in _excl]
 
         # Pick the highest-priority free task that passes the ready check.
         # task-ready.sh: exit 0=ready, 1=blocked/not-ready, 2=maybe-done.
         # We skip exit-1 tasks (blocked prereqs / service down) and warn on exit-2
         # (maybe already done). --skip-ready-check bypasses for scripted callers.
         _skip_ready = getattr(args, "skip_ready_check", False)
+        # Tasks EXPLICITLY flagged delegable (delegable=="example-ops" or the example-delegable
+        # tag) are self-contained work meant for a Partner-seat session in the example-ops repo — collect
+        # any we encounter and auto-delegate them after the lock, never claiming one here. Topic
+        # alone never triggers this (metis-dependent Example work must NOT be handed to Partner-seat, who
+        # has no metis-os access — Ant 2026-08-17). Skipped unless the caller explicitly targets a
+        # example project (--project example-*), a deliberate opt-in.
+        pf_is_example = _is_example_project_slug(pf)
+        example_skipped: list = []
         picked = None
         for candidate in candidates:
             if (candidate.get("label") or "").lower() in claimed_labels:
@@ -958,6 +1391,10 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
                 candidate.get("id") or candidate.get("label") or "", tasks_list
             )
             if cand_tid is not None and cand_tid in claimed_ids:
+                continue
+            if not pf_is_example and _candidate_is_delegable(candidate):
+                if cand_tid:
+                    example_skipped.append(cand_tid)
                 continue
             if not _skip_ready:
                 try:
@@ -978,64 +1415,78 @@ def cmd_claim_next(args: argparse.Namespace) -> None:
             picked = candidate
             break
 
-        if picked is None:
-            if pf:
-                print(f"no free work in project '{pf}' for {machine}")
-            elif lane_set:
-                print(f"no free work in lane '{lane_name}' for {machine}")
-            else:
-                print(f"no free work for {machine}")
-            return
+        if picked is not None:
+            claim_id = str(uuid.uuid4())[:8]
+            token = next_fence(data)
+            branch, worktree_str, base_sha = resolve_task_claim_worktree(
+                args, args.agent, claim_id, picked["label"]
+            )
+            data["checkouts"].append(
+                {
+                    "issue": None,
+                    "claimId": claim_id,
+                    "taskId": resolve_task_id(
+                        picked.get("id") or picked.get("label") or "", tasks_list
+                    ),
+                    "title": picked["label"],
+                    "agent": args.agent,
+                    "session": args.session,
+                    "status": "checked-out",
+                    "branch": branch,
+                    "worktree": worktree_str,
+                    "repo": repo_slug(),
+                    "fenceToken": token,
+                    "leaseStartedAt": iso(now),
+                    "leaseExpiresAt": iso(expires),
+                    "lastRenewedAt": iso(now),
+                    "baseSha": base_sha,
+                }
+            )
 
-        claim_id = str(uuid.uuid4())[:8]
-        token = next_fence(data)
-        data["checkouts"].append(
-            {
-                "issue": None,
-                "claimId": claim_id,
-                "taskId": resolve_task_id(
-                    picked.get("id") or picked.get("label") or "", tasks_list
-                ),
-                "title": picked["label"],
-                "agent": args.agent,
-                "session": args.session,
-                "status": "checked-out",
-                "branch": None,
-                "worktree": str(ROOT),
-                "repo": repo_slug(),
-                "fenceToken": token,
-                "leaseStartedAt": iso(now),
-                "leaseExpiresAt": iso(expires),
-                "lastRenewedAt": iso(now),
-                "baseSha": git("rev-parse", "HEAD", check=False).stdout.strip(),
-            }
-        )
+            # Refresh lastSeen on any live presence for this session (heartbeat on claim).
+            for p in data.get("presence", []):
+                if p.get("session") == args.session and parse_time(p["expiresAt"]) > now:
+                    p["lastSeen"] = iso(now)
+                    _apply_presence_advisory(p, advisory)
 
-        # Refresh lastSeen on any live presence for this session (heartbeat on claim).
-        for p in data.get("presence", []):
-            if p.get("session") == args.session and parse_time(p["expiresAt"]) > now:
-                p["lastSeen"] = iso(now)
+    # Lock released. Auto-delegate any skipped Example tasks to Partner-seat OUTSIDE the lock — the
+    # bridge pushes to example-ops, and we must never hold active-checkouts.json's LOCK_EX
+    # across a network op. Best-effort + idempotent; a no-op off the bridge host.
+    _example_autodelegate(example_skipped)
+
+    if picked is None:
+        if pf:
+            print(f"no free work in project '{pf}' for {machine}")
+        elif lane_set:
+            print(f"no free work in lane '{lane_name}' for {machine}")
+        else:
+            print(f"no free work for {machine}")
+        return
 
     if args.json:
         print(
             json.dumps(
                 {
                     "claimId": claim_id,
+                    "taskId": data["checkouts"][-1].get("taskId"),
                     "title": picked["label"],
                     "priority": picked.get("priority"),
                     "fenceToken": token,
                     "agent": args.agent,
                     "leaseExpiresAt": iso(expires),
+                    "branch": branch,
+                    "worktree": worktree_str,
                 },
                 indent=2,
             )
         )
     else:
+        wt_line = f"\nworktree: {worktree_str} (branch {branch})" if branch else ""
         print(
             f"claim-next -> '{picked['label']}' ({picked.get('priority', 'P3')})\n"
             f"claim-id: {claim_id}\n"
             f"fence token: {token}\n"
-            f"lease: {iso(expires)}\n"
+            f"lease: {iso(expires)}{wt_line}\n"
             f"  (release with: python3 scripts/agent-work.py unclaim {claim_id})"
         )
 
@@ -1044,13 +1495,52 @@ def cmd_extend_lease(args: argparse.Namespace) -> None:
     """Extend active claim(s) without shrinking the expiry."""
     now = utcnow()
     new_expiry = now + dt.timedelta(hours=args.hours)
+    advisory = _presence_advisory(args)
+    # Compute governor liveness ONCE (not per-lease): gates renewal of pace-* governor leases below.
+    gov_alive = _governor_alive()
 
     def _matches(r: dict[str, Any]) -> bool:
         if r.get("status") in TERMINAL:
             return False
         if args.claim_id and r.get("claimId") == args.claim_id:
-            return True
-        return bool(args.all and r.get("agent") == args.agent)
+            return True  # explicit target: extend even a sessionless lease on request
+        if not (args.all and r.get("agent") == args.agent):
+            return False
+        # Session-liveness gate (#5610, widened #5675): a blanket --all heartbeat must NOT renew
+        # a sessionless / proxy-minted lease (see PROXY_SESSIONS: 'manual', 'dashboard', 'mcp',
+        # or empty). Such a lease has no live interactive session to justify perpetual +30min
+        # renewal, so the heartbeat (which fires while ANY claude process is alive) made
+        # dead-session claims IMMORTAL — phantom WIP that locked queued tasks (#725/#2812/#1360/
+        # #1655 observed 2026-09-09). Let them expire on their own TTL; a real UUID-session lease
+        # is still renewed below. An explicit --claim-id extend (handled above) can still top up
+        # such a lease on purpose.
+        if (r.get("session") or "") in PROXY_SESSIONS:
+            return False
+        # Governor-lease gate (GOVERNOR_SESSION_PREFIX): a pace-* lease looks like a real UUID so it
+        # slips past PROXY_SESSIONS, but it is only legit while the governor that minted it is still
+        # dispatching (the governor releases it on worker exit). If no weekly-pace-governor is alive,
+        # every pace-* lease is orphaned — let it expire on its TTL instead of immortalizing it here.
+        # An explicit --claim-id extend (handled above) still tops one up on purpose.
+        if (r.get("session") or "").startswith(GOVERNOR_SESSION_PREFIX):
+            if not gov_alive:
+                return False
+            # Age-gate (#6355): even WITH a governor alive, a pace-* lease older than any legit
+            # dispatch lifetime is an orphan — its worker was wall-clock-killed and self-released
+            # long ago, and a briefly-alive NEW governor must not re-adopt+immortalize a prior
+            # crash's orphan (the #2812 recurrence). Let it expire on its TTL.
+            started = r.get("leaseStartedAt")
+            if started:
+                try:
+                    if (now - parse_time(started)) > dt.timedelta(minutes=GOVERNOR_LEASE_MAX_AGE_MIN):
+                        return False
+                except Exception:
+                    pass
+        # Machine scoping (#720): a blanket --all heartbeat on one machine must not
+        # renew the OTHER machine's sessions — during the 2026-07-09 <<MACHINE_1_ID>> outage
+        # <<MACHINE_2_ID>> immortalized dead <<MACHINE_1_ID>> leases, locking their tasks all outage.
+        if args.worktree_prefix:
+            return str(r.get("worktree") or "").startswith(args.worktree_prefix)
+        return True
 
     # Churn guard (#262): the lease heartbeat calls this every ~3 min, but each extension is
     # +30 min — so re-writing every tick only re-stamps timestamps (save_json always sets a fresh
@@ -1069,6 +1559,7 @@ def cmd_extend_lease(args: argparse.Namespace) -> None:
             return
 
     extended = []
+    extended_sessions = set()
     with locked_state(args.state) as data:
         for r in data["checkouts"]:
             if not _matches(r):
@@ -1077,6 +1568,13 @@ def cmd_extend_lease(args: argparse.Namespace) -> None:
             r["leaseExpiresAt"] = iso(max(current, new_expiry))
             r["lastRenewedAt"] = iso(now)
             extended.append((r.get("claimId") or f"#{r.get('issue')}", r["leaseExpiresAt"]))
+            if r.get("session"):
+                extended_sessions.add(r.get("session"))
+        if extended_sessions:
+            for p in data.get("presence", []):
+                if p.get("session") in extended_sessions and parse_time(p["expiresAt"]) > now:
+                    p["lastSeen"] = iso(now)
+                    _apply_presence_advisory(p, advisory)
 
     if not extended:
         print("no active claims found to extend")
@@ -1252,6 +1750,29 @@ def resume_autosync(was_paused: bool) -> None:
         subprocess.run(["launchctl", "load", str(AUTOSYNC_PLIST)], check=False)
 
 
+def _post_finish_progress(args: argparse.Namespace) -> None:
+    """Post a progress EVENT to the task's Discord project channel + #status pulse.
+    Best-effort + fail-soft: a Discord/import/lookup failure must never fail a finish.
+    Discord = comms surface where progress shows up as events (docs/process/discord-comms-architecture.md)."""
+    try:
+        tasks_path = ROOT / "docs/process/state/tasks.json"
+        raw = json.loads(tasks_path.read_text())
+        tasks = raw.get("tasks", raw) if isinstance(raw, dict) else raw
+        seq = tasks.values() if isinstance(tasks, dict) else tasks
+        want = str(args.issue).lstrip("#").strip().lower()
+        task = next((t for t in seq if isinstance(t, dict)
+                     and str(t.get("id", "")).lstrip("#").strip().lower() == want), None)
+        if not task:
+            return
+        title = (task.get("title") or "").strip() or f"#{args.issue}"
+        project = task.get("project") or ""
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import discord_notify
+        discord_notify.post_progress(project, f"shipped: {title}")
+    except Exception:  # noqa: BLE001 — progress posting is best-effort
+        pass
+
+
 def cmd_finish(args: argparse.Namespace) -> None:
     if getattr(args, "merge", False) and getattr(args, "revert", False):
         raise SystemExit("--merge and --revert are mutually exclusive")
@@ -1286,6 +1807,27 @@ def cmd_finish(args: argparse.Namespace) -> None:
             resume_autosync(paused)
         return
 
+    if getattr(args, "merge", False) and not is_primary_tree():
+        # Linked worktree (governor/lane workers, 2026-10-08): `checkout main` here either fails
+        # (main is checked out in the primary tree) or captures main into this worktree, which
+        # then blocks the primary from returning to main. Land without touching main: bring the
+        # task branch current with origin/main, push HEAD:main, retry when origin advances.
+        for _ in range(4):
+            git("fetch", "origin", "main")
+            m = git("merge", "--no-edit", "origin/main", check=False)
+            if m.returncode != 0:
+                git("merge", "--abort", check=False)
+                raise SystemExit("merge of origin/main into the task branch conflicted; resolve "
+                                 "in this worktree and re-run finish --merge (task NOT marked done)")
+            if git("push", "origin", "HEAD:main", check=False).returncode == 0:
+                print(f"landed {current_branch()} -> origin/main from the worktree")
+                mutate_issue(args, "done")
+                _bridge_task_state(args.issue, "finished")
+                _post_finish_progress(args)
+                return
+        raise SystemExit("push to origin/main kept losing the race (4 tries); work is committed on "
+                         "the task branch, task NOT marked done - re-run finish --merge")
+
     if getattr(args, "merge", False):
         paused = pause_autosync()
         try:
@@ -1302,14 +1844,31 @@ def cmd_finish(args: argparse.Namespace) -> None:
                 print(f"merged {resolved_branch} -> main (no fast-forward)")
             else:
                 print(f"fast-forwarded main to {resolved_branch}")
-            git("push", "origin", "main")
-            print("pushed main -> origin")
+            # The merge is now durable on LOCAL main. The push is deferred-friendly: on the
+            # fleet, origin routinely advances between fetch and push, so a rejected
+            # `push origin main` is the EXPECTED path (#099) — the auto-sync daemon reconciles
+            # and pushes. A push failure must NEVER skip the state bridge + lease release below,
+            # or a fully-merged task is left stuck (queued, live lease) — observed on #4612/#4620.
+            push = git("push", "origin", "main", check=False)
+            if push.returncode == 0:
+                print("pushed main -> origin")
+            else:
+                detail = (push.stderr or push.stdout or "").strip().splitlines()
+                print(
+                    "push deferred: origin advanced or is unreachable — commit is durable on "
+                    "local main; the auto-sync daemon will reconcile + push."
+                    + (f"\n  ({detail[-1]})" if detail else "")
+                )
             mutate_issue(args, "done")
+            _bridge_task_state(args.issue, "finished")
+            _post_finish_progress(args)
         finally:
             resume_autosync(paused)
         return
 
     mutate_issue(args, "done")
+    _bridge_task_state(args.issue, "finished")
+    _post_finish_progress(args)
     if args.push:
         git("push", "-u", "origin", resolved_branch)
         print(f"pushed {resolved_branch} -> origin")
@@ -1337,6 +1896,14 @@ def cmd_finish(args: argparse.Namespace) -> None:
         pr_url = result.stdout.strip()
         if pr_url:
             print(f"PR: {pr_url}")
+            # Record the PR on the task as an external actionLink, so downstream surfaces can link
+            # straight to it — e.g. the Studio Design reconciler (#2715) replies on the pin that
+            # asked for the change with the PR to review. Best-effort + fail-soft: a stamp failure
+            # must never fail the finish; link-task-prs.py's gh-scan mode is the catch-all backstop.
+            linker = Path(__file__).resolve().parent / "link-task-prs.py"
+            stamp = run([sys.executable, str(linker), "--task-id", f"#{args.issue}", "--pr-url", pr_url], check=False)
+            if stamp.returncode == 0:
+                print(f"actionLink: {stamp.stdout.strip()}")
 
 
 @contextmanager
@@ -1395,17 +1962,57 @@ def _persist_counter(value: int) -> None:
     os.replace(tmp, TASK_COUNTER)
 
 
+def _alloc_lane():
+    """(residue, modulus, strided_next, strided_block) for THIS machine's id lane (#1246), so
+    two machines minting between syncs never pick the same id. Fully fallback-safe: any import/
+    topology failure yields the (0,1) legacy lane + plain-sequential functions, so alloc-id can
+    never break on a bad import — it just loses the collision-avoidance and #1236 backstops it."""
+    try:
+        sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+        from task_id_alloc import machine_stride, strided_block, strided_next
+        residue, modulus = machine_stride()
+        return residue, modulus, strided_next, strided_block
+    except Exception:
+        def _legacy_next(c, r, m):
+            return c + 1
+
+        def _legacy_block(c, n, r, m):
+            ids = list(range(c + 1, c + 1 + max(1, n)))
+            return ids, (ids[-1] if ids else c)
+
+        return 0, 1, _legacy_next, _legacy_block
+
+
 def cmd_alloc_id(args: argparse.Namespace) -> None:
-    """Atomically allocate the next #NNN task id under an exclusive lock."""
-    with locked_file(TASK_COUNTER):
+    """Atomically allocate the next #NNN task id(s) under an exclusive lock, in THIS machine's
+    residue lane so two machines minting between syncs never pick the same id (#1246)."""
+    with locked_file(TASK_COUNTER):  # per-clone lock OUTER
         current = _current_counter()
+        residue, modulus, strided_next, strided_block = _alloc_lane()
+        try:
+            sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+            from task_id_alloc import host_floor_peek, with_host_floor
+        except Exception:
+            host_floor_peek = lambda f: f  # noqa: E731  (degrade to no host floor)
+            with_host_floor = None
         if args.peek:
-            print(f"{current + 1:03d}")
+            # fold the host high-water in read-only so a peek reflects a sibling worktree's mint
+            floor = host_floor_peek(current)
+            print(f"{strided_next(floor, residue, modulus):03d}")
             return
         count = max(1, args.count)
-        _persist_counter(current + count)
-        for i in range(1, count + 1):
-            print(f"{current + i:03d}")
+
+        def _mint(eff):  # host lock INNER (#1247): serialize vs sibling worktrees on this host
+            ids, high_water = strided_block(eff, count, residue, modulus)
+            _persist_counter(high_water)
+            return ids, high_water
+
+        if with_host_floor is not None:
+            ids = with_host_floor(current, _mint)
+        else:
+            ids, _ = _mint(current)
+        for n in ids:
+            print(f"{n:03d}")
 
 
 def cmd_reconcile(args: argparse.Namespace) -> None:
@@ -1465,6 +2072,11 @@ def build_parser() -> argparse.ArgumentParser:
     co.add_argument("--allow-dirty", action="store_true")
     co.add_argument("--steal", action="store_true", help="take over an active lease explicitly")
     co.add_argument(
+        "--reopen",
+        action="store_true",
+        help="lease a task that is already done/dropped/failed (bypass the terminal-state gate)",
+    )
+    co.add_argument(
         "--no-git",
         action="store_true",
         help="record lease only; do not create branch/worktree (tests/recovery only)",
@@ -1480,8 +2092,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     rn = sub.add_parser("renew")
     rn.add_argument("issue", type=int)
+    rn.add_argument("--session", default=default_session())
     rn.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
     rn.add_argument("--branch")
+    add_presence_advisory_flags(rn, include_branch=False)
     rn.add_argument(
         "--fence-token",
         type=int,
@@ -1525,6 +2139,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DAYS",
         help="age threshold for --prune-terminal (default: 7 days)",
     )
+    rp.add_argument(
+        "--governor-orphans",
+        action="store_true",
+        help="also expire pace-* governor leases older than GOVERNOR_LEASE_MAX_AGE_MIN (#6355) — "
+             "orphans a hard-killed governor left behind; run on governor startup",
+    )
     rp.set_defaults(func=cmd_reap)
 
     cl = sub.add_parser(
@@ -1536,6 +2156,26 @@ def build_parser() -> argparse.ArgumentParser:
     cl.add_argument("--agent", required=True)
     cl.add_argument("--session", default=default_session())
     cl.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
+    cl.add_argument(
+        "--reopen",
+        action="store_true",
+        help="claim a task that is already done/dropped/failed (bypass the terminal-state gate)",
+    )
+    # #3925 S5: worktree-aware task claims (default in-place; opt in with --auto-worktree).
+    cl.add_argument(
+        "--auto-worktree",
+        action="store_true",
+        default=False,
+        help="create an isolated worktree+branch for this task (default: in-place)",
+    )
+    cl.add_argument("--worktree", help="explicit worktree path (implies --auto-worktree location)")
+    cl.add_argument("--branch", help="branch name for the worktree (default: auto from agent+task)")
+    cl.add_argument("--allow-dirty", action="store_true", help="allow in-place branch cut on a dirty tree")
+    cl.add_argument(
+        "--no-git",
+        action="store_true",
+        help="record lease only; do not create branch/worktree (tests/recovery only)",
+    )
     cl.set_defaults(func=cmd_claim)
 
     uc = sub.add_parser("unclaim", help="release a label-based claim by its claim-id")
@@ -1555,6 +2195,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     cn.add_argument("--agent", required=True)
     cn.add_argument("--session", default=default_session())
+    cn.add_argument("--exclude", action="append", metavar="ID",
+                    help="skip this task id or label (repeatable)")
     cn.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
     cn.add_argument("--machine", help="override detected machine (<<MACHINE_1_ID>>/<<MACHINE_2_ID>>)")
     cn.add_argument("--project", metavar="SLUG",
@@ -1573,6 +2215,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="claim even if this machine already holds a live lease",
     )
+    # #3925 S5: worktree-aware task claims. Creation is gated by --auto-worktree so the
+    # advisory --worktree/--branch presence flags (added below) keep their annotate-only
+    # meaning when --auto-worktree is absent. With it, --worktree picks the location.
+    cn.add_argument(
+        "--auto-worktree",
+        action="store_true",
+        default=False,
+        help="create an isolated worktree+branch for the claimed task (default: in-place)",
+    )
+    cn.add_argument("--allow-dirty", action="store_true", help="allow in-place branch cut on a dirty tree")
+    cn.add_argument(
+        "--no-git",
+        action="store_true",
+        help="record lease only; do not create branch/worktree (tests/recovery only)",
+    )
+    add_presence_advisory_flags(cn)
     cn.set_defaults(func=cmd_claim_next)
 
     jn = sub.add_parser(
@@ -1584,6 +2242,7 @@ def build_parser() -> argparse.ArgumentParser:
     jn.add_argument("--session", default=default_session())
     jn.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS,
                     help="presence TTL in hours (default: 4h; refreshed on each claim)")
+    add_presence_advisory_flags(jn)
     jn.set_defaults(func=cmd_join)
 
     lv = sub.add_parser(
@@ -1653,12 +2312,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     el = sub.add_parser("extend-lease", help="extend active claim(s) without shrinking expiry")
     el.add_argument("claim_id", nargs="?", metavar="CLAIM_ID", help="specific claim to extend")
+    el.add_argument(
+        "--worktree-prefix",
+        default=None,
+        help="with --all: only extend leases whose worktree starts with this prefix "
+        "(machine scoping — pass $HOME so one machine's heartbeat never renews the other's)",
+    )
     el.add_argument("--all", action="store_true", help="extend all active claims for --agent")
     el.add_argument("--agent", default="claude", help="agent name for --all mode (default: claude)")
     el.add_argument("--hours", type=float, default=0.5, help="extend by this many hours (default: 0.5)")
     el.add_argument("--if-within", type=float, default=None, metavar="MINUTES",
                     help="only extend (and write) if a matching lease expires within MINUTES; "
                          "otherwise no-op without touching state (#262 heartbeat churn guard)")
+    add_presence_advisory_flags(el)
     el.set_defaults(func=cmd_extend_lease)
 
     return p

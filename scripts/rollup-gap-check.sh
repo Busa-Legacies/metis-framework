@@ -54,11 +54,30 @@ cd "$(git rev-parse --show-toplevel)"
 LOG_DIR="workspace/memory"
 
 # Current open-range start = the most recent closed-at across the daily logs.
-# Shell glob expands in alphabetical order, which for YYYY-MM-DD.md is chronological,
-# so the last closed-at line is the newest boundary.
-last_closed=$(grep -h '^closed-at:' "$LOG_DIR"/*.md 2>/dev/null | tail -1 | awk '{print $2}')
+# NOT glob order (#798, full-sweep-2026-07-16): the alphabetical glob put every
+# daily-log-YYYY-MM-DD.md AFTER every YYYY-MM-DD.md, so a stale boundary from the
+# legacy scheme shadowed newer ones; and hand-written lines (`backticked` SHAs,
+# "closed-at: LIVE") made git-log ranges fail silently -> a FALSE "clean" pass.
+# The boundary is the newest-by-commit-time VALID closed-at SHA, scheme-agnostic.
+last_closed=""
+last_ts=0
+skipped=0
+while IFS= read -r sha; do
+    sha="${sha//\`/}"                               # tolerate backtick-wrapped SHAs
+    if [[ ! "$sha" =~ ^[0-9a-f]{7,40}$ ]]; then     # reject non-SHA values (e.g. LIVE)
+        skipped=$((skipped + 1))
+        continue
+    fi
+    git cat-file -e "${sha}^{commit}" 2>/dev/null || { skipped=$((skipped + 1)); continue; }
+    ts=$(git show -s --format=%ct "$sha" 2>/dev/null || echo 0)
+    if ((ts > last_ts)); then
+        last_ts=$ts
+        last_closed=$sha
+    fi
+done < <(grep -h '^closed-at:' "$LOG_DIR"/*.md 2>/dev/null | awk '{print $2}')
+[[ "$skipped" -gt 0 ]] && echo "[rollup-gap] note: skipped $skipped invalid/unresolvable closed-at line(s)"
 if [[ -z "$last_closed" ]]; then
-    echo "[rollup-gap] No closed-at boundary found — cannot scope a range. Treating as clean."
+    echo "[rollup-gap] No valid closed-at boundary found — cannot scope a range. Treating as clean."
     exit 0
 fi
 
@@ -89,17 +108,53 @@ if [[ ${#gaps[@]} -eq 0 ]]; then
 fi
 
 # --append-to: write the attributions directly instead of failing, so the boundary
-# can advance over now-captured work. One line per gap commit, SHA-first so a later
-# grep -F on the short SHA matches.
+# can advance over now-captured work.
+#
+# #1020 root-cause: this used to write ONE LINE PER GAP COMMIT straight into the
+# human daily log. A stale boundary (multi-day gap, or just a busy multi-session
+# day) can mean hundreds of gap commits, and a raw one-line-per-commit dump blew
+# the #270 60-line daily-log distillation contract in a single append (confirmed:
+# 2026-07-20.md hit 290 lines from exactly this, then sat over-budget for a week
+# because nothing ever revisits it). The anti-swallow invariant only needs each
+# SHA to appear *somewhere* in $LOG_DIR/*.md (grep -F is substring, not
+# line-scoped) — it doesn't need one line per commit. So: full SHA+subject detail
+# goes to a non-budget-checked raw archive (matching the existing
+# workspace/state/audits/daily-log-raw/ convention from earlier manual distillation
+# passes); the daily log itself gets a compact chunked-SHA reference that keeps
+# future gap-checks passing without the line-count blowup.
 if [[ -n "$APPEND_TO" ]]; then
     mkdir -p "$(dirname "$APPEND_TO")"
+    # cwd is already the repo root (set at top of script via `cd "$(git rev-parse --show-toplevel)"`).
+    RAW_DIR="workspace/state/audits/daily-log-raw"
+    mkdir -p "$RAW_DIR"
+    RAW_FILE="$RAW_DIR/$(basename "$APPEND_TO")"
+
     {
         echo "## rollup-gap auto-attribution ($(date '+%Y-%m-%d %H:%M'))"
         echo "_Commits in ${last_closed}..HEAD that no daily log referenced; captured here so the roll-up boundary does not swallow them._"
         printf -- '- %s\n' "${gaps[@]}"
         echo
+    } >>"$RAW_FILE"
+
+    {
+        echo "## rollup-gap auto-attribution ($(date '+%Y-%m-%d %H:%M'))"
+        echo "_${#gaps[@]} commit(s) in ${last_closed}..HEAD captured (SHA-only, chunked, to stay inside the 60-line daily-log contract); full subjects in \`workspace/state/audits/daily-log-raw/$(basename "$APPEND_TO")\`._"
+        chunk=""
+        n=0
+        for line in "${gaps[@]}"; do
+            sha="${line%% *}"
+            chunk+="${sha} "
+            n=$((n + 1))
+            if ((n % 20 == 0)); then
+                echo "- $chunk"
+                chunk=""
+            fi
+        done
+        [[ -n "$chunk" ]] && echo "- $chunk"
+        echo
     } >>"$APPEND_TO"
-    echo "[rollup-gap] Appended ${#gaps[@]} attribution(s) to ${APPEND_TO}:"
+
+    echo "[rollup-gap] Appended ${#gaps[@]} attribution(s): full detail -> ${RAW_FILE}, compact SHA refs -> ${APPEND_TO}"
     printf '  %s\n' "${gaps[@]}"
     exit 0
 fi

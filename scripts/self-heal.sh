@@ -15,10 +15,17 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/discord-curl.sh" 2>/dev/null || true
 REPO="${REPO:-$(cd "$SCRIPT_DIR/.." && git rev-parse --show-toplevel 2>/dev/null || echo "$SCRIPT_DIR/..")}"
 DATE="${DATE:-$(date +%Y-%m-%d)}"
-AUDIT_DIR="$REPO/docs/process/audits"
-REPORT="$AUDIT_DIR/self-heal-$DATE.md"
+AUDIT_DIR="$REPO/workspace/state/audits"
+# Per-machine report name: both machines run self-heal daily, and a shared
+# date-keyed path add/add-conflicts on every sync merge (2026-07-14 wedge).
+MACHINE="${METIS_MACHINE:-$(python3 -c "
+import importlib, sys
+sys.path.insert(0, '$REPO/scripts')
+print(importlib.import_module('file-claims')._machine())" 2>/dev/null || hostname -s | tr 'A-Z' 'a-z')}"
+REPORT="$AUDIT_DIR/self-heal-$DATE-$MACHINE.md"
 LOG_DIR="${LOG_DIR:-$HOME/.openclaw/logs}"
 LOG="$LOG_DIR/self-heal.log"
 OPENCLAW_JSON="${OPENCLAW_JSON:-$HOME/.openclaw/openclaw.json}"
@@ -48,8 +55,8 @@ discord_post() {
   local msg="$1" token
   token=$(python3 -c "import json; d=json.load(open('$OPENCLAW_JSON')); print(d['channels']['discord']['token'])" 2>/dev/null || echo "")
   [ -z "$token" ] && return
-  "$CURL_BIN" -s -X POST "https://discord.com/api/v10/channels/$DISCORD_CHANNEL/messages" \
-    -H "Authorization: Bot $token" -H "Content-Type: application/json" \
+  discord_curl "$token" -s -X POST "https://discord.com/api/v10/channels/$DISCORD_CHANNEL/messages" \
+    -H "Content-Type: application/json" \
     -d "{\"content\": \"$msg\"}" > /dev/null || true
 }
 

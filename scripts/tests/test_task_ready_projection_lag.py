@@ -114,12 +114,14 @@ class TaskReadyProjectionLagTest(unittest.TestCase):
             assert _SPEC is not None and _SPEC.loader is not None
             _SPEC.loader.exec_module(_MOD)
 
-            resolve = _MOD.resolve
-            state = _MOD.state
-            is_done = _MOD.is_done
-            doneWhen = _MOD.doneWhen
-            fields = _MOD.fields
-            blockers = _MOD.blockers
+            # Forward EVERY public name rather than an allowlist. The allowlist named six
+            # functions; task-ready.sh later started calling task_state.snapshot(), which was
+            # never added, so the sandbox raised AttributeError and the script exited 3 while
+            # working perfectly in production. This suite is run by nothing, so the stale
+            # fixture sat undetected (#4601). A wildcard cannot go stale the same way.
+            for _n in dir(_MOD):
+                if not _n.startswith("_"):
+                    globals()[_n] = getattr(_MOD, _n)
             """
         )
         self._write(repo / "scripts/lib/task_state.py", wrapper)

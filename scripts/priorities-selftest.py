@@ -24,6 +24,15 @@ GOALS = [
     {"id": "G3", "system": 2, "title": "Example", "weight": 4, "projects": ["partner-brief"], "areas": ["Example Market"]},
 ]
 
+# projects.json shape per docs/process/project-progress-contract.md (taskIds backlinks).
+PROJECTS = [
+    {"slug": "dashboard-core", "milestones": [
+        {"id": "M1", "title": "shipped", "status": "done", "taskIds": ["#shipped"]},
+        {"id": "M2", "title": "front", "status": "active", "taskIds": ["#front"]},
+        {"id": "M3", "title": "later", "status": "todo", "taskIds": ["#later"]},
+    ]},
+]
+
 
 def task(tid, area=None, pri="P2", state="queued", blocker="none", goalIds=None, project=None):
     t = {"taskId": tid, "title": tid, "area": area, "priority": pri,
@@ -58,6 +67,28 @@ check("blocked P1 (6) outranks queued P3 (5)",
       p.score_task(task("#d", "Dashboard", "P1", blocker="x"), GOALS)["score"]
       > p.score_task(task("#c", "Automation", "P3"), GOALS)["score"])
 
+print("== milestone criticality (task → project → next undone milestone) ==")
+mt = lambda tid: task(tid, "Dashboard", "P2", project="dashboard-core")  # noqa: E731
+front = p.score_task(mt("#front"), GOALS, PROJECTS)
+later = p.score_task(mt("#later"), GOALS, PROJECTS)
+shipped = p.score_task(mt("#shipped"), GOALS, PROJECTS)
+unlinked = p.score_task(mt("#nolink"), GOALS, PROJECTS)
+check("front milestone boosted (4×2×1×1.15 = 9.2)",
+      front["milestone"] == p.MILESTONE_FRONT and front["score"] == 9.2)
+check("base_score exposed separately from boosted score",
+      front["base_score"] == 8.0 and front["milestoneId"] == "M2")
+check("later milestone stays neutral", later["milestone"] == 1.0 and later["score"] == 8.0
+      and later["milestoneId"] == "M3")
+check("done milestone stays neutral", shipped["milestone"] == 1.0 and shipped["score"] == 8.0)
+check("front outranks otherwise-equal later-milestone task", front["score"] > later["score"])
+check("task with no milestone backlink = exact baseline",
+      unlinked["score"] == p.score_task(mt("#nolink"), GOALS)["score"] == 8.0
+      and unlinked["milestone"] == 1.0 and unlinked["milestoneId"] is None)
+check("no projects data = exact baseline (neutral default)",
+      p.score_task(mt("#front"), GOALS)["score"] == 8.0)
+check("unknown project slug = exact baseline",
+      p.score_task(task("#x", "Dashboard", "P2", project="ghost"), GOALS, PROJECTS)["score"] == 8.0)
+
 print("== ranking + filtering ==")
 tasks = [
     task("#done", "Dashboard", "P1", state="done"),       # terminal — excluded
@@ -72,6 +103,12 @@ check("ranked desc by score", [s["taskId"] for s in r["ranked"]] == ["#wip", "#n
 check("split by system", set(r["by_system"]) == {1, 2})
 check("system 2 holds example", [s["taskId"] for s in r["by_system"][2]] == ["#nav"])
 check("orphan separated out", [s["taskId"] for s in r["orphans"]] == ["#orph"])
+check("rank without projects = baseline order (conservative default)",
+      [s["taskId"] for s in p.rank(tasks, GOALS, [])["ranked"]]
+      == [s["taskId"] for s in r["ranked"]])
+check("rank puts front-milestone task above equal later-milestone task",
+      [s["taskId"] for s in p.rank([mt("#later"), mt("#front")], GOALS, PROJECTS)["ranked"]]
+      == ["#front", "#later"])
 
 print("== goal coverage ==")
 cov = {g["id"]: g for g in p.goal_coverage(tasks, GOALS)}
@@ -81,10 +118,14 @@ check("G3 active from example", cov["G3"]["active"] == 1)
 
 print("== real data sanity ==")
 try:
-    g, t = p.load_goals(), p.load_tasks()
-    rr = p.rank(t, g)
-    check("loads real goals.json + tasks.json", len(g) == 6 and len(t) > 0)
+    g, t, pj = p.load_goals(), p.load_tasks(), p.load_projects()
+    rr = p.rank(t, g, pj)
+    check("loads real goals.json + tasks.json",  # count drifts with campaign lifecycle — check shape, not census
+          len(g) > 0 and all("weight" in x and "system" in x for x in g) and len(t) > 0)
+    check("loads real projects.json (milestone data)", len(pj) > 0)
     check("real ranking non-empty + scored", rr["ranked"] and rr["ranked"][0]["score"] > 0)
+    check("real milestone factors stay in {1.0, MILESTONE_FRONT}",
+          all(s["milestone"] in (1.0, p.MILESTONE_FRONT) for s in rr["ranked"]))
 except Exception as e:
     check(f"real data load ({e})", False)
 

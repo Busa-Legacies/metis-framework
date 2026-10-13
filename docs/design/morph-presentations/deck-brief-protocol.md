@@ -26,10 +26,10 @@ Keep bodies to **≤ ~30 words**. One focal point per slide.
 
 ## 2. Brand research (when a brand already exists)
 
-**Be intentional: study the real brand before choosing a single color.** Don't guess what the current Example deck did as a placeholder; that's exactly the gap this step closes.
+**Be intentional: study the real brand before choosing a single color.** Don't guess what the current Example deck did as a placeholder: that's exactly the gap this step closes.
 
 Checklist:
-- [ ] **View the official site.** Use `scripts/review.sh https://brand.com /tmp/brand.png` to screenshot it once the domain is reachable. (Note: the web sandbox's TLS proxy only allows infra hosts (npm/github/google-storage), so most external brand sites 403 from here. Until a domain is allowlisted, fall back to search/press coverage, the brand's social images, or a hex sampled by hand.)
+- [ ] **View the official site.** Use `scripts/review.sh https://brand.com /tmp/brand.png` to screenshot it once the domain is reachable. (Note: the web sandbox's TLS proxy only allows infra hosts, npm/github/google-storage, so most external brand sites 403 from here. Until a domain is allowlisted, fall back to search/press coverage, the brand's social images, or a hex sampled by hand.)
 - [ ] Capture **primary + secondary colors as hex**, heading & body **fonts**, the **logo** (wordmark style + symbol), the **tagline**, and the **voice**.
 - [ ] Pull **proof points from the brand's own words**: real names, places, numbers. Cite sources. **Never invent figures**, and keep sensitive internal numbers (funding, etc.) off anything outward-facing unless cleared.
 - [ ] Mirror the palette into the deck's CSS variables: `--accent --accent2 --accent3 --warm --ridge1/2/3 --orb-from/mid/to --grid --hero-from/to`.
@@ -67,7 +67,7 @@ Quality bar:
 
 | | Métis | Example |
 |---|---|---|
-| Brand source | our house system (`design-guidelines.md`) | the client's site + press (palette interpretive; confirm hex) |
+| Brand source | our house system (`design-guidelines.md`) | the client's site + press (palette interpretive, confirm hex) |
 | Motif | indigo data-horizon, orb = the system | harvest sun rising over SD farmland |
 | Takeaway | "an autonomous agent framework" | "San Diego's local food marketplace" |
 | Nav taxonomy | orchestrator · lanes · memory · surfaces | farms · shop · mission · impact |

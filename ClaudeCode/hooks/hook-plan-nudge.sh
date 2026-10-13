@@ -16,6 +16,9 @@ except Exception:
 
 # Guard: empty / too short
 [ "${#prompt}" -lt 25 ] && exit 0
+# Guard: background-task notifications arrive as a "prompt" starting <task-notification>; that is
+# subagent report text, not Ant's message — matching it injected false nudges (audit 2026-10-05).
+case "$prompt" in "<task-notification>"*) exit 0 ;; esac
 
 lc="$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]')"
 

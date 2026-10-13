@@ -49,7 +49,8 @@ import json
 import os
 import re
 
-_DONE_STATES = {"done"}
+_DONE_STATES = {"done", "archived"}  # #887: 'archived' = completed-and-filed, so it counts
+                                     # as done for board checkboxes + prerequisite satisfaction.
 
 
 class TaskStateReadError(RuntimeError):
@@ -149,7 +150,7 @@ def resolve(label_or_id, tasks=None):
 
     Resolution is intentionally strict:
       1) exact taskId ("#347" or "347")
-      2) leading canonical taskId token in a titled label ("#347: title" or "347 - title")
+      2) leading canonical taskId token in a titled label ("#347 — title" or "347 - title")
       3) exact title only (full-string equality)
 
     Returns None if nothing resolves exactly — never a fuzzy/substring guess.

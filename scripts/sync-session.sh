@@ -71,13 +71,44 @@ _log "syncing $SESSION_ID: $dirty dirty file(s) in $CWD on branch $branch"
 
 # Stage tracked modifications only (no untracked files — avoids committing
 # secrets, build artefacts, or anything the session never intended to track).
-git -C "$CWD" add -u 2>&1 | while IFS= read -r line; do _log "  $line"; done
+#
+# #2097 WS-C C1 (committer #11 gap, C0 audit 2026-08-06): NEVER push raw SOURCE to main
+# from a session-pause. When the session works directly in the main checkout (branch=main,
+# not an isolated worktree), an unfiltered `add -u` here commits+pushes source straight to
+# main — bypassing BOTH the canonical state/source split AND the pre-push gate, the same
+# hole the daemon's split closed. So on `main`, stage STATE ONLY (the shared allowlist,
+# identical to the daemon's `git_add_state`); source WIP is left dirty for the daemon's
+# autosync/<machine> snapshot to back up + a worktree/PR to land. On a feature branch or
+# per-task worktree, source is fine (it reaches main only via PR/merge) — commit all.
+branch_is_main=false
+[ "$branch" = "main" ] && branch_is_main=true
+if $branch_is_main; then
+  # shellcheck source=lib/source-pathspec.sh
+  . "$(dirname "$0")/lib/source-pathspec.sh"
+  # Stage ONLY the state pathspecs that currently exist — `git add -- <pathspec>` hard-errors
+  # and stages NOTHING the instant ANY positive pathspec matches no file (several STATE dirs
+  # legitimately don't exist on a given machine). Mirrors the daemon's git_add_state filter.
+  present=()
+  for _p in "${STATE_PATHSPECS[@]}"; do
+    if [ -e "$CWD/$_p" ] || [ -n "$(git -C "$CWD" ls-files -- "$_p" 2>/dev/null)" ]; then
+      present+=( "$_p" )
+    fi
+  done
+  [ "${#present[@]}" -gt 0 ] && git -C "$CWD" add -u -- "${present[@]}" 2>&1 | while IFS= read -r line; do _log "  $line"; done
+else
+  git -C "$CWD" add -u 2>&1 | while IFS= read -r line; do _log "  $line"; done
+fi
 
 if git -C "$CWD" diff --cached --quiet 2>/dev/null; then
-  _log "OK $SESSION_ID: nothing staged after add -u (untracked-only changes)"
+  if $branch_is_main; then
+    _log "OK $SESSION_ID: on main — no STATE changes to commit; SOURCE left dirty for the daemon snapshot (never raw-pushed to main)"
+  else
+    _log "OK $SESSION_ID: nothing staged after add -u (untracked-only changes)"
+  fi
   _record_sync "$SESSION_ID"
   exit 0
 fi
+$branch_is_main && _log "$SESSION_ID: on main — committing STATE only (source held for the daemon snapshot)"
 
 if git -C "$CWD" commit -m "$msg" 2>&1 | while IFS= read -r line; do _log "  $line"; done; then
   _log "OK $SESSION_ID: committed on $branch"

@@ -19,7 +19,7 @@ REPO = os.path.dirname(os.path.dirname(FORGE))
 
 LIB = os.path.join(FORGE, "lib", "x1c.scad")
 SEGMENT = os.path.join(FORGE, "lib", "segment.scad")
-EXAMPLE = os.path.join(FORGE, "models", "cable-clip", "cable-clip.scad")
+EXAMPLE = os.path.join(FORGE, "models", "garden-lantern", "kasuga.scad")
 SPLIT_MODEL = os.path.join(FORGE, "models", "garden-lantern", "roof-pieces.scad")
 RENDER = os.path.join(REPO, "scripts", "forge3d-render.sh")
 BBOX = os.path.join(HERE, "stl-bbox.py")
@@ -45,10 +45,15 @@ def main():
     for token in ("X1C_BED_X = 256", "CLEARANCE", "module rbox", "module bed_report"):
         ok &= check(f"lib defines {token!r}", token in lib)
 
-    # 2. Example model exists and pulls the library in with include (not use,
-    #    which would drop the constants).
+    # 2. Example model exists and pulls the shared libs in with include (not use,
+    #    which would drop the constants): kasuga -> lantern-core -> lib/segment.scad
+    #    (which itself includes x1c.scad). cable-clip was the old example; Ant
+    #    deleted it via the Studio gallery 2026-07-13.
     ex = open(EXAMPLE).read()
-    ok &= check("example uses include <...x1c.scad>", "include <../../lib/x1c.scad>" in ex)
+    ok &= check("example includes lantern-core", "include <lantern-core.scad>" in ex)
+    core = open(os.path.join(os.path.dirname(EXAMPLE), "lantern-core.scad")).read()
+    ok &= check("lantern-core includes lib/segment.scad",
+                "include <../../lib/segment.scad>" in core)
 
     # 3. Render scripts are present + executable.
     for p in (RENDER, BBOX):
@@ -75,16 +80,18 @@ def main():
     # 4. Live loop when OpenSCAD is available; skip cleanly otherwise.
     if shutil.which("openscad"):
         with tempfile.TemporaryDirectory() as td:
-            work = os.path.join(td, "models", "cable-clip")
+            work = os.path.join(td, "models", "garden-lantern")
             os.makedirs(work)
-            shutil.copy(EXAMPLE, work)
+            for f in os.listdir(os.path.dirname(EXAMPLE)):
+                if f.endswith(".scad"):
+                    shutil.copy(os.path.join(os.path.dirname(EXAMPLE), f), work)
             shutil.copytree(os.path.join(FORGE, "lib"), os.path.join(td, "lib"))
             r = subprocess.run(
-                ["bash", RENDER, os.path.join(work, "cable-clip.scad")],
+                ["bash", RENDER, os.path.join(work, "kasuga.scad")],
                 capture_output=True, text=True,
             )
-            stl = os.path.join(work, "stl", "cable-clip.stl")
-            png = os.path.join(work, "renders", "cable-clip-iso.png")
+            stl = os.path.join(work, "stl", "kasuga.stl")
+            png = os.path.join(work, "renders", "kasuga-iso.png")
             ok &= check("render produced an STL", os.path.exists(stl))
             ok &= check("render produced PNGs", os.path.exists(png))
             if "WARNING: Ignoring unknown variable" in r.stdout + r.stderr:
@@ -93,17 +100,17 @@ def main():
                 ok &= check("no undefined-variable warnings", True)
             if os.path.exists(stl):
                 dims = bboxmod.bbox(stl)
-                fits = all(dims[i] <= bboxmod.BED[i] for i in range(3))
-                ok &= check("STL parses + fits the X1C bed", fits,
+                ok &= check("STL parses (nonzero bbox)", all(d > 0 for d in dims),
                             f"{dims[0]:.0f}x{dims[1]:.0f}x{dims[2]:.0f} mm")
+                # One-piece lantern intentionally exceeds the bed — that premise is
+                # why split mode exists; the piece checks below prove printability.
+                oversized = any(dims[i] > bboxmod.BED[i] for i in range(3))
+                ok &= check("one-piece lantern exceeds the bed (split-mode premise)", oversized)
 
             # Split mode end-to-end: the roof splits into 3 pieces. Each piece
             # must export an STL, fit the bed, and land in the fit report.
-            lant = os.path.join(td, "models", "garden-lantern")
-            os.makedirs(lant)
-            for f in os.listdir(os.path.dirname(SPLIT_MODEL)):
-                if f.endswith(".scad"):
-                    shutil.copy(os.path.join(os.path.dirname(SPLIT_MODEL), f), lant)
+            # (same dir as the example — all garden-lantern .scad already copied)
+            lant = work
             rs = subprocess.run(
                 ["bash", RENDER, os.path.join(lant, "roof-pieces.scad"), "--pieces", "3"],
                 capture_output=True, text=True,

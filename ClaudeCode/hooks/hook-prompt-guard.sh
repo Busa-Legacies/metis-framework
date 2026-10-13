@@ -8,7 +8,6 @@ session_id=$(printf '%s' "$data" | jq -r '.session_id // empty' 2>/dev/null | tr
 [ -z "$session_id" ] && exit 0
 
 additional_ctx=""
-block_reason=""
 
 # ── End-session + checkpoint detection ────────────────────────────────────────
 # Runs regardless of metrics state so it fires even on the very first prompt.
@@ -90,27 +89,13 @@ _window_reset_passed() {
 _window_reset_passed "${RATE_5H_RESETS:-}" && r5=0
 _window_reset_passed "${RATE_7D_RESETS:-}" && r7=0
 
-# A hard block is pointless if the window is about to refill: skip it when the
-# given reset epoch (seconds) is within 5 min ahead (or up to 1h stale-but-past).
-_resets_soon() {
-  local epoch="${1%%.*}" now
-  case "$epoch" in ''|*[!0-9]*) return 1;; esac
-  now=$(date +%s)
-  [ $(( epoch - now )) -le 300 ] && [ $(( epoch - now )) -ge -3600 ]
-}
-
-# ── Bypass (both work for already-running sessions) ───────────────────────────
-#   File:   touch /tmp/claude-rate-bypass     (remove when done)
-#   EnvVar: CLAUDE_RATE_LIMIT_BYPASS=1 in the shell that launched Claude Code
-_bypassed=0
-[ "${CLAUDE_RATE_LIMIT_BYPASS:-0}" = "1" ] && _bypassed=1
-[ -f "/tmp/claude-rate-bypass" ] && _bypassed=1
-
-# ── Weekly window (seven_day) — the scarce cap ────────────────────────────────
-# The only window worth hard-stopping on: it recovers solely on the weekly reset
-# (no local-lane substitute), so blowing it throttles every session for days.
-if [ "$r7" -ge 95 ] && [ "$_bypassed" -eq 0 ] && ! _resets_soon "${RATE_7D_RESETS:-}"; then
-  block_reason="Weekly (7-day) rate limit is at ${r7}% — pausing to protect the cap, which recovers only on the weekly reset (no local substitute). Override: touch /tmp/claude-rate-bypass (remove it when done)."
+# ── Weekly window (seven_day) — advisory only ─────────────────────────────────
+# Weekly usage recovers only on the reset, but pausing a live session is worse
+# than making the constraint explicit. Keep the stronger warning at >=95% while
+# allowing the user to continue the work they chose to do.
+if [ "$r7" -ge 95 ]; then
+  rate_msg="WEEKLY CAP WARNING: 7-day window is at ${r7}%. Continue only with essential Claude-API work; route generation, research, review, and drafting to <<MACHINE_1_ID>>'s Ollama lanes wherever possible."
+  additional_ctx="${additional_ctx:+${additional_ctx} }${rate_msg}"
 elif [ "$r7" -ge 80 ]; then
   rate_msg="WEEKLY RATE LIMIT: 7-day window at ${r7}% — the scarce cap. Be maximally economical with Claude-API calls: route ALL generation, research, review, and drafting to <<MACHINE_1_ID>>'s Ollama lanes (smith/scout/warden/echo) and apply output inline. Reserve Claude for orchestration, git, and applying lane output."
   additional_ctx="${additional_ctx:+${additional_ctx} }${rate_msg}"
@@ -151,11 +136,7 @@ elif [ "$cpct" -ge 75 ]; then
 fi
 
 # ── Output ────────────────────────────────────────────────────────────────────
-if [ -n "$block_reason" ]; then
-  # Escape for JSON
-  escaped=$(printf '%s' "$block_reason" | sed 's/"/\\"/g')
-  printf '{"continue": false, "stopReason": "%s"}\n' "$escaped"
-elif [ -n "$additional_ctx" ]; then
+if [ -n "$additional_ctx" ]; then
   escaped=$(printf '%s' "$additional_ctx" | sed 's/"/\\"/g')
   printf '{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "%s"}}\n' "$escaped"
 fi

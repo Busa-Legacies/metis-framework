@@ -35,7 +35,7 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -69,6 +69,8 @@ class Entry:
     mode: str
     cmd: list
     desc: str = ""
+    tier: str = "standard"  # #865: 'frontier' keys are assigned Fable on a main session,
+    #                          never run headless in the poller context (see check_allowed).
 
 
 @dataclass
@@ -91,7 +93,16 @@ def load_registry(path: Path) -> dict:
     """Parse the registry YAML into ``{key: Entry}``. Structural parsing only;
     semantic checks live in ``validate_registry`` so callers can decide when to
     fail closed."""
-    raw = yaml.safe_load(Path(path).read_text()) or {}
+    text = Path(path).read_text()
+    # #489: yaml.safe_load silently keeps the LAST of duplicate keys, so a new
+    # entry pasted with an existing name shadows the original with no signal
+    # anywhere. Only this loader sees the raw text, so the dupe lint lives here
+    # and fails closed.
+    top_keys = re.findall(r"^([a-z0-9][a-z0-9-]*):", text, re.M)
+    dupes = sorted({k for k in top_keys if top_keys.count(k) > 1})
+    if dupes:
+        raise ValueError(f"registry {path}: duplicate key(s) {dupes} — later entries silently shadow earlier ones")
+    raw = yaml.safe_load(text) or {}
     if not isinstance(raw, dict):
         raise ValueError(f"registry {path} must be a mapping of key -> spec")
     registry = {}
@@ -103,6 +114,7 @@ def load_registry(path: Path) -> dict:
             mode=spec.get("mode"),
             cmd=spec.get("cmd"),
             desc=spec.get("desc", "") or "",
+            tier=(spec.get("tier") or "standard"),
         )
     return registry
 
@@ -148,8 +160,19 @@ def _resolve_spin(key: str):
         raise KeyError(f"unknown spin scope {scope!r}; want task|milestone|project")
     if not rx.fullmatch(ident):
         raise KeyError(f"invalid id {ident!r} for spin scope {scope!r}")
-    cmd = [sys.executable, str(ROOT / "scripts/spin-task-agent.py"), "--scope", scope, "--id", ident]
-    return Entry(key=key, mode="autonomous", cmd=cmd, desc=f"spin {scope} {ident}")
+    # #5265 (2026-08-15 post-mortem, root cause 4a): spin-task-agent.py blocks on
+    # `dispatch --timeout 300`, which exceeds the relay poller's ~150s kill window —
+    # every failover-claimed spin died at the kill (exit -2, no output). Wrap the
+    # spin in run-detached.sh like every other long-running registry key: the key
+    # returns immediately and the outcome publishes to run-results/<slug>.md.
+    # Single-detach by construction: this resolver is the ONLY path that turns a
+    # spin:* key into a process (notion-tag-intake.py and the queue-runner invoke
+    # spin-task-agent.py / dispatch directly, never through a spin:* key).
+    slug = "spin-" + scope + "-" + re.sub(r"[^a-z0-9-]+", "-", ident.lstrip("#").lower()).strip("-")
+    cmd = ["bash", str(ROOT / "scripts/run-detached.sh"), slug,
+           sys.executable, str(ROOT / "scripts/spin-task-agent.py"),
+           "--scope", scope, "--id", ident]
+    return Entry(key=key, mode="autonomous", cmd=cmd, desc=f"spin {scope} {ident} (detached; result -> run-results/{slug}.md)")
 
 
 def resolve(registry: dict, key: str) -> Entry:
@@ -172,6 +195,42 @@ def check_allowed(entry: Entry, context: str):
     if entry.mode == "interactive" and context == "poller":
         return (f"key {entry.key!r} is mode=interactive and cannot run unattended in the "
                 f"poller context; launch it from the dashboard terminal instead")
+    if getattr(entry, "tier", "standard") == "frontier" and context == "poller":
+        # #865: frontier work is assigned Claude Fable 5 on a pinned main session; it must
+        # never run headless (Fable is not a headless/fan-out default). Same posture as
+        # an interactive key in the poller — refuse and route it to a main session.
+        return (f"key {entry.key!r} is tier=frontier — assigned Claude Fable 5 on a pinned "
+                f"main session; it must not run headless in the poller context. Launch it "
+                f"from a main session instead.")
+    if getattr(entry, "tier", "standard") == "frontier-headless" and context == "poller":
+        # #877: a #frontier-headless key MAY run unattended on Fable, but only when armed.
+        # Off by default (unattended ~2x spend is Ant-only). #4869 item 2: even ARMED, the
+        # key must also pass the ONE consolidated fail-closed budget core
+        # (dispatch_policy.headless_fable_budget_gate) — this gate no longer relies on the
+        # invoked wrapper to remember to gate. The wall-clock ceiling stays in the wrapper.
+        if os.environ.get("HEADLESS_FABLE_ENABLED", "").strip().lower() not in {"1", "true", "yes"}:
+            return (f"key {entry.key!r} is tier=frontier-headless but headless Fable is not "
+                    f"armed (HEADLESS_FABLE_ENABLED unset); launch it from a main session instead.")
+        return _headless_budget_refusal()
+    return None
+
+
+def _headless_budget_refusal(_gate=None):
+    """#4869 item 2 (one gate everywhere): the consolidated fail-closed budget core, applied
+    to an ARMED frontier-headless key before the poller may run it unattended. Fail-CLOSED:
+    an unimportable or erroring gate REFUSES — this protects ~2x unattended spend, so
+    'unknown' must block, never allow. ``_gate`` is injectable for tests."""
+    try:
+        if _gate is None:
+            sys.path.insert(0, str(ROOT / "scripts" / "lib"))
+            from dispatch_policy import headless_fable_budget_gate as _gate
+        g = _gate()
+    except Exception as e:
+        return (f"headless-Fable budget gate unavailable ({e}) — fail-closed; "
+                f"launch it from a main session instead.")
+    if not g.get("allowed"):
+        return (f"headless-Fable budget gate blocked ({g.get('reason')}); "
+                f"launch it from a main session instead.")
     return None
 
 

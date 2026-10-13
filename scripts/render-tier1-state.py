@@ -3,9 +3,49 @@ import argparse
 import difflib
 import json
 import os
+import subprocess
 import sys
+from datetime import date, datetime
 from pathlib import Path
 import yaml
+
+# #DUE: how many days ahead of a dueAt counts as "due soon" (badge escalates to @due).
+DUE_SOON_DAYS = 3
+
+
+def _as_date(val):
+    """Parse an ISO date/datetime string to a date; None on empty/malformed (never raises —
+    a bad stored value must not crash the projector, the mutator already validates on write)."""
+    if not isinstance(val, str) or not val.strip():
+        return None
+    try:
+        return datetime.fromisoformat(val.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def _date_badges(task, today=None):
+    """#DUE: inline board badges for the human-set date fields. Distinct signals:
+      @OVERDUE:<date> — dueAt is past and the task isn't done (hard miss).
+      @due:<date>     — dueAt is today..+DUE_SOON_DAYS (approaching deadline).
+      @due-set:<date> — a dueAt further out (visible but not yet pressing).
+      @followup-due:<date> / @followup:<date> — human check-back due now / scheduled ahead.
+    completedAt (system-stamped) and wakeWhen (automated) are surfaced elsewhere, not here."""
+    today = today or date.today()
+    badge = ""
+    is_done = task.get("state") == "done"
+    due = _as_date(task.get("dueAt"))
+    if due and not is_done:
+        if due < today:
+            badge += f" @OVERDUE:{task['dueAt']}"
+        elif (due - today).days <= DUE_SOON_DAYS:
+            badge += f" @due:{task['dueAt']}"
+        else:
+            badge += f" @due-set:{task['dueAt']}"
+    fu = _as_date(task.get("followUpAt"))
+    if fu and not is_done:
+        badge += f" @followup-due:{task['followUpAt']}" if fu <= today else f" @followup:{task['followUpAt']}"
+    return badge
 
 # Portable repo root: REPO_ROOT (per-invocation/worktree) -> METIS_HOME (canonical)
 # -> self-locating fallback (<this file>/../..). Self-location is rename- and
@@ -33,6 +73,7 @@ GOVERNED_START = "<!-- GOVERNED:START -->"
 GOVERNED_END = "<!-- GOVERNED:END -->"
 
 STATE_ORDER = [
+    "open",
     "inbox",
     "queued",
     "accepted",
@@ -43,6 +84,8 @@ STATE_ORDER = [
     "blocked",
     "failed",
     "done",
+    "archived",  # #887: terminal + completed-and-filed (mirrors update-tier1-state.py). Kept
+                 # out of GOVERNED_STATE_ORDER below so it never renders as active board work.
     "dropped",
 ]
 
@@ -51,9 +94,10 @@ STATE_ORDER = [
 # hand-maintained. The TERMINAL states (done, dropped) are excluded here — they
 # live in tasks.json (the complete record); done projects to the Done Archive
 # (#089), dropped = triaged-and-discarded suggestions that leave the board (#417).
-GOVERNED_STATE_ORDER = [s for s in STATE_ORDER if s not in ("done", "dropped")]
+GOVERNED_STATE_ORDER = [s for s in STATE_ORDER if s not in ("done", "archived", "dropped")]
 
 STATE_HEADERS = {
+    "open": "Open · needs you",
     "inbox": "Inbox",
     "queued": "Queued",
     "accepted": "Accepted",
@@ -64,6 +108,7 @@ STATE_HEADERS = {
     "blocked": "Blocked",
     "failed": "Failed",
     "done": "Done",
+    "archived": "Archived",
 }
 
 VALID_STATES = set(STATE_ORDER)
@@ -197,9 +242,20 @@ def render_queue(tasks_doc):
             continue
 
         for task in state_tasks:
-            out.append(f"- **{task['taskId']}: {task['title']}**\n")
+            out.append(f"- **{task['taskId']} — {task['title']}**\n")
             out.append(f"  - Priority: {task.get('priority', 'P?')}\n")
             out.append(f"  - Owner: {task.get('owner', '')}\n")
+            # Agent + Machine are the two fields queue-runner.py parses out of this
+            # projection to decide dispatch eligibility (is_eligible: agent must be in
+            # DISPATCHABLE_AGENTS, machine in DISPATCHABLE_MACHINES). Both live in
+            # tasks.json and are validated on create, but were never rendered here, so
+            # every governed task parsed as agent=None/machine=None and no governed task
+            # could ever be dispatched -- only the legacy hand-written entries below
+            # GOVERNED:END carried them. Emit them so the canonical board is dispatchable.
+            if task.get("agent"):
+                out.append(f"  - Agent: {task['agent']}\n")
+            if task.get("machine"):
+                out.append(f"  - Machine: {task['machine']}\n")
             out.append(f"  - Project: {task.get('project', 'ops')}\n")
             out.append(f"  - Status: {task.get('state', '')}\n")
             out.append(f"  - Summary (what): {task.get('summary', '')}\n")
@@ -222,6 +278,14 @@ def render_queue(tasks_doc):
                 value = task.get(key)
                 if value:
                     out.append(f"  - {label}: {value}\n")
+
+            ww = task.get("wakeWhen")
+            if ww:
+                wt = ww.get("type")
+                cond = (f"at {ww.get('at')}" if wt == "time"
+                        else f"check `{ww.get('cmd', '')}`" if wt == "check" else str(ww))
+                act = (task.get("wakeAction") or {}).get("kind") or "dispatch"
+                out.append(f"  - Wake when: {wt} — {cond} → auto-{act} (task-wake sweep)\n")
 
             out.append("  - Main files:\n")
             main_files = task.get("mainFiles", [])
@@ -279,6 +343,56 @@ def _priority_rank(priority):
         return 99
 
 
+def render_due_followup_summary(tasks_doc, today=None):
+    """#DUE: a board-top digest of time-sensitive work so due/overdue/follow-up items are seen
+    at a glance instead of buried per-area. Three buckets, each rendered only when non-empty:
+      🔴 Overdue        — dueAt is past and the task isn't done.
+      🟠 Due soon       — dueAt within the next DUE_SOON_DAYS.
+      🔔 Needs follow-up — followUpAt has arrived (human check-back), with its reason.
+    Terminal tasks are excluded (they carry completedAt, not open deadlines)."""
+    today = today or date.today()
+    overdue, due_soon, followup = [], [], []
+    for t in tasks_doc.get("tasks", []):
+        if t.get("state") in ("done", "dropped"):
+            continue
+        due = _as_date(t.get("dueAt"))
+        if due:
+            if due < today:
+                overdue.append((due, t))
+            elif (due - today).days <= DUE_SOON_DAYS:
+                due_soon.append((due, t))
+        fu = _as_date(t.get("followUpAt"))
+        if fu and fu <= today:
+            followup.append((fu, t))
+
+    if not (overdue or due_soon or followup):
+        return ""
+
+    def _line(t, extra=""):
+        return f"- **{t['taskId']} {t.get('title', '')}** — {t.get('summary', '')}{extra}\n"
+
+    out = ["## ⏰ Due & Follow-ups\n\n",
+           "> Time-sensitive work surfaced from `dueAt` / `followUpAt`. "
+           "See task-state-contract §DUE for the field protocol.\n\n"]
+    if overdue:
+        out.append("**🔴 Overdue**\n")
+        for d, t in sorted(overdue, key=lambda x: x[0]):
+            out.append(_line(t, f" _(due {t['dueAt']})_"))
+        out.append("\n")
+    if due_soon:
+        out.append("**🟠 Due soon**\n")
+        for d, t in sorted(due_soon, key=lambda x: x[0]):
+            out.append(_line(t, f" _(due {t['dueAt']})_"))
+        out.append("\n")
+    if followup:
+        out.append("**🔔 Needs follow-up**\n")
+        for d, t in sorted(followup, key=lambda x: x[0]):
+            why = t.get("followUpReason")
+            out.append(_line(t, f" _(follow up {t['followUpAt']}{'; ' + why if why else ''})_"))
+        out.append("\n")
+    return "".join(out)
+
+
 def render_open_tasks(tasks_doc, areas_doc):
     """Render the OPEN_TASKS.md board: non-terminal tasks grouped by area.
 
@@ -302,6 +416,9 @@ def render_open_tasks(tasks_doc, areas_doc):
             by_area[area].append(task)
 
     out = []
+    summary = render_due_followup_summary(tasks_doc)
+    if summary:
+        out.append(summary)
     for area in areas:
         name = area["name"]
         out.append(f"## {name} | {area.get('priority', 'P?')} | {area.get('status', 'active')}\n\n")
@@ -319,11 +436,25 @@ def render_open_tasks(tasks_doc, areas_doc):
             title = task.get("title", "")
             summary = task.get("summary", "")
             tags = f" @agent:{task.get('agent', 'claude')} @machine:{task.get('machine', 'either')}"
-            if task.get("state") == "blocked":
-                tags += " @status:blocked"
+            # #887: surface a state signal for EVERY task that isn't fresh-and-untouched, so a
+            # reader can tell worked-in-flight (in_progress/execution_finished/needs_verification/
+            # accepted) and needs-attention (blocked/failed/waiting) apart from never-started
+            # (queued/inbox/open) at a glance. Previously only 'blocked' was tagged, so a
+            # partially-done task looked identical to one nobody had picked up.
+            _state = task.get("state")
+            if _state and _state not in ("queued", "inbox", "open"):
+                tags += f" @status:{_state}"
+            # Surface a self-trigger badge so a soak's wake condition is visible on the board,
+            # not buried in prose — a reader can see WHEN a waiting task will fire itself.
+            _ww = task.get("wakeWhen")
+            if _ww:
+                _wt = _ww.get("type")
+                tags += f" @wake:{_ww.get('at')}" if _wt == "time" else " @wake:check"
+            # #DUE: hard-deadline (dueAt) + human check-back (followUpAt) badges.
+            tags += _date_badges(task)
             line = f"- [{prio}] [ ] **{tid} {title}**"
             if summary:
-                line += f": {summary}"
+                line += f" — {summary}"
             line += tags + "\n"
             out.append(line)
         out.append("\n")
@@ -347,7 +478,7 @@ def render_projects(projects_doc) -> str:
 
     out = [
         "# Projects\n\n",
-        "> **Generated projection**: canonical source is `docs/process/state/projects.json`.\n",
+        "> **Generated projection** — canonical source is `docs/process/state/projects.json`.\n",
         "> Do not edit this file directly; changes will be overwritten by `render-tier1-state.py write`.\n\n",
     ]
 
@@ -357,8 +488,8 @@ def render_projects(projects_doc) -> str:
         if coverage:
             out.append("## Domain coverage\n\n")
             out.append(
-                "> Where active work clusters, not completion. "
-                "Domains have no end state; a domain with zero active work is flagged inline.\n\n"
+                "> Where active work clusters — not completion. "
+                "Domains have no end state; ⚠️ flags domains with zero active work.\n\n"
             )
             for d in coverage:
                 name = d["domain"]
@@ -369,7 +500,7 @@ def render_projects(projects_doc) -> str:
                 cams = ", ".join(d["campaigns"]) if d["campaigns"] else ""
                 cam_note = f" · campaigns: {cams}" if cams else ""
                 if d["neglected"]:
-                    out.append(f"- **{name}**: no active work, _{label}_\n")
+                    out.append(f"- **{name}** ⚠️ no active work — _{label}_\n")
                 else:
                     parts = []
                     if active:
@@ -378,9 +509,9 @@ def render_projects(projects_doc) -> str:
                         parts.append(f"{ev} evergreen")
                     if pb:
                         parts.append(f"{pb} paused/blocked")
-                    count_str = ", ".join(parts) or "none"
-                    stale_note = " (stale: no recent movement)" if d["stale_signal"] else ""
-                    out.append(f"- **{name}**: {count_str}{cam_note}{stale_note}\n")
+                    count_str = ", ".join(parts) or "—"
+                    stale_note = " ⚠️ stale (no recent movement)" if d["stale_signal"] else ""
+                    out.append(f"- **{name}** — {count_str}{cam_note}{stale_note}\n")
             out.append("\n")
 
     # Campaign roll-up (priority-weighted) — #221.
@@ -390,11 +521,11 @@ def render_projects(projects_doc) -> str:
         for g in goals:
             gp = _progress.goal_rollup(projects, g)
             campaign_name = (campaigns.get(g) or {}).get("name")
-            label = f"{g}: {campaign_name}" if campaign_name else g
+            label = f"{g} — {campaign_name}" if campaign_name else g
             if gp is None:
-                out.append(f"- **{label}**: (no seeded active projects)\n")
+                out.append(f"- **{label}** — (no seeded active projects)\n")
             else:
-                out.append(f"- **{label}**: {_progress.bar(gp)} {gp * 100:.0f}%\n")
+                out.append(f"- **{label}** — {_progress.bar(gp)} {gp * 100:.0f}%\n")
         out.append("\n")
 
     active = [p for p in projects_sorted if p.get("status") not in ("done",)]
@@ -416,9 +547,9 @@ def render_projects(projects_doc) -> str:
             domain_label = domains.get(domain, "")
             done_when = proj.get("doneWhen", "")
             scope = proj.get("scope", "")
-            out.append(f"### {pid} `{slug}`: {name}\n")
-            out.append(f"- **Life domain:** {domain}" + (f" ({domain_label})" if domain_label else "") + "\n")
-            out.append(f"- **Campaign:** {goal}" + (f" ({campaign_name})" if campaign_name else "") + "\n")
+            out.append(f"### {pid} `{slug}` — {name}\n")
+            out.append(f"- **Life domain:** {domain}" + (f" — {domain_label}" if domain_label else "") + "\n")
+            out.append(f"- **Campaign:** {goal}" + (f" — {campaign_name}" if campaign_name else "") + "\n")
             out.append(f"- **Status:** {status}\n")
             out.append(f"- **Priority:** {priority}\n")
             out.append(f"- **Done when:** {done_when}\n")
@@ -444,7 +575,7 @@ def render_projects(projects_doc) -> str:
             pid = proj.get("projectId", "?")
             slug = proj.get("slug", "?")
             name = proj.get("name", slug)
-            out.append(f"### {pid} `{slug}`: {name} (done)\n\n")
+            out.append(f"### {pid} `{slug}` — {name} ✓\n\n")
 
     return "".join(out)
 
@@ -523,6 +654,32 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(replace_governed_section(old, new_body))
         print(f"- {path}")
+
+    # Refresh the presence-derived project live-status projection (#3925 S3/S5). This is a
+    # SEPARATE projection from the four Tier-1 targets above — it is derived from live
+    # presence/leases/file-claims (not tasks.json), so it changes every tick and must stay
+    # OUT of the drift-gate `targets` set (else `diff --exit-code` / main-health would read
+    # normal presence churn as perpetual drift). Runs as an isolated subprocess so a failure
+    # here can NEVER break the daemon-critical Tier-1 render above. Its outputs
+    # (docs/process/project-live-status.md + docs/process/state/project-live-status.json) are
+    # merge=keepours and ride the auto-sync daemon's commits, not the land pathspec.
+    proj_ws = ROOT / "scripts" / "project-workspace.py"
+    if proj_ws.exists():
+        try:
+            r = subprocess.run(
+                [sys.executable, str(proj_ws), "render-projection"],
+                capture_output=True, text=True, timeout=60,
+            )
+            if r.returncode == 0:
+                print("- docs/process/project-live-status.md (project presence projection)")
+            else:
+                print(
+                    f"WARN: project-live-status projection refresh exited {r.returncode}: "
+                    f"{(r.stderr or r.stdout).strip()[:200]}",
+                    file=sys.stderr,
+                )
+        except Exception as exc:  # never let the project projection break the Tier-1 render
+            print(f"WARN: project-live-status projection refresh skipped: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

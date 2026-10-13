@@ -5,9 +5,23 @@ Honesty floor: a milestone counts as fully done ONLY when status == "done"; non-
 milestones contribute their `fill` (partial credit) and can never read as complete.
 """
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 PRIORITY_W = {"P1": 3, "P2": 2, "P3": 1}
+
+
+def _utc_today() -> date:
+    """Today in UTC.
+
+    Deliberately NOT date.today(): _parse_day() normalizes timestamps to UTC dates,
+    so comparing them against a *local* today makes staleness depend on the renderer's
+    timezone. A cloud session (UTC) and <<MACHINE_1_ID>> (US local) then render different
+    projections from identical canonical state, and whichever rendered second fails
+    the render-consistency gate. Observed 2026-07-29: at 01:02Z the 'career' domain
+    read stale under UTC and fresh under America/Chicago, reddening CI on every
+    cloud PR that re-rendered.
+    """
+    return datetime.now(timezone.utc).date()
 
 
 def _parse_day(s: str | None) -> date | None:
@@ -53,7 +67,7 @@ def current_milestone(proj: dict) -> dict | None:
 
 def days_since_movement(proj: dict, today: date | None = None) -> int:
     """Days since the most recent observable movement (milestone completedAt / project updatedAt)."""
-    today = today or date.today()
+    today = today or _utc_today()
     candidates = [_parse_day(proj.get("updatedAt"))]
     for m in proj.get("milestones") or []:
         candidates.append(_parse_day(m.get("completedAt")))
@@ -109,6 +123,43 @@ def classify(proj: dict) -> str:
     return "moving" if days_since_movement(proj) < 7 else "attention"
 
 
+CADENCE_DAYS = {"weekly": 7, "monthly": 30, "quarterly": 91}
+
+
+def pulse_state(proj: dict, today: date | None = None) -> dict | None:
+    """Cadence health-pulse for evergreen catchments (#712).
+
+    Evergreen projects never complete, so percent-completion misrepresents them
+    (Ant 2026-06-13); they carry `pulse: {cadence, lastPulseAt}` and are judged
+    on re-assessment freshness instead. Milestone `fill` stays the health signal
+    (contract §7) — this reports whether that signal is FRESH. Returns None for
+    non-evergreen projects, else {state, cadence, daysSince, lastPulseAt}:
+      current     — re-assessed within the cadence window
+      due         — past the window (≤2×): needs a pulse pass
+      overdue     — past 2× the window, or never pulsed
+      unscheduled — evergreen without a valid cadence (a config gap)
+    """
+    if not proj.get("evergreen"):
+        return None
+    p = proj.get("pulse") or {}
+    cadence = p.get("cadence")
+    out = {"state": "unscheduled", "cadence": cadence,
+           "daysSince": None, "lastPulseAt": p.get("lastPulseAt")}
+    window = CADENCE_DAYS.get(cadence)
+    if window is None:
+        return out
+    last = _parse_day(p.get("lastPulseAt"))
+    if last is None:
+        out["state"] = "overdue"
+        return out
+    days = ((today or _utc_today()) - last).days
+    out["daysSince"] = days
+    out["state"] = ("current" if days <= window
+                    else "due" if days <= 2 * window
+                    else "overdue")
+    return out
+
+
 def bar(frac: float | None, width: int = 10) -> str:
     if frac is None:
         return "—" * width
@@ -130,7 +181,7 @@ def domain_coverage(projects: list[dict], taxonomy: dict) -> list[dict]:
     domains_vocab = taxonomy.get("domains") or {}
     project_domain_map = taxonomy.get("project_domain") or {}
     campaigns_map = taxonomy.get("campaigns") or {}
-    today = date.today()
+    today = _utc_today()
 
     by_domain: dict[str, dict] = {
         d: {

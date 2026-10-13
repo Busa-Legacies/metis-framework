@@ -17,14 +17,14 @@ This protocol is the minimum to make a task handoff-ready.
 
 **Always. No exceptions.**
 
-Why/Plan/Main files are required on every task entry. There is no "trivial" escape hatch: if a task is genuinely self-describing in one line, it takes 30 seconds to write a one-sentence Why and Plan. The cost of skipping is a future session doing archaeology; the cost of writing is 30 seconds. `close-integrity-check.sh` will FAIL if a new open task is missing Why or Plan.
+Why/Plan/Main files are required on every task entry. There is no "trivial" escape hatch, if a task is genuinely self-describing in one line, it takes 30 seconds to write a one-sentence Why and Plan. The cost of skipping is a future session doing archaeology; the cost of writing is 30 seconds. `close-integrity-check.sh` will FAIL if a new open task is missing Why or Plan.
 
 ---
 
 ## Required body sections
 
 ```markdown
-- **#NNN `slug`**: one-line description
+- **#NNN `slug`** — one-line description
   - type:T | area:A | priority:P | effort:E | agent:X | machine:Y | status:S
   - **Why:** What surfaced this. The concrete incident, friction point, or observation — not "it would be nice." Include date if it was a live event (e.g. "hit live 2026-06-02"). This is the most important section: it tells the next session why this matters and whether it's still worth doing.
   - **Plan:** What to do and — critically — what NOT to do or what was already tried. Not a full spec. One paragraph or a short bullet list. Include: approach direction, key constraints, which patterns/solutions to avoid and why.
@@ -46,7 +46,7 @@ Why/Plan/Main files are required on every task entry. There is no "trivial" esca
 ## Template (copy-paste)
 
 ```markdown
-- **#NNN `verb-noun-slug`**: one-line description
+- **#NNN `verb-noun-slug`** — one-line description
   - type:bug|feat|chore|infra|research|doc | area:A | priority:P1|P2|P3 | effort:XS|S|M|L | agent:claude|smith|scout | machine:<<MACHINE_1_ID>>|<<MACHINE_2_ID>>|either | status:open
   - **Why:** [What triggered this — incident, observation, friction point, date if live]
   - **Plan:** [Approach direction, constraints, what to avoid. Be specific enough that a fresh session can start without asking.]
@@ -65,7 +65,7 @@ The markdown body sections map directly to the governed schema in `tasks.json`:
 | Body section | tasks.json field |
 |---|---|
 | One-line description | `summary` |
-| Why | *(no exact field; goes in handoff_context / daily log)* |
+| Why | *(no exact field, goes in handoff_context / daily log)* |
 | Plan | `nextAction` + `currentStep` seed |
 | Main files | `mainFiles` |
 | Done when | `expectedArtifact` + `verificationMethod` |
@@ -100,7 +100,7 @@ Threshold question: "Would a fresh session know what to do from the title alone?
   - **Done when:** `test-git-sync-guards.sh` passes with a new test that simulates a stash-pop-marker commit and confirms the guard blocks it.
 ```
 
-### Bad: too sparse, context lost
+### Bad: too sparse: context lost
 
 ```markdown
 - **#058 `commit-path-conflict-marker-guard`** — Fix conflict markers getting committed
@@ -116,7 +116,7 @@ This forces the next session to archaeology: why does this happen? Where? What d
 These rules apply anywhere in the project: `Verify:` fields, `task-verify.sh` heuristics, CI, and inline `bash -c` calls.
 
 **Rule 1: call scripts by path, not by explicit interpreter.**
-`scripts/foo.sh` (or `"$REPO/scripts/foo.sh"`), not `bash scripts/foo.sh`. The shebang determines the interpreter. Overriding it silently breaks scripts that use interpreter-specific syntax and produces cryptic errors (e.g. `A: unbound variable` from `${0:A:h}` run under bash).
+`scripts/foo.sh` (or `"$REPO/scripts/foo.sh"`): not `bash scripts/foo.sh`. The shebang determines the interpreter. Overriding it silently breaks scripts that use interpreter-specific syntax and produces cryptic errors (e.g. `A: unbound variable` from `${0:A:h}` run under bash).
 
 **Rule 2: all project scripts use `#!/usr/bin/env bash` unless they strictly require zsh.**
 Bash is available on all project machines (<<MACHINE_1_ID>> + <<MACHINE_2_ID>>); zsh is not guaranteed everywhere and makes scripts non-portable. If you write or edit a script: check the shebang. If it's `#!/bin/zsh` without a zsh-only reason, change it to `#!/usr/bin/env bash`.
@@ -136,7 +136,7 @@ Tasks enter the system through multiple paths. The protocol applies to ALL of th
 The standard path: the protocol is prompted inline.
 
 ### 2. Lane / queue-runner output
-When `steward` decomposes a task or `smith` suggests follow-ups as output, those entries must still satisfy this protocol before they're written to task-queue.md. Rule: **whoever applies the lane output is responsible for adding Why/Plan before committing**. The lane won't do it; it returns bare slugs. The apply step is the enforcement gate.
+When `steward` decomposes a task or `smith` suggests follow-ups as output, those entries must still satisfy this protocol before they're written to task-queue.md. Rule: **whoever applies the lane output is responsible for adding Why/Plan before committing**. The lane won't do it: it returns bare slugs. The apply step is the enforcement gate.
 
 ### 3. GitHub issues
 Tasks created as GitHub issues (via `agent-checkout <issue>`) have their own format and bypass task-queue.md. When creating a GH issue that maps to this system:
@@ -144,13 +144,13 @@ Tasks created as GitHub issues (via `agent-checkout <issue>`) have their own for
 - Put the Plan under a `## Approach` heading
 - When the issue is promoted to a task-queue.md entry, copy those into the Why/Plan fields
 
-`close-integrity-check.sh` doesn't scan GH issues; enforcement here is at the apply/promote step.
+`close-integrity-check.sh` doesn't scan GH issues: enforcement here is at the apply/promote step.
 
 ### 4. OPEN_TASKS.md direct entries
 Writing directly to OPEN_TASKS.md (board view only, no task-queue.md backing entry) bypasses the check. Rule: **OPEN_TASKS.md is a projection, not the source**. Always create the task-queue.md entry first; the board entry is a one-liner summary. If you write a board entry without a queue entry, it must be promoted before the next `/end`.
 
 ### 5. Working-context open threads
-Threads in `## Open threads` carry no Why/Plan and often get silently dropped at the next working-context rewrite. Rule: **any thread that survives 2 sessions must be promoted to a task-queue.md entry** with a full body. A thread is not a task; it's a reminder. If the work is real, give it a task entry. If it's not real enough for a task entry, remove it from threads.
+Threads in `## Open threads` carry no Why/Plan and often get silently dropped at the next working-context rewrite. Rule: **any thread that survives 2 sessions must be promoted to a task-queue.md entry** with a full body. A thread is not a task: it's a reminder. If the work is real, give it a task entry. If it's not real enough for a task entry, remove it from threads.
 
 ---
 

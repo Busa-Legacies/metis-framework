@@ -37,6 +37,12 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib import lease_state as _lease  # noqa: E402
+
+# ONE definition of the lease-status terminal set, shared with agent-work.py.
+LEASE_TERMINAL = _lease.TERMINAL
+
 # Honor REPO_ROOT (per-invocation/worktree) -> METIS_HOME (canonical) -> file location,
 # so claim-next (which shells out here) reads the host repo's board in a vendored subtree
 # layout instead of the framework dir (#451).
@@ -127,20 +133,20 @@ def prank(p: str) -> int:
 
 # ---- source 1: leases ------------------------------------------------------
 def filter_live_leases(checkouts: list[dict]) -> list[dict]:
-    """Pure: keep only checked-out records whose lease hasn't expired. No IO.
+    """Pure: keep the records whose lease is still held and unexpired. No IO.
 
     Importable by agent-work.py's claim-next so it can derive live leases from a
     state dict it is already holding under LOCK_EX, without re-reading the file.
+    Must answer "is this lease held?" the same way agent-work.active() does: both
+    share lib/lease_state.py, which denylists terminal statuses (an unknown status
+    is held, so it fails safe). The old allowlist of the literal "checked-out" read
+    any other non-terminal status as free, so a held task could be claimed twice.
     """
-    out = []
-    for c in checkouts:
-        if str(c.get("status", "")).lower() != "checked-out":
-            continue
-        exp = parse_iso(c.get("leaseExpiresAt", ""))
-        if exp is None or exp <= now_utc():
-            continue
-        out.append(c)
-    return out
+    now = now_utc()
+    return [
+        c for c in checkouts
+        if _lease.is_live(c.get("status"), parse_iso(c.get("leaseExpiresAt", "")), now)
+    ]
 
 
 def live_leases() -> list[dict]:

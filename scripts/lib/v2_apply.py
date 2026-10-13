@@ -21,7 +21,10 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling lib imports (check_policy)
 
 # Lane output contract: full-file blocks. Full-file (not diff) so application is
 # deterministic — no line-number/context matching that LLM diffs routinely botch.
@@ -147,11 +150,17 @@ def apply_changes(worktree: Path, changes):
 def run_check(worktree: Path, check_cmd: str, timeout: int = 300):
     """Run the human-authored doneWhen check inside the worktree. exit 0 = pass.
     Returns (passed, combined_output). Never raises — a crashed/timed-out check
-    is a fail, not an exception."""
+    is a fail, not an exception. The shell is the check contract (`cd x && pytest`),
+    so the hardening (#6500) is the read-only contract guard: a mutating shape is
+    refused before any shell runs."""
+    from check_policy import assert_readonly_check
+    ok, why = assert_readonly_check(check_cmd)
+    if not ok:
+        return False, f"doneWhen check refused: {why}"
     try:
         r = subprocess.run(
             check_cmd,
-            shell=True,
+            shell=True,  # noqa: S602 — policy-gated above
             cwd=str(worktree),
             capture_output=True,
             text=True,

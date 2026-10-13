@@ -36,7 +36,7 @@ Required fields:
 - `taskId`
 - `title`
 - `priority`
-- `state` (`inbox|queued|accepted|in_progress|execution_finished|needs_verification|waiting|blocked|failed|done`)
+- `state` (`inbox|queued|open|accepted|in_progress|execution_finished|needs_verification|waiting|blocked|failed|done`)
 - `owner`
 - `summary`
 - `currentStep`

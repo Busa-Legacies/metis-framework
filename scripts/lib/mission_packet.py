@@ -152,6 +152,7 @@ def build_mission_packet(
     risk_tier: str | None = None,
     risk_reason: str | None = None,
     context_snippets: list[str] | None = None,
+    scope_files: list[str] | None = None,
     verification: str | None = None,
 ) -> MissionPacket:
     contract = ROLE_CONTRACTS.get(role, ROLE_CONTRACTS["main"])
@@ -166,6 +167,18 @@ def build_mission_packet(
         "If required context is missing, state the gap instead of inventing details.",
     ]
     constraints.extend(contract["must_not_do"])
+    # Explicit --files targets take precedence over path-inference from the message
+    # (#1587): when the caller inlined file contents, the scope IS those files, and
+    # readOnly=False signals the lane is expected to propose edits to them.
+    if scope_files:
+        scope = {
+            "files": sorted(set(scope_files)),
+            "dirs": sorted({f.rsplit("/", 1)[0] for f in scope_files if "/" in f}),
+            "readOnly": False,
+            "source": "explicit-files",
+        }
+    else:
+        scope = infer_scope(message)
     return MissionPacket(
         schema=1,
         role=role,
@@ -176,13 +189,19 @@ def build_mission_packet(
             "model": model,
             "thinking": thinking,
             "runtime": runtime,
-            "reason": route_reason or ("explicit engine" if engine else "lane default"),
+            # Never fabricate provenance here (#4545). "explicit engine" is the exact
+            # string routing-report.py reads a ledger row as EVAL traffic on, so guessing
+            # it for any caller that passed engine= without saying why would stamp
+            # production calls as eval and drop them from the production routing view --
+            # the same contamination that already invalidated three routing conclusions.
+            # Why an engine was chosen is the caller's fact; if it did not say, say so.
+            "reason": route_reason or "unspecified",
             "workType": work_type,
             "mutation": mutation,
             "requiresApproval": bool(requires_approval),
             "proposalOnly": bool(contract.get("proposal_only", True)),
         },
-        scope=infer_scope(message),
+        scope=scope,
         risk={"tier": risk_tier, "reason": risk_reason},
         context={
             "snippets": context_snippets or [],

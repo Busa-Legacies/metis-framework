@@ -9,7 +9,7 @@ Purpose:
 - preserve the durable lessons from the #12 dispatch rollout and the #147 auto-sync recovery
 
 This is the protocol for the kind of delivery done in #12 (laying the dispatch config onto <<MACHINE_1_ID>>)
-and #147 (catching <<MACHINE_1_ID>>'s diverged clone back up to origin), both on a host running ~8 live
+and #147 (catching <<MACHINE_1_ID>>'s diverged clone back up to origin): both on a host running ~8 live
 Claude sessions plus an auto-sync daemon, where a full pull/merge/reset would have destroyed work.
 
 ## Core rule
@@ -28,7 +28,7 @@ Use it whenever you are writing git-tracked state onto a clone you do **not** ha
 
 It is overkill for:
 - your own single-session local clone where you hold all the work
-- a clean clone (0 uncommitted, 0 divergence); there a normal pull is fine
+- a clean clone (0 uncommitted, 0 divergence): there a normal pull is fine
 
 ## Phase 0: Assess before you touch anything
 
@@ -45,7 +45,7 @@ Never act on an assumption about a busy host's state. Establish ground truth fir
 5. **Collision check for governed IDs**: before unioning task/lease state, confirm no ID was
    independently assigned on both sides (compare `lastAssigned` and the actual id sets).
 
-If Phase 0 shows the host is busy, **a destructive op is off the table**; proceed by delivery, not reset.
+If Phase 0 shows the host is busy, **a destructive op is off the table**: proceed by delivery, not reset.
 
 ## Phase 1: Deliver (path-scoped, non-destructive)
 
@@ -58,8 +58,8 @@ git checkout origin/main -- <specific files>
 ```
 
 - `git checkout <ref> -- <paths>` reads from the **already-cached** `origin/main`, so it works even
-  when `git fetch` is failing on auth; you can deliver from a stale-but-valid ref.
-- Name **specific paths**. Never `git checkout origin/main -- .` and never `git add -A`; that is how
+  when `git fetch` is failing on auth: you can deliver from a stale-but-valid ref.
+- Name **specific paths**. Never `git checkout origin/main -- .` and never `git add -A`: that is how
   you swallow a concurrent session's edits.
 - This is delivery, not reconciliation. Do **not** try to also catch the whole clone up here.
 
@@ -71,8 +71,8 @@ Only after delivery, if the clone is behind and you must converge it:
    auto-sync daemon cannot interleave a snapshot mid-merge.
 2. **Persist live churn: never stash it.** Hot state files (e.g. `active-checkouts.json` lease state)
    are rewritten every few minutes by live sessions. A merge aborts ("local changes would be
-   overwritten") if they're dirty. **Commit** them first (exactly what the daemon does), never
-   `git stash` (a stash-pop after rebase conflicts in files you never touched; #099).
+   overwritten") if they're dirty. **Commit** them first, exactly what the daemon does, never
+   `git stash` (a stash-pop after rebase conflicts in files you never touched, #099).
 3. **Register deterministic merge drivers before merging.** For high-churn governed state, the
    `taskstate` (revision-wins, `scripts/merge-taskstate.py`) and `leasestate` (fenceCounter-wins,
    `scripts/merge-lease-state.sh`) drivers resolve conflicts without human intervention. They are
@@ -82,7 +82,7 @@ Only after delivery, if the clone is behind and you must converge it:
    `.gitattributes` mapping into the local HEAD first**, then merge.
 5. **Merge, let drivers resolve, take canonical for text.** `git merge origin/main --no-edit`. For
    any remaining text conflict in forward-state docs (`working-context.md`,
-   `task-naming-convention.md`), take origin (`git checkout --theirs`); origin is canonical forward
+   `task-naming-convention.md`), take origin (`git checkout --theirs`): origin is canonical forward
    state. Then **regenerate projections** from the merged canonical (`render-tier1-state.py write`)
    rather than hand-merging `OPEN_TASKS.md`/`task-queue.md`.
 6. **Beat the live-churn race with one atomic loop, not round-trips.** If the host's lease file keeps
@@ -91,13 +91,13 @@ Only after delivery, if the clone is behind and you must converge it:
    This eliminates the gap where churn re-dirties the tree. (#147 converged on loop attempt 1 once the
    per-call gap was removed.)
 7. **Push via `close-push.sh`, never `pull --rebase`/`stash` on a rejected push.** If origin advanced,
-   `close-push.sh` leaves the commit local+durable for the daemon; nothing is lost. Do not rebase
+   `close-push.sh` leaves the commit local+durable for the daemon: nothing is lost. Do not rebase
    across a shared tree.
 
 ## Phase 3: Verify by observation
 
 Do not declare success from the fact that commands "ran". Confirm the end state directly
-(see `feedback_verify_subagent_findings` / `feedback_no_bandaid_fixes`; keep signals honest):
+(see `feedback_verify_subagent_findings` / `feedback_no_bandaid_fixes`, keep signals honest):
 
 - `git rev-list --left-right --count HEAD...origin/main` → expect `0  0`.
 - For a daemon fix, force a fresh run and read the **exit code**, not the last scheduled status:
@@ -115,7 +115,7 @@ Use a file-based helper that works in both SSH and daemon contexts:
 git config --global credential.helper store      # ~/.git-credentials, mode 0600
 ```
 
-Move the token through the **encrypted SSH tunnel directly between credential helpers**; never print a
+Move the token through the **encrypted SSH tunnel directly between credential helpers**: never print a
 secret to the transcript/stdout, never paste it into a command line that gets logged.
 
 ## Anti-patterns (the things that lose work)

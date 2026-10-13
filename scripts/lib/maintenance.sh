@@ -11,6 +11,7 @@
 
 # Resolve METIS_HOME via the canonical self-locating helper when present.
 _mw_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_mw_lib_dir/discord-curl.sh" 2>/dev/null || true
 [ -f "$_mw_lib_dir/paths.env" ] && . "$_mw_lib_dir/paths.env"
 
 _mw_home="${HOME:-${USER_HOME:-/Users/${MAINTENANCE_USER:-Ant}}}"
@@ -61,7 +62,7 @@ mw_notify() {
   local msg="$1" token
   token=$(python3 "$_mw_lib_dir/../discord-token.py" 2>/dev/null || echo "")
   [ -z "$token" ] && return 0
-  curl -s -X POST "https://discord.com/api/v10/channels/${MW_DISCORD_CHANNEL}/messages" \
-    -H "Authorization: Bot $token" -H "Content-Type: application/json" \
+  discord_curl "$token" -s -X POST "https://discord.com/api/v10/channels/${MW_DISCORD_CHANNEL}/messages" \
+    -H "Content-Type: application/json" \
     -d "{\"content\": \"$msg\"}" >/dev/null 2>&1 || true
 }
