@@ -58,6 +58,39 @@ PRIVATE_SCRUBS = Path(os.environ.get("METIS_PRIVATE_SCRUBS")
                       or (SRC / "config/opensrc-private-scrubs.json"))
 
 
+# Explicit file allowlist, also private (curation happens in the source repo). The
+# manifest says where to LOOK; only listed, git-tracked files are copied. Fail closed.
+ALLOWLIST = Path(os.environ.get("METIS_OPENSRC_ALLOWLIST")
+                 or (SRC / "config/opensrc-allowlist.txt"))
+
+
+def _load_allowlist():
+    if not ALLOWLIST.exists():
+        sys.exit(f"refusing to publish: allowlist not found at {ALLOWLIST}")
+    return {ln.strip() for ln in ALLOWLIST.read_text().splitlines()
+            if ln.strip() and not ln.lstrip().startswith("#")}
+
+
+def _tracked_src():
+    r = subprocess.run(["git", "-C", str(SRC), "ls-files"], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit(f"refusing to publish: cannot list tracked files in {SRC}")
+    return set(r.stdout.splitlines())
+
+
+def candidate_files():
+    """Every tracked source file the manifest reaches, minus overlay."""
+    tracked = _tracked_src()
+    out = set()
+    for _, rel in derived_items():
+        if rel in tracked:
+            out.add(rel)
+        else:
+            out |= {t for t in tracked if t.startswith(rel.rstrip("/") + "/")}
+    return {f for f in out if f not in OVERLAY
+            and not any(f == d or f.startswith(d + "/") for d in OVERLAY_DIRS)}
+
+
 def _load_scrubs():
     if not PRIVATE_SCRUBS.exists():
         sys.exit(f"refusing to publish: private scrub rules not found at {PRIVATE_SCRUBS}")
@@ -115,32 +148,22 @@ def scrub_file(p: Path):
 
 def publish():
     SCRUBS[:0] = _load_scrubs()  # owner-specific first: hostname rules must beat the bare-id rules
+    allow = _load_allowlist()
+    cands = candidate_files()
+    held = sorted(cands - allow)
     copied = 0
-    for _, rel in derived_items():
-        if rel in OVERLAY or any(rel == d or rel.startswith(d + "/") for d in OVERLAY_DIRS):
-            continue
-        s = SRC / rel
-        if not s.exists():
-            print(f"  MISS {rel}")
-            continue
-        d = DST / remap(rel)
+    for rel in sorted(cands & allow):
+        s, d = SRC / rel, DST / remap(rel)
         d.parent.mkdir(parents=True, exist_ok=True)
-        if s.is_dir():
-            shutil.copytree(
-                s, d, dirs_exist_ok=True, ignore_dangling_symlinks=True,
-                ignore=shutil.ignore_patterns(*M.IGNORE_PATTERNS if hasattr(M, "IGNORE_PATTERNS") else (
-                    "__pycache__", "*.pyc", ".DS_Store", "node_modules", ".next",
-                    "dist", "build", ".turbo", "*.log", "playwright-report", ".venv",
-                    "venv", "*.db", "*.db-wal", "*.db-shm", ".env", "out", "coverage",
-                    ".cache", "dist-app", "release")),
-            )
-            for f in d.rglob("*"):
-                if f.is_file():
-                    scrub_file(f)
-        else:
-            shutil.copy2(s, d)
-            scrub_file(d)
+        shutil.copy2(s, d)
+        scrub_file(d)
         copied += 1
+    for rel in sorted(allow - cands):
+        print(f"  MISS {rel} (allowlisted but not reachable/tracked in source)")
+    if held:
+        print(f"held back {len(held)} unlisted file(s); review and add to {ALLOWLIST.name} to publish:")
+        for rel in held:
+            print(f"  HELD {rel}")
     print(f"published {copied} derived path(s)")
     # Overlay files can live INSIDE a wholesale-copied dir (e.g. scripts/lib/,
     # ClaudeCode/bin/), so a dir copy may clobber them. Re-assert every overlay

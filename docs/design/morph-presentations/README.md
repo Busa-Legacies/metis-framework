@@ -4,7 +4,6 @@
 **Audience:** Anyone on the team building a slick animated deck (pitch decks, Example/OpenClaw decks, content).
 **Method:** Written from the actual `.pptx` XML; every number below is extracted from the source file, not guessed.
 
-![hmpt FOREST title slide](reference/forest-title-slide.jpeg)
 
 > **▶ Start here to build a deck:** [`deck-brief-protocol.md`](deck-brief-protocol.md): the standard brief/direction intake (theme, brand, content, visuals) so every deck is intentional, not improvised.
 
