@@ -44,7 +44,7 @@ Launch release: the repo went public (source-available, FSL-1.1-Apache-2.0).
   (dev-review, metis-command, agent-workbench, forge3d-lib), design system.
 - `config/infrastructure.json`: the single org-config seam (machines, agents,
   model, domains, network), read via `scripts/lib/infra_config.py`.
-- Navore content isolated under `navore/` (separate from the framework core).
+- Partner content isolated from the framework core (later removed from the public line).
 - `build/manifest.py` (reproducible seed) and `build/publish.py` (Model B
   publish pipeline: refresh derived files from metis-os, preserve overlay, scrub).
 - Product seams: `VERSION`, `LICENSE` (proprietary placeholder), `core-ci.yml`

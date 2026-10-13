@@ -3,7 +3,7 @@
 #
 # PROBLEM: When Claude Code's `run_in_background: true` Bash tasks from a PRIOR
 # session complete while a NEW session is active, the new session receives spurious
-# task-notifications — noise during unrelated work (real case: stale Robinhood searches
+# task-notifications — noise during unrelated work (real case: stale market-data searches
 # completing mid-close of an infra session).
 #
 # APPROACH: Two passes.

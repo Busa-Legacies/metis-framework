@@ -63,7 +63,7 @@ answered "what is this about?"). One closed select now owns categorization:
 | **Writing** | drafts + pillars |
 | **Finance** | reimbursements, rent, car loan, credit, timesheets (absorbs old "Admin") |
 | **Personal** | logistics, relationships, life hubs |
-| **Health** | therapy, yoga, daily review |
+| **Health** | training, recovery, daily review |
 
 **Collapse rules (old → new):**
 - old **DB Base** hub → a **Domain** if it's a life-area; a **Project** if it's an initiative.

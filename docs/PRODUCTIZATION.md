@@ -1,7 +1,6 @@
 # Productization roadmap
 
-Metis Framework is incubated **private**, Busa-Legacies + Navore only. The intent is
-near-term productization. This doc records the path so Phase 2 is a *flip*, not a
+Metis Framework is public under FSL-1.1-Apache-2.0 (see LICENSE). This doc records the path so Phase 2 is a *flip*, not a
 rebuild, and tracks the seams that must be clean before any external consumer.
 
 ## Canonicality model (the core decision)
@@ -9,7 +8,7 @@ rebuild, and tracks the seams that must be clean before any external consumer.
 | Phase | Canonical author | metis-os role | Trigger to advance |
 |---|---|---|---|
 | **1: now** | `metis-os` | authors the framework in-place; publishes to metis-core via `build/publish.py` | — |
-| **2: productize** | `metis-core` | becomes a *reference consumer* (dogfood); refactored to run from the core | first non-Navore / paying consumer appears |
+| **2: productize** | `metis-core` | becomes a *reference consumer* (dogfood); refactored to run from the core | first external / paying consumer appears |
 
 Phase 1 (Model B) keeps risk low: nothing in the live metis-os system changes.
 Phase 2 flips canonicality: metis-core gets independent releases/tests/license,
@@ -22,21 +21,11 @@ and metis-os is migrated to consume it (the invasive but justified step).
 - **Phase 2 candidates:** `use-this-template` repo, an installer, or a versioned
   package. `config/infrastructure.json` is already the customer-config layer.
 
-## The core-vs-navore split (MUST happen before external sale)
+## Core vs partner content (done)
 
-`navore/` currently holds Navore's content **including business strategy**,
-correct for a repo private to Busa-Legacies + Navore, but it **cannot ship in a
-product sold to others**. The seam is already clean: all Navore content is
-isolated under `navore/`, nothing in the framework core depends on it. The
-Phase-2 cut is therefore trivial:
-
-1. `git rm -r navore/` from the public/product line (or split it to a private
-   `navore-content` repo).
-2. The framework core (`scripts/`, `ClaudeCode/`, `docs/process/`, etc.) ships
-   untouched.
-
-Keep this invariant: **no framework-core file may import or reference `navore/`.**
-(CI could assert this in Phase 2.)
+Partner and client content was cut from the public line before launch and lives in
+private repos. Invariant: **no framework-core file may import or reference partner
+content.** (CI could assert this.)
 
 ## Product-readiness checklist
 
@@ -48,7 +37,7 @@ Keep this invariant: **no framework-core file may import or reference `navore/`.
 - [x] Licensing decision: **FSL-1.1-Apache-2.0** (source-available; blocks
       Competing Use, auto-converts to Apache-2.0 two years after each version
       ships). Least-regret: preserves the commercial window now, opens later.
-- [ ] navore/ cut out of the product line (Phase 2)
+- [x] Partner content cut out of the public line
 - [x] Quickstart / install docs for a fresh consumer (`docs/QUICKSTART.md`)
 - [x] Fill-in walkthrough for `config/infrastructure.json` (folded into QUICKSTART §3)
 - [x] Test coverage on the governance core: `scripts/test-governance-core.py`

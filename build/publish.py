@@ -17,6 +17,7 @@ Run from the repo root:  python3 build/publish.py            # refresh + report 
 The result is byte-reproducible: same metis-os state -> same metis-core tree.
 """
 import os
+import json
 import re
 import shutil
 import subprocess
@@ -50,50 +51,27 @@ OVERLAY = {
 OVERLAY_DIRS = {".github"}
 
 # Safety-net scrub applied to DERIVED files after copy (never to OVERLAY).
+# Owner-specific scrub pairs (real IPs, partner and project names) live in the PRIVATE
+# source repo, never here, so the public tool does not itself disclose what it hides.
+# Format: [[regex, replacement], ...]. Missing file = refuse to publish (fail closed).
+PRIVATE_SCRUBS = Path(os.environ.get("METIS_PRIVATE_SCRUBS")
+                      or (SRC / "config/opensrc-private-scrubs.json"))
+
+
+def _load_scrubs():
+    if not PRIVATE_SCRUBS.exists():
+        sys.exit(f"refusing to publish: private scrub rules not found at {PRIVATE_SCRUBS}")
+    pairs = json.loads(PRIVATE_SCRUBS.read_text())
+    return [(re.compile(rx), repl) for rx, repl in pairs]
+
+
+# Safety-net scrub applied to DERIVED files after copy (never to OVERLAY).
+# Generic rules here; owner-specific ones are appended from PRIVATE_SCRUBS at run time.
 SCRUBS = [
-    (re.compile(r"100\.82\.81\.93"), "<<MACHINE_1_TAILSCALE_IP>>"),
-    (re.compile(r"100\.80\.166\.77"), "<<MACHINE_2_TAILSCALE_IP>>"),
-    (re.compile(r"antfox-macbook"), "<<MACHINE_1_HOSTNAME>>"),
-    (re.compile(r"anthonys-macbook-pro"), "<<MACHINE_2_HOSTNAME>>"),
-    (re.compile(r"/Users/Ant/metis-os"), "${METIS_HOME}"),
-    (re.compile(r"/Users/abusa/metis-os"), "${METIS_HOME}"),
-    (re.compile(r"/Users/Ant"), "$HOME"),
-    (re.compile(r"/Users/abusa"), "$HOME"),
-    (re.compile(r":-1489674856579600455"), ""),
-    # Machine-local WORKSPACE dir (board projection + working-context + daily logs).
-    # In metis-os this dir is persona-named (Hearth/... , legacy Jay/...). A path-use
-    # of it must become a neutral, portable 'workspace/' so a fresh consumer's cold-start
-    # loop writes to a real resolvable dir — NOT an unresolved <<MACHINE_1_ID>> placeholder
-    # that render-tier1-state.py would create as a literal directory. This MUST run before
-    # the bare-persona rule below so only the PATH form is neutralized; prose mentions of
-    # the machine still scrub to the id placeholder. (#434 path-resolution sweep.)
-    (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)/(?=state|memory|lanes|AGENTS\.md|SOUL\.md|\.gitignore|HANDOFF)"), "workspace/"),
-    # Same workspace dir written as os.path.join ARGS ("Hearth", "state", ...) — the
-    # path-form rule above can't see it, so the bare-persona rule was turning it into
-    # a literal <<MACHINE_1_ID>> directory (broke self-review.py's DIGEST_DIR/BOARD).
-    (re.compile(r'"(?:Hearth|HEARTH|Jay|JAY)", "state"'), '"workspace", "state"'),
-    # Machine persona names → org-neutral id placeholders. The framework ships LANE
-    # role names (smith/scout/warden/...) as real vocabulary, but MACHINE names are
-    # org-specific topology → placeholders resolved from config/infrastructure.json.
-    # Both the rebranded (Hearth/Outpost) and legacy (Jay/Jarry) names are scrubbed so
-    # no host persona leaks regardless of source vintage. (#121 launch.)
-    (re.compile(r"\b(?:Hearth|HEARTH|Jay|JAY)\b"), "<<MACHINE_1_ID>>"),
-    (re.compile(r"\b(?:Outpost|OUTPOST|Jarry|JARRY)\b"), "<<MACHINE_2_ID>>"),
-    # Bare lowercase machine-id / user personas used in CODE (set literals, defaults).
-    # The capitalized rule above and the CI leak-guard both missed these. Must run
-    # AFTER the antfox-macbook hostname rule so the hostname maps to its own placeholder. (#434)
+    (re.compile(r"\btail[0-9a-f]{6,}\.ts\.net\b"), "<<TAILNET_DOMAIN>>"),  # any tailnet domain
     (re.compile(r"\bantfox\b"), "<<MACHINE_1_ID>>"),
     (re.compile(r"\bjarry\b"), "<<MACHINE_2_ID>>"),
     (re.compile(r"\babusa\b"), "<<MACHINE_2_USER>>"),
-    # Org-specific project slugs used as examples in derived skill docs — neutralize
-    # so the public framework ships generic illustrations, not Ant's real projects.
-    # (Source stays accurate in metis-os; this is the publish seam. #121 launch.)
-    (re.compile(r"navore-lfpp-grant-tracker"), "example-grant-tracker"),
-    (re.compile(r"navore-lfpp"), "example-grant"),
-    (re.compile(r"navore-brief"), "partner-brief"),
-    (re.compile(r"gap/navore/"), "gap/example/"),
-    (re.compile(r"\bnavore\b"), "example"),
-    (re.compile(r"\bNavore\b"), "Example"),
 ]
 SCRUB_EXT = {".py", ".sh", ".json", ".md", ".ts", ".tsx", ".js", ".mjs", ".env", ".yml", ".yaml", ".template", ".html"}
 # Extensionless config dotfiles have suffix "" and would skip the scrub entirely —
@@ -102,7 +80,7 @@ SCRUB_NAMES = {".gitattributes", ".prettierrc", ".gitignore", ".editorconfig"}
 
 
 def derived_items():
-    """The copy list from the manifest, minus overlay, plus navore/ (derived)."""
+    """The copy list from the manifest, minus overlay (derived)."""
     items = []
     items += [("dir", d) for d in M.CORE_DIRS]
     items += [("file", f) for f in M.CORE_FILES]
@@ -117,8 +95,7 @@ def derived_items():
 
 
 def remap(rel):
-    """No remaps currently. (navore/ was cut from the public framework 2026-06-13,
-    #121 — business IP stays private, scaffold moved to the Navore-Ops repo.)"""
+    """No remaps currently (partner content was cut from the public line before launch)."""
     return rel
 
 
@@ -137,6 +114,7 @@ def scrub_file(p: Path):
 
 
 def publish():
+    SCRUBS[:0] = _load_scrubs()  # owner-specific first: hostname rules must beat the bare-id rules
     copied = 0
     for _, rel in derived_items():
         if rel in OVERLAY or any(rel == d or rel.startswith(d + "/") for d in OVERLAY_DIRS):
