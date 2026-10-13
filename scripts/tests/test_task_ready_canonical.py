@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import json
 import os
 import pathlib
@@ -72,7 +73,7 @@ class TaskReadyCanonicalTests(unittest.TestCase):
         env = os.environ.copy()
         env["REPO_ROOT"] = str(self.repo)
         return subprocess.run(
-            ["python3", str(self.repo / "scripts/task-ready-blockers.py"), *args],
+            [sys.executable, str(self.repo / "scripts/task-ready-blockers.py"), *args],
             capture_output=True,
             text=True,
             env=env,
@@ -209,7 +210,13 @@ class TaskReadyCanonicalTests(unittest.TestCase):
         blockers = self._run_blockers("#31")
         ready = self._run_task_ready("#31")
 
-        self.assertEqual(blockers.returncode, 0)
+        # 3 = UNKNOWN (no canonical entry), the contract documented at task-ready.sh:15 and
+        # the same code this test already expects from task-ready.sh two lines below. The
+        # assertion used to expect 0, from when the helper treated an unresolvable id as
+        # "no blockers" — which is the misrouting-adjacent answer this test exists to reject.
+        # Nothing ran this suite, so the stale expectation was never surfaced (#4601).
+        self.assertEqual(blockers.returncode, 3, msg=blockers.stdout + blockers.stderr)
+        # The point of the test: nothing is emitted, so #31 never resolves to #313.
         self.assertEqual(blockers.stdout, "")
         self.assertEqual(ready.returncode, 3, msg=ready.stdout + ready.stderr)
         self.assertIn("✗ UNKNOWN — verify manually before starting", ready.stdout)

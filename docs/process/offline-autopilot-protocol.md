@@ -12,12 +12,12 @@ _Adopted: 2026-06-06 (first run: the "hour-long flight" test case)_
 
 Any request that hands the agent a block of unattended time. Recognise it from phrasing like:
 
-- "I'm about to hop on a flight; make as much progress as you can."
+- "I'm about to hop on a flight: make as much progress as you can."
 - "Offline for the next 2 hours, work the board."
 - "Run autopilot until ~3pm."
 - "/autopilot 90m"
 
-The defining feature: **Ant will not see prompts, questions, or approvals until the window closes.** So anything that would normally pause for input cannot be started; it must be deferred, not guessed.
+The defining feature: **Ant will not see prompts, questions, or approvals until the window closes.** So anything that would normally pause for input cannot be started: it must be deferred, not guessed.
 
 ---
 
@@ -31,7 +31,7 @@ Ant states (or the `/autopilot` command captures):
 | **Scope hint** | "the board", "dashboard tasks", "anything" | Whole governed board, P-order |
 | **Spend ceiling** | "keep it cheap" | Normal session budget; no paid-API fan-out without it being the task |
 
-The agent confirms nothing further; that's the point. It selects work itself using the independence test below.
+The agent confirms nothing further: that's the point. It selects work itself using the independence test below.
 
 ---
 
@@ -42,7 +42,7 @@ A task is **autopilot-eligible** only if every answer is yes:
 1. **Self-contained**: it can be finished (or moved to a clean, honest checkpoint) without an answer from Ant.
 2. **No external publish**: it does not send anything outward that can't be unwound: no Discord/email/social posts, no PR *merges*, no ClickUp/Notion writes that others act on, no live-trading flips. (Drafting these for review is fine; *sending* is not.)
 3. **No human-gated input**: it isn't blocked on a secret, credential, API key, or an Ant-only decision (`@status:blocked`, "Ant-present", "needs Ant", or a `nextDecisionPoint` that is a question for Ant).
-4. **Machine-available**: it can actually run in the current environment. A fresh web/remote clone cannot touch <<MACHINE_1_ID>>/<<MACHINE_2_ID>> LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:<<MACHINE_1_ID>>` live-verify steps are **out of reach** from a remote clone; code can land, but mark it `needs_verification`, never `done`.
+4. **Machine-available**: it can actually run in the current environment. A fresh web/remote clone cannot touch <<MACHINE_1_ID>>/<<MACHINE_2_ID>> LaunchAgents, Ollama, the live dashboard process, or `personal.db`. `@machine:<<MACHINE_1_ID>>` live-verify steps are **out of reach** from a remote clone: code can land, but mark it `needs_verification`, never `done`.
 5. **Reversible**: the work lands on a feature branch as commits, not on `main` and not as a destructive operation.
 
 If a task fails the test, **skip it and record why**: do not improvise around the gate.
@@ -68,7 +68,8 @@ Picking the next autopilot task?
 - **Never merge a PR** or mark another person's tracked item done.
 - **Never flip the trading bot to live**, change money-safety gates, or touch anything tagged money-safety/`math_review_attested`.
 - **Never delete or overwrite** something you did not create this session without surfacing it first, and there's no one to surface to, so: don't.
-- **Never fabricate verification.** If a step needs a live machine you can't reach, the state is `needs_verification` with the verification method recorded, not `done`.
+- **Never fabricate verification.** If a step needs a live machine you can't reach, the state is `needs_verification` with the verification method recorded: not `done`.
+- **Never let a hop consume an unverified intermediate.** Interactive `/build` has a human at the scout→smith gate; here that gate auto-proceeds, so every multi-stage chain (scout→smith, fork→fork, plan→build) runs `python3 scripts/hop-verify.py --stage <scout|fork|plan> --goal "<what the hop was asked>" --artifact <its output>` before the next stage reads it (#5460). Exit 0 proceeds; 2 re-runs that hop once with the printed `ITERATE_PROMPT`; 3 or 4 (reject / arbiter unreachable) stops the chain, fail-closed. Verdicts land in `~/.openclaw/state/hop-verify.jsonl`.
 - **Never burn the window on one rabbit hole.** If a task balloons past its slice, checkpoint what works, leave a resumable note, move on.
 
 ---
@@ -86,7 +87,7 @@ Picking the next autopilot task?
 
 ## The return report
 
-The deliverable is not just the commits; it's a report Ant can read in 60 seconds on landing:
+The deliverable is not just the commits: it's a report Ant can read in 60 seconds on landing:
 
 - **Shipped**: what's done and verified, with task IDs.
 - **Landed, needs your eyes**: `needs_verification` items and exactly what to check (the live step that needed a machine, the PR to review).
@@ -100,7 +101,7 @@ Keep it scannable. Ant just got off a plane.
 ## How to invoke
 
 - **Conversationally:** just say it: "I'm offline for an hour, work the board." The agent recognises the pattern and runs this protocol.
-- **As a command:** `/autopilot [window] [scope]`, e.g. `/autopilot 90m dashboard`. See `.claude/commands/autopilot.md`.
+- **As a command:** `/autopilot [window] [scope]`: e.g. `/autopilot 90m dashboard`. See `.claude/commands/autopilot.md`.
 
 ---
 
@@ -109,7 +110,7 @@ Keep it scannable. Ant just got off a plane.
 Settled with Ant after the first run (2026-06-06):
 
 - **Verification bar: conservative (confirmed).** Only mark `done` what can be verified in-environment. Anything needing a machine the session can't reach (`@machine:<<MACHINE_1_ID>>`, the live dashboard, Ollama) lands at `needs_verification` with the verify steps recorded. Do not stretch to `done` on faith.
-- **PR shape: one draft PR per task.** Each eligible task gets its own draft PR so Ant can review and merge them independently, rather than one bundled batch PR. (The 2026-06-06 run predates this and bundled four tasks into PR #18; splitting it retroactively would mean redoing interleaved governed-state commits (attended-grade git surgery), so it was left intact as the record of that run.)
+- **PR shape: one draft PR per task.** Each eligible task gets its own draft PR so Ant can review and merge them independently, rather than one bundled batch PR. (The 2026-06-06 run predates this and bundled four tasks into PR #18; splitting it retroactively would mean redoing interleaved governed-state commits, attended-grade git surgery, so it was left intact as the record of that run.)
 
 ## Related docs
 

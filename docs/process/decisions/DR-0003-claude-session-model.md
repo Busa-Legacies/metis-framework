@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-06-04
-- **Supersedes:** —
-- **Superseded-by:** —
+- **Supersedes:** n/a
+- **Superseded-by:** n/a
 
 ## Context
 
@@ -29,7 +29,7 @@ lists existing `claude-*` sessions (defaulting to reattach #1) plus an `n` optio
 to start new. The in-tmux restart loop (mobile/ttyd, `/restart`) is unchanged.
 
 Mobile/ttyd/SSH access is a **separate** system (session `ccc`) and is untouched
-by this; the two must not be conflated again.
+by this: the two must not be conflated again.
 
 ## Alternatives considered
 
@@ -50,7 +50,7 @@ by this; the two must not be conflated again.
 ## Consequences
 
 - New windows are independent and never mirror. Reconnect after sleep is `cca`.
-- Session names are now dynamic (`claude-1`, `claude-2`, …): anything keying off
+- Session names are now dynamic (`claude-1`, `claude-2`, …), anything keying off
   a fixed `claude-main` name would break; nothing currently does (verified).
 - `claude-tmux.sh` targets macOS system bash 3.2: no `mapfile`, associative
   arrays, or `${var^^}`. Use `while read; arr+=()`. See [[macos-bash32]].

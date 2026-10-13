@@ -33,15 +33,28 @@ Usage:  ai-merge-resolver.py [--repo PATH] [--dry-run] [--summary-file PATH]
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
-# Files we can resolve AND verify. Governed-state JSON (tasks.json / active-checkouts)
-# is intentionally absent: those have dedicated merge drivers — if one reaches here
-# unresolved that's a driver gap for a human, not something to AI-guess.
+# Files we can resolve AND verify. The rule that matters is BELOW, in _declares_merge_driver:
+# a path that declares a merge driver and still arrived here unresolved is a driver gap for a
+# human, not something to AI-guess. This set is the second, coarser filter — content we have no
+# way to verify a resolution for.
+#
+# That criterion was stated in this comment from the start but implemented as an extension list,
+# and the two did not line up (#4661). .md and .yml are resolvable, so every governed path with
+# those extensions was eligible — including workspace/memory/working-context.md, the shared
+# cross-session board whose whole point is that it is merged by an ops-based driver rather than
+# by anyone guessing at intent, and ClaudeCode/memory/MEMORY.md, which has the memindex driver
+# for the same reason. Asking .gitattributes directly is both narrower and self-maintaining:
+# authored content with no declared driver (an individual memory note, a decision record,
+# taxonomy.yaml) stays resolvable, which is where auto-resolution actually saves toil.
 RESOLVABLE_EXT = {
     ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".sh", ".bash",
     ".md", ".txt", ".yml", ".yaml", ".toml", ".css", ".html", ".env", ".template",
@@ -61,6 +74,31 @@ def git(repo, *args, check=False):
 
 def log(msg):
     print(f"[ai-merge] {msg}", file=sys.stderr)
+
+
+# git reports "unspecified" for a path with no merge attribute, and "set"/"unset" for the
+# boolean forms — none of which name a driver.
+_NO_DRIVER = {"", "unspecified", "unset", "set"}
+
+# The one driver whose resolution is base-INDEPENDENT: keep ours, unconditionally (#526 — a
+# regenerated projection artifact re-derives locally, so ours always wins). Every other declared
+# driver is a real 3-way merge that needs a common base, so it stays a driver-gap defer.
+KEEP_OURS_DRIVER = "keepours"
+
+
+def _declares_merge_driver(repo, path):
+    """The declared merge driver for <path>, or "" when it has none.
+
+    This is the real eligibility question (#4661). A declared driver means the repo has already
+    decided how that path converges — structurally, deterministically, and for reasons written
+    down in .gitattributes. Reaching this resolver unresolved means the driver did not run or did
+    not settle it, which is a gap to fix rather than a conflict to guess at.
+    """
+    r = run(["git", "check-attr", "merge", "--", path], repo)
+    if r.returncode != 0:
+        return ""              # cannot tell → fall through to the extension filter
+    val = r.stdout.rsplit("merge: ", 1)[-1].strip()
+    return "" if val in _NO_DRIVER else val
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +315,76 @@ def intents(repo: Path):
     return ours, theirs
 
 
+# ---------------------------------------------------------------------------
+# Anti-storm cooldown (#526)
+# ---------------------------------------------------------------------------
+# A regenerated artifact that conflicts identically on every auto-sync tick (e.g. a
+# date-keyed self-heal report both machines rewrite) would otherwise re-dispatch a full
+# smith-resolve + warden-review each tick — session 162ecf2b burned ~20 lane dispatches in
+# 2h on one file. The .gitattributes keep-ours driver removes workspace/state/audits/** from
+# the conflict path entirely; this is defense-in-depth for ANY other regenerated file: once
+# a specific (file, conflict-content) has FAILED to resolve, throttle re-attempts on that
+# exact conflict for a cooldown window. Keyed by content hash, so a genuinely-new conflict
+# (different content) is never blocked, and a one-shot resolvable conflict is never recorded
+# (we only stamp on failure) — so this can only ever prevent WASTE, never a real resolution.
+COOLDOWN_SECS = int(os.environ.get("AI_MERGE_COOLDOWN_SECS", "7200"))  # 2h default
+COOLDOWN_REL = ".git/ai-merge-cooldown.json"  # per-clone, never committed
+
+
+def _conflict_keys(repo: Path, unmerged: list[str]) -> dict[str, str]:
+    """Map each file → a stable hash of (relpath, its raw conflict regions). Identical
+    recurring conflicts hash the same; different content hashes differently."""
+    keys: dict[str, str] = {}
+    for rel in unmerged:
+        try:
+            segs, _ = split_conflicts((repo / rel).read_text())
+        except OSError:
+            continue
+        raw = "".join(s["raw"] for s in segs if s["type"] == "conflict")
+        keys[rel] = hashlib.sha1(f"{rel}\0{raw}".encode()).hexdigest()
+    return keys
+
+
+def _cooldown_load(repo: Path, now: float) -> dict[str, float]:
+    try:
+        store = json.loads((repo / COOLDOWN_REL).read_text())
+    except (OSError, ValueError):
+        return {}
+    # prune expired so the file can't grow without bound
+    return {k: t for k, t in store.items() if isinstance(t, (int, float)) and now - t < COOLDOWN_SECS}
+
+
+def cooldown_blocked(repo: Path, keys: dict[str, str], now: float) -> bool:
+    """True if any file's exact conflict was attempted (and failed) within the cooldown
+    window — the caller should defer WITHOUT dispatching. Prunes the store as a side effect."""
+    store = _cooldown_load(repo, now)
+    for rel, k in keys.items():
+        last = store.get(k)
+        if last is not None:
+            mins = int((now - last) / 60)
+            log(f"{rel}: identical conflict failed {mins}m ago (< {COOLDOWN_SECS // 3600}h cooldown) "
+                f"→ skip re-dispatch, defer (#526 anti-storm)")
+            _cooldown_save(repo, store)  # persist the prune
+            return True
+    return False
+
+
+def _cooldown_save(repo: Path, store: dict[str, float]) -> None:
+    try:
+        (repo / COOLDOWN_REL).write_text(json.dumps(store))
+    except OSError:
+        pass
+
+
+def cooldown_record_failure(repo: Path, keys: dict[str, str], now: float) -> None:
+    """Stamp every current conflict key as failed-now, so an identical recurrence within
+    the window short-circuits before wasting another smith-resolve + warden-review pair."""
+    store = _cooldown_load(repo, now)
+    for k in keys.values():
+        store[k] = now
+    _cooldown_save(repo, store)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default=os.environ.get("METIS_HOME") or str(Path(__file__).resolve().parents[1]))
@@ -291,9 +399,43 @@ def main():
     if not unmerged:
         log("no unmerged paths"); return 2
 
-    ineligible = [f for f in unmerged if Path(f).suffix not in RESOLVABLE_EXT]
+    # keepours-declared paths resolve base-INDEPENDENTLY: keep ours, unconditionally. Even when git
+    # could not run the driver — an add/add conflict has no merge base for a content driver to act
+    # on, the exact wedge that stranded <<MACHINE_1_ID>> 2026-08-29 on project-live-status.json — applying
+    # "keep ours" is the DECLARED policy, not an AI guess, so resolve it here instead of deferring.
+    # Only keepours qualifies; the real 3-way drivers (taskstate, leasestate, memindex, …) genuinely
+    # need a base and still defer below. Fixes the add/add wedge for every keepours projection.
+    ko_declared = [f for f in unmerged if _declares_merge_driver(repo, f) == KEEP_OURS_DRIVER]
+    resolved_ours = []
+    for f in ko_declared:
+        if args.dry_run:
+            resolved_ours.append(f)
+        elif git(repo, "checkout", "--ours", "--", f).returncode == 0:
+            git(repo, "add", "--", f)
+            resolved_ours.append(f)
+    if resolved_ours:
+        verb = "would keep-ours resolve" if args.dry_run else "keep-ours (declared policy) resolved"
+        log(f"{verb} {len(resolved_ours)} path(s): {', '.join(resolved_ours)}")
+        unmerged = [f for f in unmerged if f not in set(resolved_ours)]
+        if not unmerged:
+            return 0
+
+    ineligible = []
+    for f in unmerged:
+        driver = _declares_merge_driver(repo, f)
+        if driver:
+            ineligible.append(f"{f} (declares merge driver '{driver}' — driver gap, not an AI guess)")
+        elif Path(f).suffix not in RESOLVABLE_EXT:
+            ineligible.append(f"{f} (unresolvable file type)")
     if ineligible:
         log(f"ineligible files present → defer to human: {', '.join(ineligible)}")
+        return 1
+
+    # Anti-storm: if this exact conflict already failed within the cooldown window, defer
+    # WITHOUT re-dispatching the lanes (#526). Degrades to today's abort path, minus the waste.
+    now = time.time()
+    keys = _conflict_keys(repo, unmerged)
+    if cooldown_blocked(repo, keys, now):
         return 1
 
     ours_intent, theirs_intent = intents(repo)
@@ -303,13 +445,16 @@ def main():
     for f in unmerged:
         resolved = resolve_file(repo, f, ours_intent, theirs_intent)
         if resolved is None:
-            log(f"{f}: could not produce a clean resolution → abort"); return 1
+            log(f"{f}: could not produce a clean resolution → abort")
+            cooldown_record_failure(repo, keys, now); return 1
         if not intent_review(repo, f, originals[f], resolved, ours_intent, theirs_intent):
-            log(f"{f}: intent review rejected → abort"); return 1
+            log(f"{f}: intent review rejected → abort")
+            cooldown_record_failure(repo, keys, now); return 1
         (repo / f).write_text(resolved)
 
     if not mechanical_ok(repo, unmerged):
-        log("mechanical gate failed → abort"); return 1
+        log("mechanical gate failed → abort")
+        cooldown_record_failure(repo, keys, now); return 1
 
     if args.dry_run:
         log("dry-run: all gates passed, not staging"); return 0

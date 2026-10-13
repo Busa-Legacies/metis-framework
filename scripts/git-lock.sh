@@ -36,13 +36,22 @@ _acquire_blocking() {
     if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
       # Alive holder: wait — UNLESS it's a leaked orphan (#452), then reclaim it.
       if command -v holder_is_leaked >/dev/null 2>&1 && holder_is_leaked "$holder"; then
-        echo "[git-lock] reclaimed leaked orphan lock holder $holder (bare sleep, PPID=1)" >&2
-        rm -rf "$LOCK"; continue
+        _reclaim_lock "leaked orphan lock holder $holder (bare sleep, PPID=1)"; continue
       fi
       sleep 1; continue          # live legitimate holder — wait
     fi
-    rm -rf "$LOCK"               # dead/unknown holder — reclaim and retry
+    _reclaim_lock "dead/unknown holder"   # reclaim and retry
   done
+}
+# Reclaim by ATOMIC RENAME (audit 2026-10-01 finding 27): a check-then-`rm -rf` let two acquirers
+# that both saw the same dead holder delete each other's fresh lock. Only one `mv` can win; the
+# loser just retries `mkdir` and sees the winner's lock. Same shape as the daemon's reclaim_lock_dir.
+_reclaim_lock() {
+  local _r="$LOCK.reclaim.$$"
+  if mv "$LOCK" "$_r" 2>/dev/null; then
+    rm -rf "$_r"
+    echo "[git-lock] reclaimed $1" >&2
+  fi
 }
 
 case "${1:-}" in
@@ -52,6 +61,21 @@ case "${1:-}" in
     echo "Or close this shell — the auto-sync reclaims the lock once this pid exits."
     ;;
   release)
+    # #516: this used to be an unconditional rm -rf with no holder check — anyone
+    # (or anything) calling `release` from an unrelated shell could rip the lock out
+    # from under a still-live holder, reopening the exact clobber window this lock
+    # exists to close. Refuse when the recorded holder pid is still alive, unless
+    # the caller explicitly passes --force (a dead holder's lock is always safe to
+    # drop — nothing is relying on it).
+    holder=$(cat "$LOCK/pid" 2>/dev/null)
+    if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+      if [ "${2:-}" != "--force" ]; then
+        echo "Refusing to release: lock is held by a LIVE process (pid $holder)." >&2
+        echo "If you are certain that holder should be overridden, run: scripts/git-lock.sh release --force" >&2
+        exit 1
+      fi
+      echo "[git-lock] --force: releasing despite live holder pid $holder" >&2
+    fi
     rm -rf "$LOCK"
     echo "Lock released."
     ;;

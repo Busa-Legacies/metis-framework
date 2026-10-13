@@ -5,15 +5,34 @@
                              the session-init hook so drift surfaces every session.
   mirror.py apply            heal symlinks + bin (idempotent, safe). Does NOT touch
                              settings.json unless --settings is passed.
-  mirror.py apply --settings also deep-merge the canonical shared settings block
-                             into ~/.claude/settings.json (preserves machine-local
-                             keys). Run from /end + the weekly LaunchAgent, not every
-                             session — so a local settings tweak is never clobbered
-                             mid-session.
+  mirror.py apply --settings also copy the canonical shared settings block into
+                             ~/.claude/settings.json, REPLACING each canonical
+                             top-level key wholesale. Run from /end + the weekly
+                             LaunchAgent, not every session — so a local settings
+                             tweak is never clobbered mid-session.
 
 The repo is the single source of truth. Live config locations are symlinks into it
-(commands, CLAUDE.md, hooks, ~/.local/bin guards) or a deep-merge of a canonical
-shared file (settings.json). machine-local keys/files are never overwritten.
+(commands, CLAUDE.md, hooks, ~/.local/bin guards) or a per-key copy of a canonical
+shared file (settings.json).
+
+PRECISELY what --settings does, because the imprecise word here caused real harm: it
+iterates canonical's top-level keys and assigns each differing one onto live
+(live[k] = canonical[k]). It is NOT a deep merge. Two consequences follow, and they
+point in opposite directions:
+
+  * A hook RELOCATED between events (say PostToolUse -> PreToolUse) lands in exactly
+    ONE event. There is no duplicate-firing hazard. The hook-enforcement-drift task
+    (#3521) warned that a "deep-merge would leave the hook in BOTH events" and
+    therefore steered operators AWAY from the correct heal path — so the fleet ran
+    with a guard enforced NOWHERE for longer than it needed to. That warning was
+    based on this docstring, not on the code. Verified false by
+    tests/test-mirror-settings-semantics.sh.
+
+  * Machine-local entries nested INSIDE a canonical key (e.g. an extra hook under
+    "hooks") ARE overwritten, since the whole key is replaced. Top-level keys that
+    canonical does not define are untouched. `check` already catches this before it
+    happens: it reports LOCAL_AHEAD with "update settings.shared.json instead of
+    applying", and apply leaves a .pre-mirror backup either way.
 """
 
 import argparse
@@ -31,6 +50,24 @@ USER = (
     os.environ.get("USER")
     or subprocess.run(["id", "-un"], capture_output=True, text=True).stdout.strip()
 )
+
+
+def machine_label() -> str:
+    """Human label for THIS machine from the declared topology (#509):
+    infra_config.detect_machine() -> machines[].label (e.g. <<MACHINE_1_ID>> -> "<<MACHINE_1_ID>>").
+    Persona ternaries ("<<MACHINE_1_ID>>" if USER == "Ant" ...) are banned in published
+    framework files; the unix user is only the last-resort fallback when the
+    topology is unreadable."""
+    try:
+        sys.path.insert(0, str(REPO / "scripts" / "lib"))
+        import infra_config
+        mid = infra_config.detect_machine()
+        for m in infra_config.machines():
+            if (m.get("id") or "").lower() == mid:
+                return m.get("label") or mid
+        return mid or USER
+    except Exception:
+        return USER
 
 DIM, RED, YEL, GRN, RST = "\033[2m", "\033[31m", "\033[33m", "\033[32m", "\033[0m"
 
@@ -259,12 +296,19 @@ def check_model_host(m) -> list:
     except Exception:
         return out
     lanes = d.get("agents", {}).get("list", []) if isinstance(d.get("agents"), dict) else []
-    bad = [l.get("id") for l in lanes if l.get("model") and "ollama" not in str(l.get("model"))]
+    # Lane model may be a string or a {primary, fallbacks} object (#724 — the
+    # object form is REQUIRED for the gateway fallback chain to engage; a bare
+    # string is a strict selection). <<MACHINE_1_ID>> serves lanes via MLX-LM (Ollama
+    # hosts only small arbiter/embed models), so both prefixes are home-routed.
+    def _primary(mdl):
+        return mdl.get("primary", "") if isinstance(mdl, dict) else (mdl or "")
+    bad = [l.get("id") for l in lanes
+           if l.get("model") and not str(_primary(l.get("model"))).startswith(("ollama/", "mlx-community/"))]
     if bad:
         out.append(
             (
                 "WARN",
-                f"lanes {bad} not routed to <<MACHINE_1_ID>>'s Ollama (modelHost rule) — expected ollama/* via OLLAMA_HOST={mh.get('tailscale')}",
+                f"lanes {bad} not routed to <<MACHINE_1_ID>>'s model servers (modelHost rule) — expected mlx-community/* (MLX-LM) or ollama/* at {mh.get('tailscale')}",
             )
         )
     return out
@@ -284,7 +328,24 @@ def run_checks(m) -> list:
 # ----- apply (heal) ---------------------------------------------------------
 
 
+def _linked_worktree(repo: Path) -> bool:
+    """True when `repo` is a linked git worktree (its git-dir differs from the common dir)."""
+    def rev(flag):
+        r = subprocess.run(["git", "-C", str(repo), "rev-parse", flag],
+                           capture_output=True, text=True)
+        return (repo / r.stdout.strip()).resolve() if r.returncode == 0 and r.stdout.strip() else None
+    gd, gcd = rev("--git-dir"), rev("--git-common-dir")
+    return gd is not None and gcd is not None and gd != gcd
+
+
 def apply_symlinks(m) -> list:
+    # Never wire ~/.claude into a linked worktree (#3455). REPO comes from METIS_HOME, and
+    # session-init runs `apply` on every session start, so a session or test run from a
+    # per-task worktree retargeted every ~/.claude hook into a directory deleted when the task
+    # landed, dangling them all (2026-10-08, twice). bootstrap and compliance/self-heal already
+    # refuse a worktree; this is the third relinker that trusted its own location.
+    if os.environ.get("MIRROR_ALLOW_WORKTREE") != "1" and _linked_worktree(REPO):
+        return [("SKIP", f"symlinks not touched: {REPO} is a linked worktree, not the canonical clone")]
     acted = []
     for s in m.get("symlinks", []):
         link, target = expand(s["link"]), expand(s["target"])
@@ -307,7 +368,16 @@ def apply_symlinks(m) -> list:
     return acted
 
 
-def apply_settings(m) -> list:
+def apply_settings(m, safe_only=False) -> list:
+    """Merge canonical shared settings keys into the live settings file.
+
+    safe_only=True heals ONLY keys where canonical is unambiguously ahead — a key
+    live is missing entirely, or one whose drift direction is CANONICAL_AHEAD. It
+    NEVER overwrites a LOCAL_AHEAD or diverged key (e.g. a live model id newer than
+    a stale canonical one). This is the mode session-init uses to self-heal dark
+    governance hooks (canonical has the hook wiring, live just never got it) without
+    the direction-ambiguity risk that keeps full `apply --settings` a manual step.
+    """
     acted = []
     for spec in m.get("merge", []):
         live_p, shared_p = expand(spec["file"]), expand(spec["shared"])
@@ -319,12 +389,26 @@ def apply_settings(m) -> list:
             continue
         live = json.loads(live_p.read_text()) if live_p.exists() else {}
         changed = []
+        skipped = []
         for k, v in shared.items():
             if k.startswith("_"):
                 continue
             if live.get(k) != v:
+                # safe_only heals a key present in live ONLY when it's a container (dict/list)
+                # whose live value is a strict subset of canonical — a real CANONICAL_AHEAD, e.g.
+                # live `hooks` missing a group canonical has (the dark-hook case). Scalars are
+                # skipped: _drift_direction can't tell direction for them (always CANONICAL_AHEAD),
+                # so auto-healing one could revert a correct live value (a newer `model`). Keys
+                # absent from live are always safe to add.
+                if safe_only and k in live and not (
+                    isinstance(v, (list, dict)) and _drift_direction(v, live[k]) == "CANONICAL_AHEAD"
+                ):
+                    skipped.append(k)
+                    continue
                 live[k] = v
                 changed.append(k)
+        if safe_only and skipped:
+            acted.append(("SKIP", f"{spec['file']} left local-ahead/diverged keys untouched: {', '.join(skipped)}"))
         if changed:
             if live_p.exists():
                 bak = live_p.with_suffix(".json.pre-mirror")
@@ -420,13 +504,20 @@ def main():
     ap_check.add_argument("--quiet", action="store_true", help="print only on drift")
     ap_apply = sub.add_parser("apply")
     ap_apply.add_argument(
-        "--settings", action="store_true", help="also deep-merge canonical shared settings"
+        "--safe-only",
+        action="store_true",
+        help="with --settings: heal only CANONICAL_AHEAD keys (missing/behind), never overwrite a local-ahead value. Used by session-init to auto-heal dark hooks.",
+    )
+    ap_apply.add_argument(
+        "--settings",
+        action="store_true",
+        help="also copy canonical shared settings, replacing each canonical top-level key wholesale (not a deep merge)",
     )
     args = ap.parse_args()
     args.quiet = getattr(args, "quiet", False)
 
     m = load_manifest()
-    machine = "<<MACHINE_1_ID>>" if USER == "Ant" else ("<<MACHINE_2_ID>>" if USER == "<<MACHINE_2_USER>>" else USER)
+    machine = machine_label()
 
     if args.cmd == "check":
         issues = run_checks(m)
@@ -446,7 +537,7 @@ def main():
     if args.cmd == "apply":
         acted = apply_codex_surface(m) + apply_symlinks(m) + apply_toml_merge(m)
         if args.settings:
-            acted += apply_settings(m)
+            acted += apply_settings(m, safe_only=args.safe_only)
         if not acted:
             print(f"{GRN}✓ mirror apply: nothing to do — {machine} already in sync{RST}")
         else:

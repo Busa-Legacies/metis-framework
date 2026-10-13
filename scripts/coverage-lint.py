@@ -110,8 +110,20 @@ def parse_tasks_section(text: str) -> list[str]:
 
 
 def lint_doc(doc_path_str: str, tasks: dict[str, dict], archived: set[str]):
-    doc_path = REPO / doc_path_str
     short = doc_path_str
+
+    # Cross-repo references use a `repo:path` form (e.g.
+    # "example-org/example-ops:workspace/strategy/README.md"). This repo's
+    # coverage-lint has no cross-repo checkout, so it cannot open the file — that's a
+    # tool limitation, NOT a coverage gap in this repo. Skip it visibly rather than
+    # hard-FAIL (a bare "file not found" here would falsely red main-health forever;
+    # the doc's own repo is where it should be coverage-tracked).
+    if ":" in doc_path_str:
+        if not JSON_OUT:
+            print(f"  SKIP  {short}: cross-repo ref (not checked from this repo)")
+        return
+
+    doc_path = REPO / doc_path_str
 
     if not doc_path.exists():
         emit_fail(f"{short}: file not found")

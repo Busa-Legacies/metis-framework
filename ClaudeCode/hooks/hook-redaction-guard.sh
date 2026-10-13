@@ -13,6 +13,11 @@
 data=$(cat 2>/dev/null)
 command -v jq >/dev/null 2>&1 || exit 0
 
+# Decision log (#7608-class observability): one JSON line per in-scope decision so the gate's
+# firing can be audited (implemented != firing). File-only, never stdout; never alters exit.
+_LOG="${REDACTION_GUARD_LOG:-$HOME/.openclaw/logs/redaction-guard.jsonl}"
+_log(){ { mkdir -p "$(dirname "$_LOG")" && printf '{"ts":"%s","hook":"redaction-guard","decision":"%s","detail":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >>"$_LOG"; } 2>/dev/null || true; }
+
 tool=$(printf '%s' "$data" | jq -r '.tool_name // empty' 2>/dev/null)
 case "$tool" in
   Write|Edit) : ;;
@@ -54,7 +59,8 @@ fi
 scan=$(printf '%s' "$content" | sed -E 's/401[kK]//g')
 money_re='(\$[0-9])|([0-9]+([.,][0-9]+)?[[:space:]]?[km]([^a-z0-9]|$))|([0-9][[:space:]]?(thousand|million|billion|dollars?|usd|grand|bucks))|([0-9]{1,3}(,[0-9]{3})+)'
 hit=$(printf '%s' "$scan" | grep -ioE "$money_re" 2>/dev/null | head -3 | paste -sd',' - 2>/dev/null)
-[ -z "$hit" ] && exit 0
+if [ -z "$hit" ]; then _log allow "in-scope-clean"; exit 0; fi
+_log deny "money:${hit}"
 
 reason="Redaction rule (money is never logged): the personal-memory write contains what looks like a money amount [${hit}]. Generalize it away — e.g. 'a concentrated high-risk asset', 'a significant sum' → omit entirely — then write again. Holdings/people become roles; amounts are omitted (no ranges, no 'significant'). See ClaudeCode/CLAUDE.md > Personal Work Capture. If this is a false positive (not money), rephrase to avoid the numeric pattern."
 

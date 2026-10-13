@@ -7,6 +7,7 @@ and MUST be correct — they are what stops a hallucinated resolution from touch
 code outside the conflict. This tests those, no AI required. Exit 0/1 like the
 other selftests; wired into CI.
 """
+import sys
 import importlib.util
 import os
 
@@ -85,6 +86,59 @@ check(M.blast_radius_ok(CONFLICT, "PRE\n" + good) is True,
 
 # --- RESOLVABLE_EXT sanity: governed-state JSON is intentionally NOT auto-resolved
 check(".py" in M.RESOLVABLE_EXT and ".sh" in M.RESOLVABLE_EXT, "ext: code types must be resolvable")
+
+# --- integration: keepours ADD/ADD auto-resolves keep-ours; non-keepours add/add still defers ---
+# Models the REAL 2026-08-29 wedge: a projection artifact and its `merge=keepours` .gitattributes
+# line were introduced together, but a machine BEHIND that commit had neither at merge start — so
+# git ran no driver for the path and left a raw add/add CONFLICT, while the merged-in .gitattributes
+# meant post-merge `check-attr` reported keepours. (With the attr present from the START, git's ort
+# strategy auto-resolves the add/add itself — no conflict, no resolver — so the attr must arrive via
+# THEIRS to reproduce the wedge.) The resolver must apply the declared keep-ours policy there, not
+# defer; a path with no such base-independent policy must still defer.
+import subprocess, tempfile, shutil
+from pathlib import Path as _P
+def _git(rp, *a):
+    return subprocess.run(["git", *a], cwd=rp, text=True, capture_output=True)
+def _addadd_repo(theirs_declares_keepours):
+    rp = tempfile.mkdtemp(prefix="aimerge-addadd-")
+    _git(rp, "init", "-q", "-b", "main")
+    _git(rp, "config", "user.email", "t@t"); _git(rp, "config", "user.name", "t")
+    _git(rp, "config", "merge.keepours.driver", "true")
+    (_P(rp) / "README").write_text("base\n")
+    _git(rp, "add", "README"); _git(rp, "commit", "-qm", "base")   # base: no probe.json, no .gitattributes
+    _git(rp, "checkout", "-qb", "theirs")                          # theirs introduces the file (+ maybe the attr)
+    if theirs_declares_keepours:
+        (_P(rp) / ".gitattributes").write_text("probe.json merge=keepours\n")
+        _git(rp, "add", ".gitattributes")
+    (_P(rp) / "probe.json").write_text('{"who":"theirs"}\n')
+    _git(rp, "add", "probe.json"); _git(rp, "commit", "-qm", "theirs adds")
+    _git(rp, "checkout", "-q", "main")                             # ours-at-start has NO .gitattributes driver
+    (_P(rp) / "probe.json").write_text('{"who":"ours"}\n')
+    _git(rp, "add", "probe.json"); _git(rp, "commit", "-qm", "ours adds")
+    _git(rp, "merge", "--no-edit", "theirs")                       # add/add → real CONFLICT (no driver at start)
+    return rp
+def _run_resolver(rp):
+    return subprocess.run([sys.executable, os.path.join(REPO, "scripts", "ai-merge-resolver.py"), "--repo", rp],
+                          text=True, capture_output=True)
+
+_ko = _addadd_repo(True)   # theirs brought the keepours declaration in → post-merge check-attr = keepours
+try:
+    check(_P(_ko + "/.git/MERGE_HEAD").exists(), "keepours add/add: setup should leave a real conflict")
+    _r = _run_resolver(_ko)
+    check(_r.returncode == 0, f"keepours add/add: resolver should keep-ours-resolve (exit {_r.returncode}; {_r.stderr.strip()[:140]})")
+    check(_git(_ko, "diff", "--name-only", "--diff-filter=U").stdout.strip() == "", "keepours add/add: no unmerged paths should remain")
+    check((_P(_ko) / "probe.json").read_text() == '{"who":"ours"}\n', "keepours add/add: must keep OURS content")
+finally:
+    shutil.rmtree(_ko, ignore_errors=True)
+
+_nd = _addadd_repo(False)   # no driver declared anywhere → .json is unresolvable → must DEFER
+try:
+    check(_P(_nd + "/.git/MERGE_HEAD").exists(), "non-keepours add/add: setup should leave a real conflict")
+    _r = _run_resolver(_nd)
+    check(_r.returncode == 1, f"non-keepours .json add/add: must defer to human (got exit {_r.returncode})")
+    check(_git(_nd, "diff", "--name-only", "--diff-filter=U").stdout.strip() == "probe.json", "non-keepours add/add: file stays unmerged (deferred)")
+finally:
+    shutil.rmtree(_nd, ignore_errors=True)
 
 if fails:
     print("AI-MERGE-RESOLVER SELFTEST FAILED:")

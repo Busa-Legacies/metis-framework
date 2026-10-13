@@ -14,7 +14,7 @@ defined in [`task-state-contract.md`](task-state-contract.md). Where those docs 
 > claim, never write shared state without the fence, never close without evidence.
 
 **Pickup is project-oriented (#181).** A *project* (registry:
-`docs/process/state/projects.json`) is a shared workspace sessions **join**: joining
+`docs/process/state/projects.json`) is a shared workspace sessions **join**, joining
 writes an informational presence record (roster, 4h TTL, session-keyed), never a
 lock. Multiple sessions collaborating inside one project is the intended state. A
 *task* is the claimable unit; the lease + fence machinery below is unchanged and is
@@ -32,7 +32,7 @@ Every phase below depends on knowing which sources you can trust:
 | `workspace/state/OPEN_TASKS.md` | dashboard board | projection |
 | `gh issue list` | cross-device task record | projection (when reachable) |
 
-If a projection disagrees with canonical, **canonical wins**; that disagreement is
+If a projection disagrees with canonical, **canonical wins**: that disagreement is
 `DRIFT`, and `free-work.py` surfaces it. Reconcile drift *before* acting on a "free"
 item; a projection that says "free" over a canonical `in_progress(other)` is a
 collision waiting to happen.
@@ -62,7 +62,7 @@ Within a project (and in `--flat`), tasks bucket for *this machine* as before:
 1. A lease is *live* only if `status != done/released/...` **and**
    `leaseExpiresAt > now(UTC)`. Expired ≠ held.
 2. If `DRIFT` is non-empty, fix it first (update the projection to match canonical,
-   or correct canonical if the projection is right); do not pick from a drifted list.
+   or correct canonical if the projection is right): do not pick from a drifted list.
 3. Rank projects by the board order, then `FREE` within them by leverage, not list
    order: P1 before P2; unblocks-others before standalone; finishable-this-session
    before open-ended. Surface the top 2–3 to Ant as a readable chat list (not
@@ -72,18 +72,31 @@ Within a project (and in `--flat`), tasks bucket for *this machine* as before:
 
 ## Phase 2: Join the project, then claim the task
 
-**Join first:** `python3 scripts/agent-work.py join <slug>`; it writes the presence
+**Join first:** `python3 scripts/agent-work.py join <slug>`: writes the presence
 record (informational; auto-reaped at TTL; refresh rides on claim/renew). With live
 presence, `claim-next` scopes to your project automatically. `leave` when switching
 projects or wrapping up.
 
+**See who else is live before you start:** `python3 scripts/project-workspace.py
+status <slug>` (slug inferred from your presence if omitted) prints the full
+project-workspace briefing (the sibling **roster**, live **leases**, live **file
+claims**, task **buckets/counts**, and the shared **working-context**), richer than
+the board's per-project summary. Same tool, same output for every driver (Claude
+Code, Codex, a lane), so all sessions in a project see one coordinated picture. Pass
+advisory presence at join so siblings see what you're on:
+`join <slug> --current-task '<#id>' --current-step '<what>' --intent '<why>'`.
+
 **Claiming is mandatory and comes before the first edit.** An unclaimed task can be
-taken by another session mid-flight, exactly the collision this system exists to
+taken by another session mid-flight: exactly the collision this system exists to
 prevent.
 
 - **Preferred (collision-free):**
   `python3 scripts/agent-work.py claim-next --agent claude` (scoped by presence, or
-  `--project <slug>`); selects + claims inside one lock.
+  `--project <slug>`): selects + claims inside one lock. Add `--auto-worktree` to
+  isolate a **non-issue** task in its own worktree+branch (#3925 S5; default is
+  in-place, issue `checkout` isolates by default, task `claim`/`claim-next` do not);
+  the claim record then carries `worktree`/`branch`/`baseSha` and the checkout guard
+  recognizes the worktree path. `--worktree <path>` picks the location.
 - **Task with a GitHub issue:**
   `scripts/agent-checkout <issue> --agent claude --auto-worktree` (or
   `--in-place` for state-only work on a clean tree). Worktree isolation physically
@@ -97,7 +110,7 @@ shared state should present it (see Phase 3). See
 
 **Take-over rule:** only `--steal` a live lease when the holder is verifiably
 unreachable/capped *or* Ant explicitly says take it over. A task that is merely
-`queued` (no live lease) is not a steal: just claim it. After claiming, set
+`queued` (no live lease) is not a steal, just claim it. After claiming, set
 `tasks.json` `state: in_progress`, `owner: claude`, and a real `currentStep`.
 
 ## Phase 3: Work the task
@@ -111,8 +124,13 @@ this session's hard-won rules:
 2. **Present the fence on every shared-state write.** Pass `--fence-token N` to
    `renew`/`block`/`release`/`finish`. A long-running session should also
    `agent-work.py fence --issue N --token <mine>` (exit 1 = fenced out) *before*
-   writing after any long pause; this catches the stale-writer case where you were
-   reaped/stolen while asleep.
+   writing after any long pause: this catches the stale-writer case where you were
+   reaped/stolen while asleep. Separately, before editing a **shared long-lived
+   file** (repo doc, memory file, `working-context.md`, governed task field), take a
+   read token and `compare()` it pre-write: see [`agent-checkout-protocol.md`
+   §Read-token concurrency protocol (#696)](agent-checkout-protocol.md#read-token-concurrency-protocol-696):
+   the fence proves you hold the lease, the read token proves the content under it
+   hasn't drifted.
 3. **Renew before the lease expires** (`agent-work.py renew ... --fence-token N`) for
    multi-hour work; default lease is 4h.
 4. **Route generation to <<MACHINE_1_ID>>'s lanes when it qualifies** (see `~/.claude/CLAUDE.md`
@@ -120,11 +138,20 @@ this session's hard-won rules:
    Apply their output inline. Keep runtime/git/security work inline.
 5. **Verify is a phase, not an afterthought.** Before claiming done, actually run the
    `verificationMethod`. Capture concrete `evidence_refs` (command output, commit sha,
-   passing test); a done claim without evidence is unauditable.
+   passing test): a done claim without evidence is unauditable.
 6. **Checkpoint discrete sub-results** with `/checkpoint`: atomic commit of only that
    sub-task's files **+ `working-context.md`, under the sync lock**
    (`scripts/git-lock.sh run ...`) so the auto-sync daemon can't front-run your
    labeled commit. The commit message IS the session record `/end` rolls up.
+7. **Keep project presence live at each checkpoint** (when working in a project):
+   refresh your advisory presence so the sibling roster reflects real progress:
+   `python3 scripts/agent-work.py join <slug> --current-task '<#id>'
+   --current-step '<just-finished / next>'` (re-join upserts your presence record),
+   then refresh the per-project live-status projection with
+   `python3 scripts/project-workspace.py render-projection` (writes
+   `docs/process/state/project-live-status.json` + `docs/process/project-live-status.md`,
+   idempotent). At session close, `leave` the project and run `render-projection`
+   once more so the projection drops your departed presence.
 
 ## Phase 4: Close out the task
 
@@ -134,13 +161,13 @@ evidence is recorded. Then, in order:
 1. **Finish the lease with evidence:**
    `scripts/agent-finish <issue> --fence-token N --push --pr` (issue-backed), or
    `python3 scripts/agent-work.py unclaim <claim-id>` (claim-backed). Finishing a
-   stolen/terminal lease is rejected by design: if it fences you out, your work was
+   stolen/terminal lease is rejected by design, if it fences you out, your work was
    superseded; reconcile, don't force.
 2. **Advance canonical state via the mutator**: never hand-edit `tasks.json` or the
    projections (`scripts/render-tier1-state.py` regenerates `OPEN_TASKS.md`; #350
    auto-render overwrites hand edits). The forward-only graph is
    `in_progress → execution_finished → needs_verification → done` (there is **no**
-   `in_progress → done`; the mutator rejects it). Use
+   `in_progress → done`: the mutator rejects it). Use
    `python3 scripts/update-tier1-state.py task-update --task-id <id> --expected-revision N
    --actor <you> --commit --patch '{"state": "execution_finished", ...}'`, then advance to
    `needs_verification`, then to `done` once the verification method passed. The **verifier**
@@ -156,14 +183,14 @@ evidence is recorded. Then, in order:
    minimum from the state contract so the next owner resumes without transcript
    archaeology.
 
-Closing a *session* (not a task) is the heavier `/end` ceremony; that adds rename,
+Closing a *session* (not a task) is the heavier `/end` ceremony: that adds rename,
 Scribe daily-log, self-review, full reflection, and the task-queue sweep on top of the
 above. `/checkpoint` accumulates; `/end` synthesizes + terminates.
 
 ## Phase 5: Choose the next task
 
 Re-run **Phase 1** (`free-work.py`). Do not pick from stale in-context memory of what
-was free; state moved while you worked (the doctrine session landing commits during
+was free: state moved while you worked (the doctrine session landing commits during
 this very session is the proof). Confirm `WIP` is clear (no dangling lease you forgot
 to release) before claiming the next one.
 

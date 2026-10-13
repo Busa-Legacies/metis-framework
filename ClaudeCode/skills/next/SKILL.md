@@ -2,7 +2,7 @@
 name: Next Task
 slug: next
 version: 1.0.0
-description: "Atomically claim the next-highest-priority free task for THIS machine, collision-free even when several sessions wrap up at once. Write-side companion to /free-work."
+description: "Atomically claim the next-highest-priority free task for THIS machine — collision-free even when several sessions wrap up at once. Write-side companion to /free-work."
 ---
 
 ## Steps
@@ -11,9 +11,15 @@ Pickup is **project-oriented** (#181): join a project (shared workspace, never a
 
 1. **Join a project (if not already in one):**
    ```bash
-   python3 scripts/agent-work.py join <slug>
+   python3 scripts/agent-work.py join <slug> --current-step '<what you're about to do>'
    ```
-   Writes an informational presence record (4h TTL, session-keyed). Multiple sessions can and should share a project; presence is a roster, not a lock. Pick the project from `/free-work`'s ranked board.
+   Writes an informational presence record (4h TTL, session-keyed). Multiple sessions can and should share a project — presence is a roster, not a lock. Pick the project from `/free-work`'s ranked board. The advisory `--current-task`/`--current-step`/`--intent` flags let siblings see what you're on.
+
+1b. **See who else is live in the project:**
+   ```bash
+   python3 scripts/project-workspace.py status <slug>
+   ```
+   The full workspace briefing — sibling roster, live leases, live file claims, task buckets, and shared working-context. Same output for every driver, so you and any Codex/lane session in the project share one coordinated picture before splitting the list.
 
 2. **Preview first (optional):**
    ```bash
@@ -47,6 +53,6 @@ Pickup is **project-oriented** (#181): join a project (shared workspace, never a
    (Or it auto-expires after the lease window and the reaper frees it.) Stay joined if continuing in the project; `leave` when switching projects or ending the session.
 
 ## Flags
-`--project <slug>` · `--machine <<MACHINE_1_ID>>|<<MACHINE_2_USER>>` · `--hours N` · `--allow-multi` · `--dry-run` · `--json`
+`--project <slug>` · `--machine <<MACHINE_1_ID>>|<<MACHINE_2_ID>>` · `--hours N` · `--allow-multi` · `--dry-run` · `--json` · `--auto-worktree` (isolate a non-issue task in its own worktree+branch, #3925 S5; default in-place)
 
-Machine + ranking come from `free-work.py` (single source of truth: `claim-next` imports its `aggregate()`), so `/next` and `/free-work` always agree on what's free and in what order.
+Machine + ranking come from `free-work.py` (single source of truth — `claim-next` imports its `aggregate()`), so `/next` and `/free-work` always agree on what's free and in what order.

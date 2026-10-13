@@ -2,7 +2,7 @@
 
 **Scope:** How to build PowerPoint "morph" presentations in the style of **hmpt** (the TikTok designer whose free templates Ant studied). Reverse-engineered from `reference/forest-hmpt.pptx`.
 **Audience:** Anyone on the team building a slick animated deck (pitch decks, Example/OpenClaw decks, content).
-**Method:** Written from the actual `.pptx` XML; every number below is extracted from the source file, not guessed.
+**Method:** Written from the actual `.pptx` XML: every number below is extracted from the source file, not guessed.
 
 
 > **▶ Start here to build a deck:** [`deck-brief-protocol.md`](deck-brief-protocol.md): the standard brief/direction intake (theme, brand, content, visuals) so every deck is intentional, not improvised.
@@ -20,7 +20,7 @@
 | Slides | 8 (cover + agenda + 6 content) |
 | Canvas | 16:9 widescreen: `12192000 × 6858000` EMU (13.33" × 7.5") |
 | Transition | `<p159:morph option="byObject"/>`: **Morph**, `spd="slow"`, `dur=2000ms`, auto-advance `advTm=1000ms` |
-| Fonts | Heading **Calibri Light**, body **Calibri** (swap for something with more character; see §6) |
+| Fonts | Heading **Calibri Light**, body **Calibri** (swap for something with more character, see §6) |
 | Imagery | **Zero photos.** Entire look is native vector shapes + 5 embedded SVG icons |
 | Palette | The "Bay of Bengal" 9-stop scheme (below) |
 
@@ -60,7 +60,7 @@ Measured from the FOREST deck, the bottom navigation row does *not* move at all 
 Because these are byte-for-byte identical, morph renders them **perfectly still**: the frame feels rock-solid while everything inside it moves. That stillness is what makes the motion look designed instead of chaotic.
 
 **B. One travelling hero: same name, *different* geometry per slide.**
-The section word + its leaf/tree/seed icon is huge and centered on the cover, then shrinks and travels to its slot in the bottom nav on the content slide. The headline block (`about seed` → `about fruits` → …) lives in the same screen region but swaps text. That single dramatic move (big-center → small-corner) is the signature "hmpt zoom".
+The section word + its leaf/tree/seed icon is huge and centered on the cover, then shrinks and travels to its slot in the bottom nav on the content slide. The headline block (`about seed` → `about fruits` → …) lives in the same screen region but swaps text. That single dramatic move, big-center → small-corner, is the signature "hmpt zoom".
 
 > **Rule of thumb:** ~80% of objects pinned and identical, ~20% travelling. If everything moves, it reads as noise.
 
@@ -78,7 +78,7 @@ On every slide except the first, inside `<p:sld>`:
 
 ## 3. Construction lessons (why it looks expensive)
 
-1. **All-vector, no stock photos.** The cover landscape is layered shapes: `rect`/freeform mountain silhouettes (×19), `roundRect` panels & nav pills (×13), one `ellipse` sun, 5 SVG icons. No photo means no resolution/lighting mismatch; everything shares the palette, so it's automatically cohesive. *This is the single biggest reason it looks premium.*
+1. **All-vector, no stock photos.** The cover landscape is layered shapes: `rect`/freeform mountain silhouettes (×19), `roundRect` panels & nav pills (×13), one `ellipse` sun, 5 SVG icons. No photo means no resolution/lighting mismatch, everything shares the palette, so it's automatically cohesive. *This is the single biggest reason it looks premium.*
 2. **Silhouette layering for depth.** Mountains are 3–4 overlapping shapes in descending teal values (`94D2BD` back → `0A9396` mid → `005F73` front). Same shape language, just stacked and recolored = instant depth, and it morphs beautifully because each layer is its own named object.
 3. **Rounded-rectangle "pills" as the UI motif.** Nav chips, the top-right button, content cards are all `roundRect`. Consistent corner radius is the through-line that ties cover → content together.
 4. **A persistent menu = built-in wayfinding.** The 4-item bottom nav (each a primary label + smaller secondary label stacked) tells the viewer where they are in the deck the whole time. It also *gives morph something stable to anchor on*.
@@ -126,7 +126,7 @@ On every slide except the first, inside `<p:sld>`:
 
 ## 7. Tooling notes
 
-- The reference `.pptx` is all-vector and tiny (~85 KB); open it in PowerPoint/Keynote/Google Slides to scrub the morph live.
+- The reference `.pptx` is all-vector and tiny (~85 KB): open it in PowerPoint/Keynote/Google Slides to scrub the morph live.
 - **Programmatic generation** (if we want to script decks): `python-pptx` can build shapes/text but **cannot** write the morph transition: it's an unsupported namespace, so you'd post-process the slide XML to inject the `<p:transition>` block from §2. A Canva MCP connection is also available in this workspace for AI-assisted deck generation if we'd rather not hand-build.
 - LibreOffice headless was not able to render this file in the build sandbox (env limitation), so visual study here used the deck's embedded title thumbnail (above) + direct XML extraction.
 
@@ -136,7 +136,7 @@ On every slide except the first, inside `<p:sld>`:
 
 ## 8. The web build (`demo/`): morph without PowerPoint
 
-`demo/index.html` is the original single-file proof. It's since been productionized into a small multi-deck site with a shared engine at [`/decks/`](../../../decks/) (landing + **Example** demo + **Métis framework** deck); that's the one to host. The notes below apply to both.
+`demo/index.html` is the original single-file proof. It's since been productionized into a small multi-deck site with a shared engine at [`/decks/`](../../../decks/) (landing + **Example** demo + **Métis framework** deck): that's the one to host. The notes below apply to both.
 
 `demo/index.html` is the first real deck, built as an **interactive website** instead of a `.pptx`. One link, works on mobile and desktop, no app to install, and the morph maps almost 1:1 to the web:
 

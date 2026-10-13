@@ -32,4 +32,29 @@ if curl -sf --max-time 5 -X POST "$JAY_ENDPOINT" \
 else
     echo "handoff → <<MACHINE_1_ID>>: unreachable at ${JAY_ENDPOINT} (non-blocking, continuing close)"
 fi
+
+# Progress-as-events: mirror the session close to Discord #status as one pulse so the
+# comms surface shows session boundaries (docs/process/discord-comms-architecture.md).
+# Best-effort + fail-soft — a Discord hiccup must never break the close.
+python3 - "$payload" "$SCRIPT_DIR" <<'PY' 2>/dev/null || true
+import sys, json
+try:
+    d = json.loads(sys.argv[1])
+    summary = (d.get("summary") or "").strip()
+    n_done = len(d.get("done") or [])
+    n_next = len(d.get("next") or [])
+    frm = d.get("from", "claude-code")
+    if not summary and not n_done:
+        raise SystemExit(0)
+    bits = []
+    if n_done:  bits.append(f"{n_done} done")
+    if n_next:  bits.append(f"{n_next} queued")
+    tail = f" ({', '.join(bits)})" if bits else ""
+    line = f"📋 session handoff — {summary or 'session closed'}{tail} · {frm}"
+    sys.path.insert(0, sys.argv[2])  # SCRIPT_DIR — locate discord_notify regardless of CWD
+    import discord_notify
+    discord_notify.notify_raw(line, channel_id=discord_notify.STATUS_CHANNEL)
+except Exception:
+    pass
+PY
 exit 0

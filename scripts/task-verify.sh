@@ -211,7 +211,7 @@ case "$SECTION" in
     if echo "$LABEL_LOWER" | grep -q "sync\|guard\|git"; then
       heuristic_run "git-sync guard tests" zsh "$REPO/scripts/test-git-sync-guards.sh"
     elif echo "$LABEL_LOWER" | grep -q "lane\|jlane\|health"; then
-      heuristic_run "lane health check" bash -c "cd '$REPO' && scripts/lane-health 2>&1 | tail -5"
+      heuristic_run "lane health check" bash -c "set -o pipefail; cd '$REPO' && scripts/lane-health 2>&1 | tail -5"
     else
       SKIP=$((SKIP+1))
     fi
@@ -220,7 +220,7 @@ case "$SECTION" in
     if echo "$LABEL_LOWER" | grep -q "close\|integrity\|end-protocol\|checkpoint\|session"; then
       heuristic_run "close integrity check" bash "$REPO/scripts/close-integrity-check.sh"
     elif echo "$LABEL_LOWER" | grep -q "lane\|jlane\|smith\|scout\|warden\|echo"; then
-      heuristic_run "lane health check" bash -c "cd '$REPO' && scripts/lane-health 2>&1 | tail -5"
+      heuristic_run "lane health check" bash -c "set -o pipefail; cd '$REPO' && scripts/lane-health 2>&1 | tail -5"
     elif echo "$LABEL_LOWER" | grep -q "sync\|git-lock\|guard"; then
       heuristic_run "git-sync guard tests" zsh "$REPO/scripts/test-git-sync-guards.sh"
     elif echo "$LABEL_LOWER" | grep -q "pivot\|domain\|session-pivot\|task-domain"; then

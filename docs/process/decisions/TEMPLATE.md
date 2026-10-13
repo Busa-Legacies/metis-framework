@@ -2,8 +2,8 @@
 
 - **Status:** Proposed
 - **Date:** YYYY-MM-DD
-- **Supersedes:** —
-- **Superseded-by:** —
+- **Supersedes:** n/a
+- **Superseded-by:** n/a
 
 ## Context
 
@@ -29,5 +29,5 @@ command away:>
 
 ## Consequences
 
-<What this makes true going forward, both the benefits and the new constraints/tradeoffs we
+<What this makes true going forward: both the benefits and the new constraints/tradeoffs we
 accept. What a future session must keep in mind because of this decision.>

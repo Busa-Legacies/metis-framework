@@ -1,6 +1,6 @@
 # Control Center: Schema & Edge Standard
 
-The standard for the Notion **Control Center** DB: Tony's single pane of glass across all
+The standard for the Notion **Control Center** DB: the owner's single pane of glass across all
 life + work domains. This doc is the authority for its fields, taxonomy, edges, and
 field-logging rules. Vet here before any live-schema change.
 
@@ -21,7 +21,7 @@ stores stay where they are; Control Center mirrors them into one calm surface:
 | metis-os **tasks.json** | engineering work | sync job (Tier-3, later) |
 | **projects/writing/drafts/** | drafts (body in page) | the fold-back loop (§6) |
 
-**Rule:** never gut the old Tasks DB; it runs Tony's life (14 views, templates,
+**Rule:** never gut the old Tasks DB: it runs the owner's life (14 views, templates,
 relations). Migration into Control Center is **opt-in**, never automatic.
 
 ---
@@ -32,12 +32,12 @@ relations). Migration into Control Center is **opt-in**, never automatic.
 |---|---|---|---|
 | **Name** | title | ✓ | |
 | **Type** | select | ✓ | Task · Draft · Idea · Note |
-| **Domain** | select | ✓ | the 7 in §3 (closed taxonomy) |
+| **Domain** | select | ✓ | the 7 in §3: closed taxonomy |
 | **Status** | select | ✓ | the 8-state set in §4 (mirrors old Tasks DB) |
 | **Priority** | select | | Low · Medium · High · Urgent |
 | **Pillar** | select | | drafts only: ai-tech · reading-response · personal-reflective · strategy-crossover |
 | **Due** | date | | the deadline |
-| **Followup** | date | | next date you must *act/check*, distinct from Due |
+| **Followup** | date | | next date you must *act/check*: distinct from Due |
 | **Source** | relation | | back-link to canonical origin (§5 Tier 1) |
 | **Project** | relation | | initiative this belongs to (§5 Tier 1) |
 | **Org** | relation | | optional connective tissue (§5 Tier 1) |
@@ -104,13 +104,13 @@ made the old DB sprawl.
 
 That promotion path is what keeps columns from sprawling again.
 
-**Why taxonomy is never a relation:** a label has no node on the other end; it's a
+**Why taxonomy is never a relation:** a label has no node on the other end: it's a
 select. Selects give group-by analytics for free with zero entry friction. Relations cost
 a column and a navigation; reserve them for real entities.
 
 **Tier-3 (future):** a sync reads Notion's hand-drawn relations via the API into the
 metis-os RAG, so the agents can answer cross-domain graph questions Notion can't traverse
-natively. Tony's manual edges become a higher-quality graph than auto-extraction would
+natively. the owner's manual edges become a higher-quality graph than auto-extraction would
 yield: no LLM guessing the relationships.
 
 ---
@@ -118,17 +118,17 @@ yield: no LLM guessing the relationships.
 ## 6. Writing fold-back loop
 
 1. Claude pushes a **fact-checked** draft → `Status = In Progress`, body in page content.
-2. Tony edits on phone → flips a **"fold it"** flag (checkbox).
-3. On session start, Claude queries for any item with the flag set → diffs Tony's edits
+2. the owner edits on phone → flips a **"fold it"** flag (checkbox).
+3. On session start, Claude queries for any item with the flag set → diffs the owner's edits
    vs the repo canonical (`Source` path) → folds voice-deltas into
    `projects/writing/voice-profile.md` → clears the flag, sets `Status = Done`.
 
-Flipping the flag **is** the signal; Tony shouldn't have to say anything.
+Flipping the flag **is** the signal: the owner shouldn't have to say anything.
 
 **Canonical rule:** the repo `.md` is the source of truth; Notion is an editable mirror.
 **Always re-fetch after a push and verify it rendered faithfully** (a prior loose push
 silently corrupted line 1 and dropped a section). Fact-check is a **built-in pipeline
-step**: no unverified stat reaches Tony's review.
+step**: no unverified stat reaches the owner's review.
 
 ---
 
@@ -137,8 +137,8 @@ step**: no unverified stat reaches Tony's review.
 | Field | How to fill it |
 |---|---|
 | **Link / Source** | for our work, the **GitHub permalink** (`github.com/…/blob/<sha>/path`), not a local path; for external refs, the source URL |
-| **Followup** | a date you next need to act/check; leave empty unless genuinely waiting on a future touch |
-| **Due** | the actual deadline, not a soft target |
+| **Followup** | a date you next need to act/check: leave empty unless genuinely waiting on a future touch |
+| **Due** | the actual deadline: not a soft target |
 | **Domain** | exactly one of the 7; if it feels like two, the task is really two items |
 | **Project / Org** | only when a real entity exists on the other end |
 | **Pillar** | drafts only |
@@ -149,4 +149,4 @@ step**: no unverified stat reaches Tony's review.
 - Apply these changes to the live Notion schema (add Source; demote Org to optional;
   align Status to the 8-state set; add Domain select; add "fold it" flag).
 - Tier-3 RAG sync job: design later.
-- Opt-in migration of existing life-tasks: only on Tony's go.
+- Opt-in migration of existing life-tasks, only on the owner's go.

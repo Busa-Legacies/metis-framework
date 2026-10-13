@@ -38,9 +38,26 @@ BLOCKED=0
 TMPFILE=$(mktemp)
 trap "rm -f $TMPFILE" EXIT
 
+# Secret patterns as regex vars for bash's in-process `[[ =~ ]]` matcher. The
+# scan runs per ADDED LINE across the whole push range, so a `echo "$x" | grep`
+# per pattern forks 2 processes × N patterns × M lines — a 34k-line autosync
+# snapshot spawned ~170k subprocesses and stalled the push for minutes, wedging
+# the sync daemon (2026-07-13). `[[ =~ ]]` matches in-process (zero forks),
+# turning that into microseconds. Same ERE patterns; bash 3.2 regcomp supports
+# the intervals/alternation used here (verified). Reporting stays identical.
+RE_ANTHROPIC='sk-ant-api[0-9]+-[A-Za-z0-9_-]{20,}'
+RE_GHP='ghp_[A-Za-z0-9]{36,}'
+RE_AKIA='AKIA[0-9A-Z]{16}'
+RE_OPENAI='sk-(proj|org|svcacct)-[A-Za-z0-9_-]{32,}'
+RE_PRIVKEY='-----BEGIN [A-Z ]*PRIVATE KEY-----'
+# Assignment heuristic is case-INSENSITIVE (grep -i); matched under a localized
+# `shopt -s nocasematch` so it never leaks into the file-type `case` statements.
+RE_ASSIGN='(ANTHROPIC|OPENAI)_(API_KEY|SECRET|TOKEN)[[:space:]]*[=:][[:space:]]*["'"'"']?[^[:space:]<"'"'"']{8,}'
+
 process_range() {
     local remote_sha="$1"
     local local_sha="$2"
+    local mode="${3:-full}"   # "values_only": VALUE patterns only (autosync snapshots)
     local range=""
 
     if [ "$remote_sha" = "$ZERO" ]; then
@@ -81,40 +98,57 @@ process_range() {
         #     files here explicitly if ever needed — never a broad tests/ glob. ---
         case "$current_file" in
             tests/test_secrets_guard.py) continue ;;
+            # /security-review's scanner tests (#767, e1bebac88): fabricated fixtures —
+            # a truncated RSA header + dummy ghp_aBcDeF… token — must exist to test
+            # detection. Audited 2026-07-16: no real credential. Exact path only.
+            tests/test_security_review.py) continue ;;
             # Recovered forge lane-output for #312: reproduces this guard's OWN source +
             # a fabricated self-test fixture (sk-proj-abcdef… that creates a fake leak.txt).
             # Verified contains no real credential — exact path only, never a glob (T-SYNC-14).
-            docs/process/lane-outputs/2026-06-12-312-secrets-prepush-guard.md) continue ;;
+            workspace/state/lane-outputs/2026-06-12-312-secrets-prepush-guard.md) continue ;;
         esac
 
         # --- VALUE patterns: always block regardless of file type ---
 
-        if echo "$content" | grep -qE 'sk-ant-api[0-9]+-[A-Za-z0-9_-]{20,}'; then
+        if [[ $content =~ $RE_ANTHROPIC ]]; then
             echo "  $current_file: Anthropic API key value (sk-ant-api...)" >&2
             BLOCKED=1
         fi
 
-        if echo "$content" | grep -qE 'ghp_[A-Za-z0-9]{36,}'; then
+        if [[ $content =~ $RE_GHP ]]; then
             echo "  $current_file: GitHub personal access token (ghp_...)" >&2
             BLOCKED=1
         fi
 
-        if echo "$content" | grep -qE 'AKIA[0-9A-Z]{16}'; then
+        if [[ $content =~ $RE_AKIA ]]; then
             echo "  $current_file: AWS access key ID (AKIA...)" >&2
             BLOCKED=1
         fi
 
-        if echo "$content" | grep -qE 'sk-(proj|org|svcacct)-[A-Za-z0-9_-]{32,}'; then
+        if [[ $content =~ $RE_OPENAI ]]; then
             echo "  $current_file: OpenAI-style key value (sk-proj-/sk-org-...)" >&2
             BLOCKED=1
         fi
+
+        if [[ $content =~ $RE_PRIVKEY ]]; then
+            echo "  $current_file: private key block (-----BEGIN ... PRIVATE KEY-----)" >&2
+            BLOCKED=1
+        fi
+
+        # values_only mode (autosync snapshots): VALUE patterns above are
+        # false-positive-free, so they run; the ASSIGNMENT heuristics below
+        # were the false-positive source that motivated the old blanket skip.
+        [ "$mode" = "values_only" ] && continue
 
         # --- ASSIGNMENT patterns: skip doc files (setup guides may reference names) ---
         case "$current_file" in
             *.md|README*|readme*|CONTRIBUTING*|docs/*|*.txt|*.rst) continue ;;
         esac
 
-        if echo "$content" | grep -qiE '(ANTHROPIC|OPENAI)_(API_KEY|SECRET|TOKEN)[[:space:]]*[=:][[:space:]]*["'"'"']?[^[:space:]<"'"'"']{8,}'; then
+        shopt -s nocasematch; _assign_hit=0
+        [[ $content =~ $RE_ASSIGN ]] && _assign_hit=1
+        shopt -u nocasematch
+        if [ "$_assign_hit" = 1 ]; then
             val=$(echo "$content" | grep -oiE '[=:][[:space:]]*["'"'"']?[^[:space:]<"'"'"']{8,}' | head -1 | sed "s/^[=:][[:space:]]*[\"']\{0,1\}//")
             if ! echo "$val" | grep -qiE '(your|<[a-z]|placeholder|example|xxx+|\.\.\.+|test|fake|changeme|insert[-_]?key)'; then
                 echo "  $current_file: API key assignment with non-placeholder value" >&2
@@ -128,7 +162,10 @@ process_range() {
 while IFS=" " read -r local_ref local_sha remote_ref remote_sha; do
     [ "$local_sha" = "$ZERO" ] && continue  # branch deletion, nothing to scan
     case "$remote_ref" in
-        refs/heads/autosync/*) continue ;;  # source-snapshot branches are durability mirrors; main remains guarded
+        # Source-snapshot mirrors: assignment heuristics off (false-positive
+        # prone on snapshots), but real secret VALUES are never legitimate —
+        # the 2026-06-25 autosync/<<MACHINE_1_ID>> private-key leak rode this exemption.
+        refs/heads/autosync/*) process_range "$remote_sha" "$local_sha" values_only; continue ;;
     esac
     process_range "$remote_sha" "$local_sha"
 done

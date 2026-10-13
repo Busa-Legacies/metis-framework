@@ -15,6 +15,7 @@ like test-self-heal.py. Registered nowhere else — it is its own gate.
 import importlib.util
 import json
 import os
+import sys
 import tempfile
 
 REPO = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
@@ -64,13 +65,31 @@ for src, dests in S.ALLOWED_STATE_TRANSITIONS.items():
     for d in dests:
         check(d in S.VALID_TASK_STATES, f"DAG: edge {src!r}->{d!r} targets non-state {d!r}")
 
-# done is terminal — the whole forward-only model rests on this.
-check(S.ALLOWED_STATE_TRANSITIONS["done"] == set(), "DAG: done must be terminal (no outgoing edges)")
+# done is terminal in the sense that matters: no path leads back to unfinished work. #887
+# deliberately added done -> archived so a completed task can be filed off the hot board, and
+# archived is itself terminal. The original assertion demanded an empty set and went stale the
+# moment #887 landed — invisibly, because nothing ran this suite. Assert the invariant instead
+# of the literal: the only way out of done is deeper into terminal.
+check(S.ALLOWED_STATE_TRANSITIONS["done"] <= {"archived"},
+      f"DAG: done escapes to {sorted(S.ALLOWED_STATE_TRANSITIONS['done'] - {'archived'})} — "
+      "the forward-only model rests on done never returning to unfinished work")
+check(S.ALLOWED_STATE_TRANSITIONS["archived"] == set(), "DAG: archived must be terminal")
 
-# The verification path cannot be skipped: done is reachable ONLY from needs_verification.
-into_done = [src for src, dests in S.ALLOWED_STATE_TRANSITIONS.items() if "done" in dests and src != "inbox"]
+# The verification path cannot be skipped: once work has STARTED, done is reachable only from
+# needs_verification. The intake tier is the documented exception — a task that was never worked
+# can be closed outright — and it is enumerated here rather than special-cased inline, because
+# that is exactly how this drifted: the assertion exempted "inbox" by name, then #191e0b1db
+# introduced the `open` state with the same shortcut and this suite (run by nothing at the time)
+# never saw it. Adding a state to the intake tier must be a deliberate edit to this list.
+INTAKE_STATES = {"inbox", "open"}
+into_done = sorted(src for src, dests in S.ALLOWED_STATE_TRANSITIONS.items()
+                   if "done" in dests and src not in INTAKE_STATES)
 check(into_done == ["needs_verification"],
-      f"DAG: done reachable from {into_done}, expected only needs_verification (+inbox shortcut)")
+      f"DAG: done reachable from {into_done} outside the intake tier {sorted(INTAKE_STATES)}, "
+      "expected only needs_verification")
+# And the intake shortcut must not have crept into a state where work has actually begun.
+check(not (INTAKE_STATES & {"in_progress", "execution_finished", "blocked", "failed", "waiting"}),
+      "DAG: an intake-tier exemption now covers a state where work has started")
 
 # execution_finished must funnel through needs_verification (no direct-to-done).
 check("done" not in S.ALLOWED_STATE_TRANSITIONS["execution_finished"],
@@ -141,8 +160,12 @@ check(not raises(S.validate_done_gate, "x", "done", done_task(blockerOrNone="non
 # so their enum checks degrade to the documented no-op fallback. This tests the
 # board-field LOGIC hermetically, independent of whatever projects.json ships.
 from pathlib import Path as _P
-S.AREAS_PATH = _P(REPO) / "scripts" / "__no_such_areas__.json"
-S.PROJECTS_PATH = _P(REPO) / "scripts" / "__no_such_projects__.json"
+# After the #6460 split, validate_board_fields lives in tier1_state_ops and reads
+# AREAS_PATH/PROJECTS_PATH in THAT module's namespace -- redirect them there, since patching
+# the uts CLI shell's re-exported copies would not reach the validator.
+_OPS = sys.modules[S.validate_board_fields.__module__]
+_OPS.AREAS_PATH = _P(REPO) / "scripts" / "__no_such_areas__.json"
+_OPS.PROJECTS_PATH = _P(REPO) / "scripts" / "__no_such_projects__.json"
 
 # Rich states demand rich fields.
 check(raises(S.validate_task_shape, "x", {"state": "in_progress"}, True),
@@ -221,9 +244,44 @@ check(A.active({"status": "done", "leaseExpiresAt": future}, now) is False,
 check(A.active({"status": "in_progress"}, now) is False,
       "lease: missing expiry should be treated as inactive, not crash")
 
+# 6b. ONE definition of "live lease". free-work.filter_live_leases is what the picker
+# shows as FREE and what reconcile runs its whole invariant battery on, so if it and
+# active() disagree about a record, reconcile can requeue a task another session is
+# holding. The two were drawn on opposite axes: active() denylists TERMINAL statuses
+# (an unknown status is LIVE — fails safe), the filter allowlisted the single literal
+# "checked-out" (an unknown status is FREE — fails unsafe). Same question, opposite
+# default, and the unsafe one drove the reconciler. Assert they agree case by case.
+FW = _load("freework", "free-work.py")
+
+_lease_cases = [
+    ({"status": "checked-out", "leaseExpiresAt": future}, True, "ordinary held lease"),
+    ({"status": "checked-out", "leaseExpiresAt": past}, False, "ordinary expired lease"),
+    ({"status": "done", "leaseExpiresAt": future}, False, "terminal status"),
+    ({"status": "released", "leaseExpiresAt": future}, False, "terminal status"),
+    ({"status": "expired", "leaseExpiresAt": future}, False, "terminal status"),
+    ({"status": "stolen", "leaseExpiresAt": future}, False, "terminal status"),
+    ({"status": "blocked", "leaseExpiresAt": future}, False, "terminal status"),
+    # The discriminating pair: a non-terminal status that is not the literal
+    # "checked-out", and a record with no status at all. Both are HELD.
+    ({"status": "in_progress", "leaseExpiresAt": future}, True, "unknown non-terminal status"),
+    ({"leaseExpiresAt": future}, True, "record with no status field"),
+    ({"status": "in_progress"}, False, "unknown status, no expiry"),
+]
+for rec, want_live, why in _lease_cases:
+    check(A.active(rec, now) is want_live,
+          f"lease: active() should say live={want_live} for {why}")
+    got = bool(FW.filter_live_leases([dict(rec)]))
+    check(got is want_live,
+          f"lease: filter_live_leases should say live={want_live} for {why} (got {got})")
+
+check(A.TERMINAL == FW.LEASE_TERMINAL,
+      "lease: the terminal-status set must have exactly one definition")
+
 # find_records filters by issue and tolerates malformed issue values.
 recs = {"checkouts": [{"issue": 7}, {"issue": "bad"}, {"issue": 7}, {"issue": 8}]}
 check(len(A.find_records(recs, 7)) == 2, "find_records: should return only matching issue rows")
+label = {"checkouts": [{"issue": None, "taskId": "#7"}, {"issue": None, "taskId": "#70"}, {"issue": None}]}
+check(len(A.find_records(label, 7)) == 1, "find_records: should match a label lease by its taskId")
 
 # Titles must stand alone — a "#NNN" task-number reference in a title is rejected at
 # create time (Ant 2026-06-29); clean and hashtag-free titles pass.

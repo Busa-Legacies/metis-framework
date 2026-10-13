@@ -153,38 +153,41 @@ done < <(find /private/tmp -maxdepth 1 -name "claude-session-*.init" 2>/dev/null
 # exhausting" clutter. Reversible: the transcript persists on disk and the
 # session resumes via `claude --resume`, so reaping only costs a reconnect.
 #
-# Two tiers, chosen so an operator briefly away is never killed out from under:
-#   • DETACHED (no client) + idle > REAP_HOURS (4h)          → reap
-#   • ATTACHED  + idle > REAP_ATTACHED_HOURS (16h)           → reap
-# The attached tier exists because a dead ttyd/mobile client leaves the session
-# marked attached forever; 16h with zero pane activity is a provably dead client,
-# not someone thinking. Detached uses the shorter bar since nobody's watching.
-REAP_HOURS="${REAP_HOURS:-4}"
-REAP_ATTACHED_HOURS="${REAP_ATTACHED_HOURS:-16}"
+# Conservative by design so an operator who stepped away is NEVER killed out from
+# under (Ant 2026-08-03 — the "<<MACHINE_2_ID>> keeps killing my terminal sessions" bug):
+#   • ATTACHED session                                       → NEVER reap
+#     (if a client is attached it is not abandoned; a dead-ttyd false-attached case
+#      is rare and far less costly than nuking a session someone is mid-thought in)
+#   • pinned session (tmux user-option `@keep` == 1)         → NEVER reap
+#     (pin one with:  tmux set-option -t <sess> @keep 1)
+#   • DETACHED (no client) + idle > REAP_HOURS (48h)         → reap
+#     (48h means a session survives a normal away-for-the-workday/overnight; only a
+#      genuinely abandoned detached session — two days untouched — is cleaned up.
+#      Reversible: the transcript persists and resumes via `claude --resume`.)
+REAP_HOURS="${REAP_HOURS:-48}"
 tmux_sessions_reaped=0
 if command -v tmux >/dev/null 2>&1; then
     now_ts=$(date +%s)
     reap_detached_secs=$(( REAP_HOURS * 3600 ))
-    reap_attached_secs=$(( REAP_ATTACHED_HOURS * 3600 ))
-    while IFS='|' read -r sname sact sattached; do
+    # 4th field `#{@keep}` is the per-session pin marker (empty unless set to 1).
+    while IFS='|' read -r sname sact sattached skeep; do
         [[ "$sname" == claude-* ]] || continue
+        # NEVER reap a session that is attached (someone's in it / mid-thought) or
+        # explicitly pinned with `@keep 1`. Only genuinely-abandoned detached sessions
+        # past the 48h bar are cleaned up.
+        [[ "${sattached:-0}" -ne 0 ]] && continue
+        [[ "${skeep:-0}" == "1" ]] && continue
         idle_secs=$(( now_ts - sact ))
-        if [[ "${sattached:-0}" -eq 0 ]]; then
-            [[ $idle_secs -ge $reap_detached_secs ]] || continue
-            why="detached"
-        else
-            [[ $idle_secs -ge $reap_attached_secs ]] || continue
-            why="stale-attached"
-        fi
+        [[ $idle_secs -ge $reap_detached_secs ]] || continue
         idle_h=$(( idle_secs / 3600 ))
         if [[ $DRY_RUN -eq 1 ]]; then
-            log "DRY RUN — would reap tmux $sname ($why, idle ${idle_h}h)"
+            log "DRY RUN — would reap tmux $sname (detached, idle ${idle_h}h)"
         else
             tmux kill-session -t "$sname" 2>/dev/null \
-                && { log "reaped tmux $sname ($why, idle ${idle_h}h)"; tmux_sessions_reaped=$((tmux_sessions_reaped + 1)); } \
+                && { log "reaped tmux $sname (detached, idle ${idle_h}h)"; tmux_sessions_reaped=$((tmux_sessions_reaped + 1)); } \
                 || log "WARN: could not reap tmux $sname"
         fi
-    done < <(tmux list-sessions -F "#{session_name}|#{session_activity}|#{session_attached}" 2>/dev/null)
+    done < <(tmux list-sessions -F "#{session_name}|#{session_activity}|#{session_attached}|#{@keep}" 2>/dev/null)
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────

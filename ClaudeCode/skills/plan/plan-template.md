@@ -1,4 +1,4 @@
-# Plan Template: docs/plans/PLAN-<slug>.md
+# Plan Template — docs/plans/PLAN-<slug>.md
 
 ```markdown
 # Plan — <task title>  (<#NNN if governed>)
@@ -28,10 +28,15 @@
 
 ## Risks & open questions
 - <risk or unknown that could change the plan>
+
+<!-- For QUALIFYING work (tier>=T1, blast-radius, or a buildout/migration/integration —
+     see docs/process/premortem-standard.md) REPLACE the line above with a full ## Premortem
+     block. A qualifying plan is not `approved` until the premortem is filled. -->
 ```
 
 ## Notes on the template
 - **Current state must be read, not guessed.** Cite actual file paths. A plan with "I assume the stack is X" in this section is invalid.
-- **Approach must weigh alternatives.** "I chose X" with no rejected alternatives is a decision with no reasoning; future sessions can't tell if the alternative was considered or missed.
+- **Approach must weigh alternatives.** "I chose X" with no rejected alternatives is a decision with no reasoning — future sessions can't tell if the alternative was considered or missed.
 - **Verification must be concrete.** "It works" is not verifiable. "curl http://localhost:8080/api/all returns `system.cpu_pct` field" is.
+- **Premortem for big work.** If the task qualifies under `docs/process/premortem-standard.md` (tier≥T1, blast-radius, or buildout/migration/integration), the `## Risks & open questions` line is upgraded to a full `## Premortem` block — a 10-min "assume it shipped and failed, what killed it?" pass. The plan gate and premortem gate clear together.
 - **Keep it tight.** A plan is a decision record, not a design doc. Each section should be scannable in 30 seconds.

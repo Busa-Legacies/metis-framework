@@ -11,7 +11,7 @@
 REPO="$METIS_HOME"
 CANONICAL="$REPO/scripts/openclaw-git-sync.sh"
 LIVE="$HOME/.local/bin/openclaw-git-sync.sh"
-SYNC_LOG="$HOME/.openclaw/logs/git-sync.log"
+SYNC_LOG="${OPENCLAW_SYNC_LOG:-$HOME/.openclaw/logs/git-sync.log}"
 STALE_MIN="${OPENCLAW_SYNC_STALE_MIN:-15}"   # warn if last successful sync is older than this (minutes)
 
 rc=0
@@ -50,9 +50,28 @@ else
   if [ "$last_epoch" = "0" ]; then
     echo "HEARTBEAT: could not parse last sync timestamp ('$ts') — check $SYNC_LOG manually"
   elif [ "$age_min" -gt "$STALE_MIN" ]; then
-    echo "HEARTBEAT: last successful sync was ${age_min}m ago (> ${STALE_MIN}m) — sync may be dead."
-    echo "  check: tail -5 '$SYNC_LOG'; launchctl list | grep openclaw-git-sync"
-    rc=1
+    # A stale "sync complete" is not always a dead sync: during an active edit session the
+    # daemon deliberately DEFERS stash/pull to avoid sweeping in-flight work (#886), so it
+    # keeps ticking (and writing this log) but logs no completion until the turn ends. Only a
+    # daemon that has ALSO stopped ticking (log file itself gone stale) is genuinely dead, so
+    # a live daemon (fresh log) + a fresh session-editing marker is the benign deferral case,
+    # not an alert. Mirrors the daemon's own #886 gate (OPENCLAW_EDIT_MARKER/_TTL).
+    EDIT_MARKER="${OPENCLAW_EDIT_MARKER:-$HOME/.openclaw/session-editing}"
+    EDIT_TTL="${OPENCLAW_EDIT_TTL:-900}"
+    log_mtime=$(stat -f %m "$SYNC_LOG" 2>/dev/null || stat -c %Y "$SYNC_LOG" 2>/dev/null || echo 0)
+    log_age_min=$(( (now_epoch - log_mtime) / 60 ))
+    edit_age="$EDIT_TTL"
+    if [ -f "$EDIT_MARKER" ]; then
+      edit_mtime=$(stat -f %m "$EDIT_MARKER" 2>/dev/null || stat -c %Y "$EDIT_MARKER" 2>/dev/null || echo 0)
+      edit_age=$(( now_epoch - edit_mtime ))
+    fi
+    if [ "$log_age_min" -le "$STALE_MIN" ] && [ "$edit_age" -lt "$EDIT_TTL" ]; then
+      echo "OK: last full sync ${age_min}m ago, but the daemon is live (log ${log_age_min}m fresh) and an active edit session (${edit_age}s < ${EDIT_TTL}s) is deferring pulls (#886) — expected, not dead"
+    else
+      echo "HEARTBEAT: last successful sync was ${age_min}m ago (> ${STALE_MIN}m) — sync may be dead."
+      echo "  check: tail -5 '$SYNC_LOG'; launchctl list | grep openclaw-git-sync"
+      rc=1
+    fi
   else
     echo "OK: last successful sync ${age_min}m ago (within ${STALE_MIN}m)"
   fi
@@ -97,6 +116,36 @@ if [ "${daemon_stashes:-0}" -ge "$STASH_WARN" ] || [ "${oldest_age_min:-0}" -gt 
   rc=1
 elif [ "${daemon_stashes:-0}" -ge 1 ]; then
   echo "OK: $daemon_stashes daemon stash present but newest/oldest age is below ${STASH_STALE_MIN}m — likely mid-tick"
+fi
+
+# --- merge-driver registration guard (2026-07-09) ------------------------------
+# The root cause of the recurring stuck-merge class: a high-churn file mapped to a custom
+# merge=<driver> in .gitattributes whose driver is NOT registered in THIS clone's git config
+# falls back to a raw 3-way merge -> conflict -> daemon wedge (MEMORY.md / working-context.md
+# hit this twice on 2026-07-09; tasks.json #147; health-checks.json #437). Any driver named
+# in .gitattributes but missing from `git config merge.<name>.driver` is the same latent bug.
+# `union` is a git built-in and needs no registration. Self-heal by re-running the registrar.
+unregistered=""
+for drv in $(sed -nE 's/.*[[:space:]]merge=([A-Za-z0-9_-]+).*/\1/p' "$REPO/.gitattributes" 2>/dev/null | sort -u); do
+  [ "$drv" = "union" ] && continue
+  git -C "$REPO" config --get "merge.$drv.driver" >/dev/null 2>&1 || unregistered="$unregistered $drv"
+done
+# A config entry for a BUILT-IN driver shadows it: merge.union.driver=true turned every
+# union ledger into keep-ours and silently dropped other machines' lines (2026-10-05).
+for _bi in union text binary; do
+  if git -C "$REPO" config --get "merge.$_bi.driver" >/dev/null 2>&1; then
+    echo "DRIFT: git config merge.$_bi.driver is set — it shadows git's built-in $_bi merge"
+    echo "  fix: git -C '$REPO' config --unset-all merge.$_bi.driver"
+    rc=1
+  fi
+done
+if [ -n "$unregistered" ]; then
+  echo "DRIFT: .gitattributes maps files to unregistered merge driver(s):$unregistered"
+  echo "  a raw 3-way merge on those files will wedge the auto-sync daemon."
+  echo "  fix: bash '$REPO/scripts/register-merge-drivers.sh'"
+  rc=1
+else
+  echo "OK: all .gitattributes merge drivers are registered in git config"
 fi
 
 exit $rc

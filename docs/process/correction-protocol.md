@@ -29,10 +29,10 @@ When a correction surfaces (Ant flags a wrong behavior, a verify skill finds a g
 | Semantic memory (`ClaudeCode/memory/`) | Durable + cross-session + non-obvious + not in code/docs |
 | Procedural playbook (skills / CLAUDE.md) | The lesson should *change behavior*, not just inform it |
 
-A lesson that belongs in a skill must reach the skill; a memory entry that only influences recall is insufficient for behavioral change.
+A lesson that belongs in a skill must reach the skill: a memory entry that only influences recall is insufficient for behavioral change.
 
 ## What NOT to do
 
 - Never write a memory file as the *primary* fix for a behavioral correction. Memory is recall; skills drive behavior.
-- Never do a monolithic rewrite of a skill or CLAUDE.md section to incorporate a correction; always a targeted delta. Rewrites cause "context collapse" and "brevity bias" (ACE, arXiv 2510.04618).
-- Never leave a correction as a chat note or ephemeral observation; it will not survive context compaction.
+- Never do a monolithic rewrite of a skill or CLAUDE.md section to incorporate a correction: always a targeted delta. Rewrites cause "context collapse" and "brevity bias" (ACE, arXiv 2510.04618).
+- Never leave a correction as a chat note or ephemeral observation: it will not survive context compaction.

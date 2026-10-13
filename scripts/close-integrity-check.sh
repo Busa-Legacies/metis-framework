@@ -83,9 +83,19 @@ for idx in INDEXES:
 on_disk = {f for f in os.listdir(d) if f.endswith('.md') and f not in INDEXES}
 orphaned = on_disk - referenced
 stale    = referenced - on_disk
+# #4608: an indexed file present on disk but ABSENT from git ls-files strands on every other
+# branch (the MEMORY.md rows get committed, the files never do). git-aware; degrades if no git.
+import subprocess
+try:
+    r = subprocess.run(["git","-C",d,"ls-files","-z"], capture_output=True, text=True, timeout=10)
+    tracked = {os.path.basename(p) for p in r.stdout.split("\0") if p.endswith(".md")} if r.returncode==0 else None
+except Exception:
+    tracked = None
+untracked_indexed = sorted((referenced & on_disk) - tracked) if tracked is not None else []
 msgs = []
 if orphaned: msgs.append("orphaned files (in neither MEMORY.md nor MEMORY-archive.md): " + ", ".join(sorted(orphaned)))
 if stale:    msgs.append("stale entries (file missing): " + ", ".join(sorted(stale)))
+if untracked_indexed: msgs.append("untracked-indexed (indexed but absent from git ls-files — will strand on other branches; git add them): " + ", ".join(untracked_indexed))
 print("|".join(msgs))
 PYEOF
 )
@@ -123,9 +133,11 @@ for wrapper in jlane lane-debug lane-health; do
   fi
 done
 
-# 5. Hook symlinks
-for hook in hook-alerts.sh hook-session-init.sh hook-prompt-guard.sh statusline.sh; do
-  [ -L "$HOME/.claude/$hook" ] \
+# 5. Hook symlinks — EVERY ~/.claude/<script> registered in settings.shared.json (was a 4-name hand
+#    list, so 5 registered hooks sat dead/exit-127 on <<MACHINE_2_ID>> unnoticed; audit 2026-10-05).
+_settings="$(git rev-parse --show-toplevel 2>/dev/null)/ClaudeCode/settings.shared.json"
+for hook in $(python3 -c "import json,re,sys;print(' '.join(sorted(set(re.findall(r'~/\.claude/([\w.-]+\.(?:sh|py))',json.dumps(json.load(open(sys.argv[1])))))|{'statusline.sh'})))" "$_settings" 2>/dev/null); do
+  [ -e "$HOME/.claude/$hook" ] \
     && check "symlink: ~/.claude/$hook" "ok" \
     || check "symlink: ~/.claude/$hook" "MISSING — run bootstrap-claude-memory.sh"
 done
