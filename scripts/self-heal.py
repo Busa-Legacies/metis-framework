@@ -1100,7 +1100,7 @@ def meter_kokoro_tts(recs):
     on_hearth = user == "Ant" or "<<MACHINE_1_ID>>" in host
     url = os.environ.get("KOKORO_TTS_HEALTH_URL") or (
         "http://127.0.0.1:3763/" if on_hearth
-        else "https://<<MACHINE_1_HOSTNAME>>.tailbe5cff.ts.net/api/voice/tts"
+        else "https://<<MACHINE_1_HOSTNAME>>.<<TAILNET_DOMAIN>>/api/voice/tts"
     )
     try:
         _rq.urlopen(url, timeout=5)
@@ -1308,8 +1308,8 @@ def meter_front_door_phone_path(recs):
         fails.append(f"Caddyfile canary error: {e}")
 
     # 3. Preview door :3750 answers (Caddy route up; any HTTP code beats a dead port).
-    # gethostname() is 'AntFox-Macbook.local' → take the first label for the tailnet FQDN.
-    tailnet_host = f"{(host.split('.')[0] or '<<MACHINE_1_HOSTNAME>>')}.tailbe5cff.ts.net"
+    # gethostname() is e.g. 'my-mac.local' → take the first label for the tailnet FQDN.
+    tailnet_host = f"{(host.split('.')[0] or '<<MACHINE_1_HOSTNAME>>')}.<<TAILNET_DOMAIN>>"
     try:
         out = subprocess.run(
             ["curl", "-sS", "--max-time", "6", "-o", "/dev/null", "-w", "%{http_code}",

@@ -1,7 +1,7 @@
 # The metis-core / metis-os split
 
 How content was divided between **metis-core** (this repo: portable framework,
-synced between Busa-Legacies and Navore agents) and **metis-os** (the personal
+shared across the agents that consume it) and **metis-os** (the personal
 operating repo, left untouched). Built from a full 5-region read of metis-os on
 2026-06-10. The machine-readable manifest is `build/manifest.py`.
 
@@ -23,9 +23,9 @@ operating repo, left untouched). Built from a full 5-region read of metis-os on
 ## In metis-os (PERSONAL, left untouched)
 
 - **Identity**: USER.md, IDENTITY.md, TOOLS.md values, machine wiring.
-- **Personal projects**: trading-bot, polymarket-bot, social-pipeline, dashboard, consulting-portfolio, writing.
-- **Navore business IP**: strategy/, ops/, distribution/, lfpp-grant/, producer-onboarding/ (project content, not architectural core, kept out of the seed).
-- **Personal integrations**: discord_*, notion-cc-*, ms365, google, jay-*, heartbeat, tailscale, ttyd, navore_stakeholder_report, copilot-* scripts.
+- **Personal projects**: domain apps, the dashboard, and personal writing.
+- **Partner and client business content**: project material, not architectural core, kept out of the seed.
+- **Personal integrations**: discord_*, notion-cc-*, ms365, google, jay-*, heartbeat, tailscale, ttyd, partner reporting, copilot-* scripts.
 - **Personal infra/ops docs**: goals, projects, live-status, infrastructure-state, hearth-lanes (specific wiring), research, reviews, fitbod, remote-cloud, specific PLAN-*.md.
 - **Machine-specific**: launchagents, settings.local.json, ttyd plists, lane tooling (dispatch/jlane/lane-*).
 - **All credentials / real IDs**: never in the shared repo.
@@ -40,7 +40,7 @@ out before the seed is clean; this is the open work:
 |---|---|---|
 | `scripts/free-work.py` | `MACHINE_AGENTS` dict (antfox/jarry) | read `config/infrastructure.json` machines/agents |
 | `scripts/queue-runner.py` | `DISPATCHABLE_AGENTS` / `DISPATCHABLE_MACHINES` | read config |
-| `scripts/task-domain.py` | domain list incl navore/trading/consulting | read config `domains` |
+| `scripts/task-domain.py` | domain list incl. owner-specific domains | read config `domains` |
 | `scripts/self-heal.sh`, `lib/maintenance.sh`, `system-audit.sh` | hardcoded Discord channel-ID fallback defaults | drop default, require env/config |
 | `scripts/lib/network.env`, `network.py` | Tailscale IPs | read config `machines[].tailscaleIp` |
 | `ClaudeCode/mirror-manifest.json` | machine names, user paths, IPs | placeholder template |

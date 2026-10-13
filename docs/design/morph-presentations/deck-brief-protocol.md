@@ -67,7 +67,7 @@ Quality bar:
 
 | | Métis | Example |
 |---|---|---|
-| Brand source | our house system (`design-guidelines.md`) | navoremarket.com + press (palette interpretive; confirm hex) |
+| Brand source | our house system (`design-guidelines.md`) | the client's site + press (palette interpretive; confirm hex) |
 | Motif | indigo data-horizon, orb = the system | harvest sun rising over SD farmland |
 | Takeaway | "an autonomous agent framework" | "San Diego's local food marketplace" |
 | Nav taxonomy | orchestrator · lanes · memory · surfaces | farms · shop · mission · impact |

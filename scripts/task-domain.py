@@ -11,7 +11,7 @@ Default output: raw section name from OPEN_TASKS.md (e.g. "Automation")
 
 Concern buckets (what actually triggers a pivot recommendation):
   infrastructure  → OpenClaw Infrastructure, Automation, Remote Access, Self-Review
-  product         → Dashboard, Navore Market
+  product         → Dashboard, partner products
   trading         → Trading Bot
 
 Exits 0 always — "unknown" on no match so callers can proceed.

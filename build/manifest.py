@@ -37,7 +37,7 @@ CORE_DIRS = [
     "docs/design",
     "projects/dev-review", "projects/agent-workbench",
     # projects/metis-command: Phase-3 surface (cockpit), NOT shipped in the Phase-1
-    # framework (#121, Ant 2026-06-13). Also still carries Navore-integration code to
+    # framework (Ant 2026-06-13). Also still carries partner-integration code to
     # be cleaned as Phase-3 prep. Re-add when metis-command gets its own public repo.
     "decks/assets", "decks/metis",
     ".github",
@@ -99,13 +99,13 @@ CORE_SCRIPTS = [
 PARAM_SCRIPTS = [
     "free-work.py",      # MACHINE_AGENTS dict
     "queue-runner.py",   # DISPATCHABLE_AGENTS / DISPATCHABLE_MACHINES
-    "task-domain.py",    # domain list incl navore/trading/consulting
+    "task-domain.py",    # domain list incl. owner-specific domains
 ]
 
 # Everything else in scripts/ is intentionally EXCLUDED from the seed:
 #   discord_*, notion_*, ms365-sync, setup-google-sa, google-workspace-doctor,
 #   jay-*, bootstrap-hearth-lanes, heartbeat*, lease-heartbeat, tailscale-watchdog,
-#   ttyd-shell, navore_stakeholder_report, copilot-*, restart-dashboard/workbench,
+#   ttyd-shell, partner reporting, copilot-*, restart-dashboard/workbench,
 #   weekly-ops-summary, run-insights, smoke-*, dispatch, jlane, lane-*, caddy/,
 #   jay/, metis-move*, metis-sudo*, jarry-*, ccc*, claude-tmux, claude-task,
 #   spin-task-agent, notion-run-poller, test-cc-roundtrip, content-capture.mjs,
@@ -166,8 +166,8 @@ def build(plan_only=False):
     for f in ["projects/forge3d/lib", "projects/forge3d/scripts",
               "projects/forge3d/README.md"]:
         items.append(("any", f))
-    # navore: NOT published. Business IP stays private; the agent-scaffold seed kit
-    # was relocated to the Navore-Ops repo (2026-06-13, #121 launch). The generic
+    # Partner content: NOT published. Business IP stays private; the agent-scaffold
+    # seed kit was relocated to a private partner repo (2026-06-13). The generic
     # pattern is documented in docs/process/future-agent-scaffold-template.md.
 
     if plan_only:
