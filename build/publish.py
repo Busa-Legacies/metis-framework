@@ -102,6 +102,9 @@ def _load_scrubs():
 # Generic rules here; owner-specific ones are appended from PRIVATE_SCRUBS at run time.
 SCRUBS = [
     (re.compile(r"\btail[0-9a-f]{6,}\.ts\.net\b"), "<<TAILNET_DOMAIN>>"),  # any tailnet domain
+    # Any Tailscale/CGNAT address (100.64.0.0/10) or macOS home path the private rules missed.
+    (re.compile(r"\b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b"), "<<TAILSCALE_IP>>"),
+    (re.compile(r"/Users/[A-Za-z][\w.-]*"), "$HOME"),
     (re.compile(r"\bantfox\b"), "<<MACHINE_1_ID>>"),
     (re.compile(r"\bjarry\b"), "<<MACHINE_2_ID>>"),
     (re.compile(r"\babusa\b"), "<<MACHINE_2_USER>>"),
