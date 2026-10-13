@@ -8,6 +8,16 @@ names, script CLIs) may still shift between minor versions.
 
 _Nothing yet._
 
+## [0.2.0]: 2026-10-13
+
+This release is mostly about how the framework leaves the private repo it grows in. v0.1.0 was exported by hand. From here, an export copies only files on an explicit list, scrubs machine and owner details, and has to pass a leak scan and this repo's own CI before a release branch is ever pushed. Anything not on the list stays private by default, which is the right failure mode for a project that started as one person's operating system.
+
+- Gated export: allowlist-only copy, private scrub rules, a leak scan over every added line, and this repo's CI run against the export before release.
+- Lease fix: free-work.py now treats any non-terminal lease status as held. Before, only "checked-out" counted, so a task held under another status could be claimed twice.
+- State tooling: update-tier1-state.py is split into lib/tier1_state_* modules with a shared lib/lease_state.
+- Emitted formats (sign-off, board lines, documents) use colons instead of em dashes and carry no emoji.
+- README: new banner, mark, and brand story.
+
 ## [0.1.0]: 2026-07-08
 
 Launch release: the repo went public (source-available, FSL-1.1-Apache-2.0).
