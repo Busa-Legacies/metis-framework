@@ -20,7 +20,7 @@ parameterized out into [`config/infrastructure.json`](config/infrastructure.json
 It is consumed by downstream repos (e.g. an org's private operating repo) via
 **git subtree**, so the same spine stays in sync across every agent that runs it.
 
-![Metis Command console, the governed agent workforce live: goal/project board with agent-run milestones, the typed needs-you queue (decide / verify / unblock) with done-gates, eleven concurrent agent sessions, and the governed task lifecycle they follow](docs/assets/metis-cockpit-demo.webp)
+![Metis Command following one task end to end: plan the work from domain to task, track it on the task board, hand it to an agent and watch parallel sessions finish, decide in one click from the needs-you queue, and verify it against the done-gate before it counts as done](docs/assets/metis-cockpit-demo.webp)
 
 ## A production implementation of the long-running-agent harness
 
